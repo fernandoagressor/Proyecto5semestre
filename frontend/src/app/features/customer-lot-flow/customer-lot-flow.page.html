@@ -1,0 +1,164 @@
+<section class="flow-page">
+  @if (success(); as result) {
+    <article class="success-card">
+      <span class="success-card__icon">✓</span>
+      <span class="eyebrow">OPERACIÓN COMPLETADA</span>
+      <h2>Cliente y lote vinculados</h2>
+      <p>La reserva fue creada correctamente y el lote quedó protegido contra nuevas selecciones.</p>
+
+      <div class="success-grid">
+        <div><small>CLIENTE</small><strong>{{ result.cliente.nombreCompleto }}</strong><span>{{ result.cliente.codigoCliente }}</span></div>
+        <div><small>RESERVA</small><strong>{{ result.reserva.codigo }}</strong><span>{{ result.reserva.estado }}</span></div>
+        <div><small>LOTE</small><strong>{{ selectedLot()?.codigo }}</strong><span>Estado: RESERVADO</span></div>
+      </div>
+
+      <div class="success-card__actions">
+        <a class="button button--primary" routerLink="/ventas">Ver reservas</a>
+        <a class="button button--secondary" routerLink="/dashboard">Volver al dashboard</a>
+      </div>
+    </article>
+  } @else {
+    <header class="flow-hero">
+      <div>
+        <a routerLink="/dashboard" class="back-link"><app-icon name="arrow" /> Volver al dashboard</a>
+        <span class="eyebrow">NUEVA OPERACIÓN COMERCIAL</span>
+        <h2>Crear cliente y vincular lote</h2>
+        <p>Un proceso guiado, sin prospectos ni oportunidades visibles.</p>
+      </div>
+      <div class="transaction-note"><span></span><div><strong>Operación segura</strong><small>Los datos se guardan juntos al confirmar</small></div></div>
+    </header>
+
+    <ol class="stepper" aria-label="Progreso de la operación">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <li [class.active]="step() === item" [class.complete]="step() > item">
+          <span>{{ step() > item ? '✓' : item }}</span>
+          <div>
+            <strong>{{ item === 1 ? 'Cliente' : item === 2 ? 'Lote' : item === 3 ? 'Reserva' : 'Confirmar' }}</strong>
+            <small>{{ item === 1 ? 'Datos básicos' : item === 2 ? 'Inventario disponible' : item === 3 ? 'Condiciones' : 'Resumen final' }}</small>
+          </div>
+        </li>
+      }
+    </ol>
+
+    @if (error()) {
+      <div class="flow-alert" role="alert"><app-icon name="warning" /><span>{{ error() }}</span><button type="button" (click)="error.set(null)">Cerrar</button></div>
+    }
+
+    <div class="flow-layout">
+      <main class="flow-card">
+        @if (step() === 1) {
+          <form [formGroup]="customerForm" (ngSubmit)="continueFromCustomer()" novalidate>
+            <header class="card-heading">
+              <span class="heading-icon"><app-icon name="crm" /></span>
+              <div><small>PASO 1 DE 4</small><h3>Datos del cliente</h3><p>Registra la información de la persona que realizará la compra.</p></div>
+            </header>
+
+            <div class="segmented-control" aria-label="Tipo de persona">
+              <button type="button" [class.active]="customerForm.controls.tipoPersona.value === 'NATURAL'" (click)="customerForm.controls.tipoPersona.setValue('NATURAL')">Persona natural</button>
+              <button type="button" [class.active]="customerForm.controls.tipoPersona.value === 'JURIDICA'" (click)="customerForm.controls.tipoPersona.setValue('JURIDICA')">Persona jurídica</button>
+            </div>
+
+            <div class="form-grid">
+              <label><span>Tipo de documento *</span><select formControlName="tipoDocumento"><option value="CC">Cédula de ciudadanía</option><option value="CE">Cédula de extranjería</option><option value="NIT">NIT</option><option value="PASAPORTE">Pasaporte</option></select></label>
+              <label><span>Número de documento *</span><input formControlName="numeroDocumento" placeholder="Ej. 1.024.567.890" /></label>
+              <label><span>{{ customerForm.controls.tipoPersona.value === 'JURIDICA' ? 'Razón social' : 'Nombres' }} *</span><input formControlName="nombres" /></label>
+              @if (customerForm.controls.tipoPersona.value === 'NATURAL') {
+                <label><span>Apellidos</span><input formControlName="apellidos" /></label>
+              }
+              <label><span>Teléfono</span><input formControlName="telefono" type="tel" placeholder="+57 300 000 0000" /></label>
+              <label><span>Correo electrónico</span><input formControlName="correo" type="email" placeholder="cliente@correo.com" /></label>
+              <label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label>
+              <label><span>Origen</span><select formControlName="origen"><option value="VENTAS">Ventas</option><option value="REFERIDO">Referido</option><option value="WEB">Sitio web</option><option value="VISITA">Visita</option><option value="OTRO">Otro</option></select></label>
+              <label class="span-2"><span>Observaciones</span><textarea formControlName="observaciones" rows="3" placeholder="Información adicional del cliente"></textarea></label>
+            </div>
+            <p class="contact-hint"><app-icon name="audit" /> Se requiere al menos teléfono o correo para mantener la trazabilidad comercial.</p>
+            <footer class="card-actions"><a routerLink="/dashboard" class="button button--ghost">Cancelar</a><button class="button button--primary" type="submit">Continuar a seleccionar lote <app-icon name="chevron" /></button></footer>
+          </form>
+        }
+
+        @if (step() === 2) {
+          <section>
+            <header class="card-heading">
+              <span class="heading-icon"><app-icon name="inventory" /></span>
+              <div><small>PASO 2 DE 4</small><h3>Selecciona un lote disponible</h3><p>Usa los filtros para encontrar rápidamente el lote indicado, incluso entre cientos de registros.</p></div>
+            </header>
+
+            <form class="lot-filters" [formGroup]="lotFilterForm" (ngSubmit)="applyFilters()">
+              <label><span>Proyecto *</span><select formControlName="projectId" (change)="changeProject(+$any($event.target).value)"><option [value]="0">Selecciona un proyecto</option>@for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }</select></label>
+              <label><span>Etapa</span><select formControlName="stageId" (change)="changeStage(+$any($event.target).value)" [disabled]="!lotFilterForm.controls.projectId.value"><option [value]="0">Todas</option>@for (stage of stages(); track stage.id) { <option [value]="stage.id">{{ stage.nombre }}</option> }</select></label>
+              <label><span>Manzana</span><select formControlName="blockId" (change)="changeBlock(+$any($event.target).value)" [disabled]="!lotFilterForm.controls.stageId.value"><option [value]="0">Todas</option>@for (block of blocks(); track block.id) { <option [value]="block.id">{{ block.nombre }}</option> }</select></label>
+              <label class="filter-search"><span>Buscar por código o número</span><div><app-icon name="search" /><input formControlName="text" placeholder="Ej. MZ-A Lote 18" /></div></label>
+              <label><span>Área mínima (m²)</span><input type="number" min="0" formControlName="minArea" /></label>
+              <label><span>Área máxima (m²)</span><input type="number" min="0" formControlName="maxArea" /></label>
+              <label><span>Precio mínimo</span><input type="text" nexoraMoney formControlName="minPrice" /></label>
+              <label><span>Precio máximo</span><input type="text" nexoraMoney formControlName="maxPrice" /></label>
+              <div class="filter-actions"><button type="button" (click)="clearFilters()">Limpiar</button><button type="submit"><app-icon name="search" /> Aplicar filtros</button></div>
+            </form>
+
+            <div class="result-heading"><div><strong>Lotes disponibles</strong><small>{{ totalLots() }} resultados · 25 por página</small></div><span><i></i> Disponibilidad en tiempo real</span></div>
+            @if (loadingCatalogs() || loadingLots()) {
+              <div class="loading-state"><span></span><strong>Consultando inventario…</strong></div>
+            } @else if (!lotFilterForm.controls.projectId.value) {
+              <div class="empty-state"><app-icon name="projects" /><strong>Selecciona un proyecto</strong><p>Después podrás filtrar sus etapas, manzanas y lotes disponibles.</p></div>
+            } @else if (lots().length === 0) {
+              <div class="empty-state"><app-icon name="search" /><strong>No encontramos lotes</strong><p>Ajusta los filtros o consulta otra etapa del proyecto.</p></div>
+            } @else {
+              <div class="lot-table-wrap">
+                <table class="lot-table">
+                  <thead><tr><th></th><th>Lote</th><th>Área</th><th>Dimensiones</th><th>Precio</th><th>Ubicación</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    @for (lot of lots(); track lot.id) {
+                      <tr [class.selected]="selectedLot()?.id === lot.id" (click)="selectLot(lot)">
+                        <td><span class="radio-dot"></span></td><td><strong>{{ lot.codigo }}</strong><small>N.º {{ lot.numero }}</small></td><td>{{ lot.areaM2 }} m²</td><td>{{ lot.frenteM ?? '—' }} × {{ lot.fondoM ?? '—' }} m</td><td><strong>{{ money(lot.valorLista) }}</strong></td><td>{{ lot.ubicacionReferencia || 'Sin referencia' }}</td><td><span class="available"><i></i> Disponible</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination"><button type="button" (click)="loadLots(currentPage() - 1)" [disabled]="currentPage() === 0">Anterior</button><span>Página {{ currentPage() + 1 }} de {{ totalPages() }}</span><button type="button" (click)="loadLots(currentPage() + 1)" [disabled]="currentPage() + 1 >= totalPages()">Siguiente</button></div>
+            }
+            <footer class="card-actions"><button class="button button--ghost" type="button" (click)="goBack()"><app-icon name="arrow" /> Volver</button><button class="button button--primary" type="button" (click)="continueFromLot()" [disabled]="!selectedLot()">Configurar reserva <app-icon name="chevron" /></button></footer>
+          </section>
+        }
+
+        @if (step() === 3) {
+          <form [formGroup]="reservationForm" (ngSubmit)="continueFromReservation()" novalidate>
+            <header class="card-heading"><span class="heading-icon"><app-icon name="calendar" /></span><div><small>PASO 3 DE 4</small><h3>Configura la reserva</h3><p>Define el plazo, valor y forma de pago inicial.</p></div></header>
+            <div class="selected-lot-banner"><div><small>LOTE SELECCIONADO</small><strong>{{ selectedLot()?.codigo }}</strong><span>{{ selectedLot()?.areaM2 }} m² · {{ money(selectedLot()?.valorLista) }}</span></div><button type="button" (click)="step.set(2)">Cambiar lote</button></div>
+            <div class="form-grid reservation-grid">
+              <label><span>Fecha y hora de vencimiento *</span><input type="datetime-local" [min]="minExpiry" formControlName="fechaVencimiento" /></label>
+              <label><span>Valor de la reserva *</span><input type="text" nexoraMoney formControlName="valorReserva" placeholder="0" /><small>Máximo {{ money(selectedLot()?.valorLista) }}</small></label>
+              <label><span>Forma de pago *</span><select formControlName="formaPago"><option value="TRANSFERENCIA">Transferencia bancaria</option><option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta</option><option value="CHEQUE">Cheque</option><option value="OTRO">Otro</option></select></label>
+              <div class="rule-card"><app-icon name="lock" /><div><strong>El lote aún no está bloqueado</strong><p>La disponibilidad se validará nuevamente al confirmar. Solo entonces cambiará a RESERVADO.</p></div></div>
+            </div>
+            <footer class="card-actions"><button class="button button--ghost" type="button" (click)="goBack()"><app-icon name="arrow" /> Volver</button><button class="button button--primary" type="submit">Revisar operación <app-icon name="chevron" /></button></footer>
+          </form>
+        }
+
+        @if (step() === 4) {
+          <section>
+            <header class="card-heading"><span class="heading-icon"><app-icon name="audit" /></span><div><small>PASO 4 DE 4</small><h3>Revisa y confirma</h3><p>Verifica toda la información antes de crear la reserva.</p></div></header>
+            <div class="review-grid">
+              <article><header><span><app-icon name="crm" /></span><div><small>CLIENTE</small><strong>{{ customerName() }}</strong></div><button type="button" (click)="step.set(1)">Editar</button></header><dl><div><dt>Documento</dt><dd>{{ customerForm.controls.tipoDocumento.value }} {{ customerForm.controls.numeroDocumento.value }}</dd></div><div><dt>Contacto</dt><dd>{{ customerForm.controls.telefono.value || customerForm.controls.correo.value }}</dd></div><div><dt>Tipo</dt><dd>{{ customerForm.controls.tipoPersona.value }}</dd></div></dl></article>
+              <article><header><span><app-icon name="inventory" /></span><div><small>INVENTARIO</small><strong>{{ selectedLot()?.codigo }}</strong></div><button type="button" (click)="step.set(2)">Editar</button></header><dl><div><dt>Proyecto</dt><dd>{{ selectedProject()?.nombre }}</dd></div><div><dt>Etapa / Manzana</dt><dd>{{ selectedStage()?.nombre || 'Todas' }} · {{ selectedBlock()?.nombre || '—' }}</dd></div><div><dt>Área y precio</dt><dd>{{ selectedLot()?.areaM2 }} m² · {{ money(selectedLot()?.valorLista) }}</dd></div></dl></article>
+              <article class="review-wide"><header><span><app-icon name="calendar" /></span><div><small>RESERVA</small><strong>Condiciones iniciales</strong></div><button type="button" (click)="step.set(3)">Editar</button></header><dl><div><dt>Vencimiento</dt><dd>{{ reservationForm.controls.fechaVencimiento.value.replace('T', ' · ') }}</dd></div><div><dt>Valor</dt><dd>{{ money(reservationForm.controls.valorReserva.value) }}</dd></div><div><dt>Forma de pago</dt><dd>{{ reservationForm.controls.formaPago.value }}</dd></div></dl></article>
+            </div>
+            <div class="confirmation-note"><app-icon name="audit" /><div><strong>Confirmación transaccional</strong><p>El sistema volverá a validar el lote y, si continúa disponible, creará cliente, trazabilidad comercial y reserva en una sola operación. Si algo falla, no quedarán registros parciales.</p></div></div>
+            <footer class="card-actions"><button class="button button--ghost" type="button" (click)="goBack()"><app-icon name="arrow" /> Volver</button><button class="button button--primary button--confirm" type="button" data-testid="confirm-customer-lot" (click)="confirm()" [disabled]="submitting()">{{ submitting() ? 'Confirmando operación…' : 'Confirmar y crear reserva' }} <app-icon name="audit" /></button></footer>
+          </section>
+        }
+      </main>
+
+      <aside class="context-panel">
+        <span class="eyebrow">RESUMEN EN VIVO</span>
+        <div class="context-customer"><span>{{ customerName().charAt(0).toUpperCase() }}</span><div><strong>{{ customerName() }}</strong><small>{{ customerForm.controls.numeroDocumento.value || 'Documento pendiente' }}</small></div></div>
+        <dl>
+          <div><dt>Proyecto</dt><dd>{{ selectedProject()?.nombre || 'Por seleccionar' }}</dd></div>
+          <div><dt>Lote</dt><dd>{{ selectedLot()?.codigo || 'Por seleccionar' }}</dd></div>
+          <div><dt>Reserva</dt><dd>{{ reservationForm.controls.valorReserva.value ? money(reservationForm.controls.valorReserva.value) : 'Por definir' }}</dd></div>
+        </dl>
+        <div class="context-security"><app-icon name="lock" /><div><strong>Reglas conservadas</strong><small>Permisos, empresa, concurrencia, estados y auditoría siguen activos.</small></div></div>
+      </aside>
+    </div>
+  }
+</section>

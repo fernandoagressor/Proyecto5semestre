@@ -1,0 +1,16 @@
+package com.inmobiliaria.inmobiliaria_api.dto.cartera;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public record ConciliacionCrearRequest(
+        @NotBlank @Size(max = 100) String cuentaBancaria,
+        @NotNull LocalDate fechaDesde,
+        @NotNull LocalDate fechaHasta,
+        @NotNull @DecimalMin("0") BigDecimal saldoExtracto
+) {
+}

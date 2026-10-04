@@ -1,0 +1,117 @@
+<section class="dashboard">
+  <header class="dashboard-hero">
+    <div class="hero-copy">
+      <span class="eyebrow">CENTRO DE INTELIGENCIA · {{ today }}</span>
+      <h2>{{ greeting() }}, <span>{{ auth.user()?.nombreUsuario }}</span>.</h2>
+      <p>{{ title() }} con información real y exclusiva de tu empresa.</p>
+      <div class="hero-context"><i></i> Espacio empresarial protegido <span>·</span> {{ periodDescription() }}</div>
+    </div>
+    <div class="dashboard-controls">
+      @if (supportsPeriodFilter()) {
+        <label>
+          <span>PERIODO ANALIZADO</span>
+          <select #periodSelect [value]="period()" (change)="selectPeriod(periodSelect.value)">
+            @for (option of periodOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+          </select>
+        </label>
+      }
+      @if (projects().length > 0 && kind() !== 'cliente') {
+        <label>
+          <span>PROYECTO ANALIZADO</span>
+          <select #projectSelect [value]="selectedProjectId() ?? ''" (change)="selectProject(projectSelect.value)">
+            <option value="">Todos los proyectos de mi empresa</option>
+            @for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }
+          </select>
+        </label>
+      }
+      <button class="refresh-button" type="button" (click)="load()" [disabled]="loading()"><app-icon name="refresh" /> Actualizar datos</button>
+    </div>
+  </header>
+
+  @if (availableViews().length > 1) {
+    <nav class="insight-navigation" aria-label="Vistas analíticas disponibles">
+      @for (view of availableViews(); track view.kind) {
+        <button type="button" [class.active]="kind() === view.kind" (click)="selectKind(view.kind)"><app-icon [name]="view.icon" /> {{ view.label }}</button>
+      }
+      @if (relatedLoading()) { <span class="sync-indicator"><i></i> Integrando indicadores</span> }
+    </nav>
+  }
+
+  @if (!loading() && kind() !== 'cliente' && projects().length === 0 && auth.hasAuthority('PROYECTOS_CREAR')) {
+    <section class="workspace-onboarding">
+      <div class="onboarding-copy"><span class="eyebrow">PRIMEROS PASOS</span><h3>Tu empresa está lista para comenzar</h3><p>La configuración de seguridad ya está activa. Crea el primer proyecto para habilitar inventario, clientes y reservas.</p></div>
+      <ol>
+        <li class="active"><span>1</span><div><strong>Crear proyecto</strong><small>Datos generales y capacidad</small></div><a routerLink="/proyectos">Comenzar <app-icon name="chevron" /></a></li>
+        <li><span>2</span><div><strong>Cargar inventario</strong><small>Etapas, manzanas y lotes</small></div></li>
+        <li><span>3</span><div><strong>Crear cliente</strong><small>Seleccionar lote y reservar</small></div></li>
+      </ol>
+    </section>
+  }
+
+  @if (error()) {
+    <div class="error-state" role="alert"><app-icon name="warning" /><div><strong>{{ error() }}</strong><span>Verifica la conexión con la API y vuelve a intentarlo.</span></div><button type="button" (click)="load()">Reintentar</button></div>
+  } @else if (loading()) {
+    <div class="metric-grid skeleton-grid">@for (item of [1,2,3,4]; track item) { <div class="metric-card skeleton"></div> }</div>
+    <div class="dashboard-grid"><div class="panel skeleton skeleton--large"></div><div class="panel skeleton skeleton--large"></div></div>
+  } @else {
+    <div class="metric-grid">
+      @for (metric of metrics(); track metric.label) {
+        <article class="metric-card" [class]="'metric-card tone-' + metric.tone">
+          <div class="metric-card__heading"><span class="metric-icon"><app-icon [name]="metric.icon" /></span><span class="live-indicator"><i></i> Actualizado</span></div>
+          <span class="metric-label">{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.detail }}</small>
+          <span class="metric-spark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        </article>
+      }
+    </div>
+
+    <div class="analytics-grid">
+      <article class="panel analysis-featured">
+        <header class="panel__header"><div><span>ANÁLISIS PRINCIPAL</span><h3>{{ chartTitle() }}</h3><p>Comparación construida a partir de registros reales.</p></div><span class="data-source">Tu empresa</span></header>
+        <app-insight-chart [points]="chartSeries()" variant="bars" [format]="kind() === 'servicio' ? 'number' : 'currency'" />
+      </article>
+
+      <article class="panel distribution-panel">
+        <header class="panel__header"><div><span>COMPOSICIÓN</span><h3>Distribución operativa</h3><p>Participación por categoría.</p></div></header>
+        <app-insight-chart [points]="distributionSeries()" variant="donut" totalLabel="registros" />
+      </article>
+
+      <article class="panel finance-panel">
+        <header class="panel__header"><div><span>FLUJO DE VALOR</span><h3>Relación financiera</h3><p>Ventas, recaudo y cartera disponibles.</p></div><span class="data-source">COP</span></header>
+        <app-insight-chart [points]="financeSeries()" variant="line" format="currency" />
+      </article>
+
+      <article class="panel performance-panel">
+        <header class="panel__header"><div><span>EFICIENCIA</span><h3>Salud del negocio</h3><p>Indicadores calculados sobre datos autorizados.</p></div></header>
+        @if (performance().length > 0) {
+          <div class="performance-list">
+            @for (indicator of performance(); track indicator.label) {
+              <div class="performance-item" [class]="'performance-item tone-' + indicator.tone"><div><strong>{{ indicator.label }}</strong><span>{{ indicator.display }}</span></div><i><b [style.width.%]="indicator.value"></b></i><small>{{ indicator.detail }}</small></div>
+            }
+          </div>
+        } @else { <div class="panel-empty">Los indicadores aparecerán cuando existan datos registrados.</div> }
+      </article>
+
+      <article class="panel operations-panel">
+        <header class="panel__header"><div><span>ACTIVIDAD</span><h3>Pulso de la operación</h3><p>Movimientos agrupados por proceso.</p></div></header>
+        <app-insight-chart [points]="operationsSeries()" variant="bars" />
+      </article>
+
+      @if (advisorSeries().length > 0) {
+        <article class="panel advisor-panel"><header class="panel__header"><div><span>EQUIPO COMERCIAL</span><h3>Ventas por asesor</h3><p>Resultados confirmados por responsable.</p></div></header><app-insight-chart [points]="advisorSeries()" variant="bars" format="currency" /></article>
+      } @else if (projectSeries().length > 0) {
+        <article class="panel advisor-panel"><header class="panel__header"><div><span>PORTAFOLIO</span><h3>Avance por proyecto</h3><p>Porcentaje operativo registrado.</p></div></header><app-insight-chart [points]="projectSeries()" variant="bars" /></article>
+      }
+
+      <article class="panel alerts-panel">
+        <header class="panel__header"><div><span>SEGUIMIENTO</span><h3>Prioridades del día</h3><p>Eventos que merecen atención.</p></div></header>
+        <div class="alerts-list">@for (alert of alerts(); track alert.title) { <div [class]="'alert-item alert-item--' + alert.tone"><span><app-icon [name]="alert.icon" /></span><div><strong>{{ alert.title }}</strong><small>{{ alert.description }}</small></div></div> }</div>
+      </article>
+
+      <article class="panel actions-panel">
+        <header class="panel__header"><div><span>ACCESOS DIRECTOS</span><h3>Continúa tu operación</h3><p>Acciones disponibles para tu rol.</p></div></header>
+        <div class="quick-actions">@for (action of quickActions; track action.route) { @if (isQuickActionVisible(action)) { <a [routerLink]="action.route"><span><app-icon [name]="action.icon" /></span><div><strong>{{ action.label }}</strong><small>{{ action.caption }}</small></div><app-icon name="chevron" /></a> } }</div>
+        <div class="security-note"><span class="shield"><app-icon name="audit" /></span><div><strong>Datos privados de tu empresa</strong><small>Los permisos y el contexto mantienen aislada cada organización.</small></div></div>
+      </article>
+    </div>
+  }
+</section>

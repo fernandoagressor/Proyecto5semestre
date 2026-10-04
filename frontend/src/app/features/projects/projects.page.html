@@ -1,0 +1,136 @@
+<section class="projects-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">PORTAFOLIO INMOBILIARIO</span>
+      <h2>Proyectos</h2>
+      <p>Consulta el avance, ubicación y estado de los proyectos autorizados para tu usuario.</p>
+    </div>
+    @if (auth.hasAuthority('PROYECTOS_CREAR')) {
+      <span class="permission-chip"><app-icon name="plus" /> Creación autorizada</span>
+    }
+  </header>
+
+  @if (feedback()) {
+    <div class="action-message action-message--success">
+      <span>{{ feedback() }}</span
+      ><button type="button" (click)="feedback.set('')">×</button>
+    </div>
+  }
+  @if (actionError()) {
+    <div class="action-message action-message--error">
+      <span>{{ actionError() }}</span
+      ><button type="button" (click)="actionError.set('')">×</button>
+    </div>
+  }
+
+  <div class="toolbar">
+    <label class="search-box">
+      <app-icon name="search" />
+      <input
+        [formControl]="search"
+        placeholder="Buscar por nombre, código o ciudad"
+        aria-label="Buscar proyectos"
+      />
+    </label>
+    <label class="status-filter">
+      <span>Estado</span>
+      <select #status [value]="selectedStatus()" (change)="changeStatus(status.value)">
+        @for (item of statuses; track item.value) {
+          <option [value]="item.value">{{ item.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (error()) {
+    <div class="state-panel state-panel--error">
+      <span><app-icon name="warning" /></span>
+      <h3>No fue posible cargar los proyectos</h3>
+      <p>Comprueba que la API esté disponible y vuelve a intentarlo.</p>
+      <button type="button" (click)="load()">Reintentar</button>
+    </div>
+  } @else if (loading()) {
+    <div class="project-grid">
+      @for (item of [1, 2, 3, 4, 5, 6]; track item) {
+        <div class="project-card skeleton"></div>
+      }
+    </div>
+  } @else if (page()?.contenido?.length) {
+    <div class="results-heading">
+      <span>{{ page()?.totalElementos }} proyectos encontrados</span>
+      <small>Página {{ (page()?.pagina ?? 0) + 1 }} de {{ page()?.totalPaginas }}</small>
+    </div>
+    <div class="project-grid">
+      @for (project of page()?.contenido; track project.id) {
+        <article
+          class="project-card"
+          [routerLink]="['/inventario']"
+          [queryParams]="{ proyecto: project.id }"
+          tabindex="0"
+        >
+          <div class="project-card__visual">
+            @if (project.imagenPrincipalUrl) {
+              <img [src]="project.imagenPrincipalUrl" [alt]="project.nombre" />
+            } @else {
+              <span>{{ project.codigo.slice(0, 2).toUpperCase() }}</span>
+            }
+            <span class="status" [class]="'status status--' + project.estado.toLowerCase()">{{
+              statusLabel(project.estado)
+            }}</span>
+          </div>
+          <div class="project-card__body">
+            <small>{{ project.codigo }}</small>
+            <h3>{{ project.nombre }}</h3>
+            <div class="location">
+              <app-icon name="location" /> {{ project.ciudad }}, {{ project.departamento }}
+            </div>
+            <div class="progress-heading">
+              <span>Avance del proyecto</span><strong>{{ progress(project) }} %</strong>
+            </div>
+            <div class="progress"><span [style.width.%]="progress(project)"></span></div>
+          </div>
+          <footer>
+            <span
+              ><app-icon name="calendar" /> {{ project.fechaInicio || 'Fecha por definir' }}</span
+            >
+            <div class="card-actions">
+              @if (auth.hasAuthority('PROYECTOS_EDITAR') && canActivate(project)) {
+                <button
+                  class="activate-button"
+                  type="button"
+                  (click)="activateProject($event, project)"
+                  [disabled]="activatingProjectId() !== null"
+                >
+                  {{ activatingProjectId() === project.id ? 'Activando…' : 'Activar proyecto' }}
+                </button>
+              }
+              <span class="detail-indicator" aria-hidden="true"><app-icon name="chevron" /></span>
+            </div>
+          </footer>
+        </article>
+      }
+    </div>
+
+    @if ((page()?.totalPaginas ?? 0) > 1) {
+      <nav class="pagination" aria-label="Paginación de proyectos">
+        <button
+          type="button"
+          [disabled]="page()?.primera"
+          (click)="load((page()?.pagina ?? 0) - 1)"
+        >
+          Anterior
+        </button>
+        <span>{{ (page()?.pagina ?? 0) + 1 }} / {{ page()?.totalPaginas }}</span>
+        <button type="button" [disabled]="page()?.ultima" (click)="load((page()?.pagina ?? 0) + 1)">
+          Siguiente
+        </button>
+      </nav>
+    }
+  } @else {
+    <div class="state-panel">
+      <span><app-icon name="projects" /></span>
+      <h3>No hay proyectos para mostrar</h3>
+      <p>Ajusta los filtros o solicita a tu administrador acceso a un proyecto.</p>
+    </div>
+  }
+</section>

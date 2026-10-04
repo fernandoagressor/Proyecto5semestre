@@ -1,0 +1,128 @@
+<div class="shell" [class.menu-open]="mobileMenuOpen()">
+  <aside class="sidebar" aria-label="Navegación principal">
+    <div class="sidebar__header">
+      <a routerLink="/dashboard" class="brand" aria-label="Ir al dashboard">
+        <app-brand-mark />
+      </a>
+      <button class="icon-button mobile-close" type="button" (click)="mobileMenuOpen.set(false)" aria-label="Cerrar menú">
+        <app-icon name="close" />
+      </button>
+    </div>
+
+    <div class="company-chip">
+      <span>{{ companyName().charAt(0).toUpperCase() }}</span>
+      <div>
+        <small>{{ auth.hasAuthority('ROLE_SUPER_ADMIN') && !auth.user()?.empresaId ? 'CONTROL GLOBAL' : 'ESPACIO DE TRABAJO' }}</small>
+        <strong>{{ companyName() }}</strong>
+      </div>
+    </div>
+
+    <nav class="navigation">
+      <span class="navigation__label">{{ auth.hasAuthority('ROLE_SUPER_ADMIN') ? 'CONTROL Y OPERACIÓN' : 'OPERACIÓN EMPRESARIAL' }}</span>
+      @for (item of navigation(); track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+        >
+          <span class="nav-icon"><app-icon [name]="item.icon" /></span>
+          <span class="nav-copy"><strong>{{ item.label }}</strong><small>{{ item.caption }}</small></span>
+          <app-icon class="nav-chevron" name="chevron" />
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="system-status">
+        <span></span>
+        <div><strong>Sistema operativo</strong><small>Servicios disponibles</small></div>
+      </div>
+      <div class="version">NEXORA CORE · INTELLIGENCE 2.0</div>
+    </div>
+  </aside>
+
+  @if (mobileMenuOpen()) {
+    <button class="scrim" type="button" (click)="mobileMenuOpen.set(false)" aria-label="Cerrar menú"></button>
+  }
+
+  <section class="workspace">
+    <header class="topbar">
+      <div class="topbar__heading">
+        <button class="icon-button menu-button" type="button" (click)="mobileMenuOpen.set(true)" aria-label="Abrir menú">
+          <app-icon name="menu" />
+        </button>
+        <div>
+          <span>{{ companyName() }}</span>
+          <h1>{{ pageTitle() }}</h1>
+        </div>
+        <span class="workspace-scope" [class.workspace-scope--global]="auth.hasAuthority('ROLE_SUPER_ADMIN') && !auth.user()?.empresaId"><i></i>{{ auth.hasAuthority('ROLE_SUPER_ADMIN') && !auth.user()?.empresaId ? 'Global' : 'Empresa privada' }}</span>
+      </div>
+
+      <div class="topbar__actions">
+        <button class="icon-button" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'">
+          <app-icon [name]="theme.isDark() ? 'sun' : 'moon'" />
+        </button>
+        <div class="notifications">
+          <button class="icon-button notification-button" type="button" (click)="toggleNotifications()" aria-label="Notificaciones" [attr.aria-expanded]="notificationOpen()">
+            <app-icon name="bell" />
+            @if (unreadNotifications() > 0) {
+              <span>{{ unreadNotifications() > 9 ? '9+' : unreadNotifications() }}</span>
+            }
+          </button>
+          @if (notificationOpen()) {
+            <div class="notification-menu">
+              <header><div><strong>Notificaciones</strong><small>{{ unreadNotifications() }} sin leer</small></div><span>RECIENTES</span></header>
+              @if (notificationsLoading()) {
+                <div class="notification-empty">Cargando notificaciones…</div>
+              } @else if (recentNotifications().length > 0) {
+                <div class="notification-list">
+                  @for (notification of recentNotifications(); track notification.id) {
+                    <article><i [class]="'priority priority--' + notification.prioridad.toLowerCase()"></i><div><strong>{{ notification.titulo }}</strong><p>{{ notification.mensaje }}</p><small>{{ notification.creadoEn }}</small></div></article>
+                  }
+                </div>
+              } @else {
+                <div class="notification-empty"><app-icon name="bell" /><strong>Todo está al día</strong><span>No tienes notificaciones pendientes.</span></div>
+              }
+            </div>
+          }
+        </div>
+        <div class="profile">
+          <button class="profile__trigger" type="button" (click)="notificationOpen.set(false); profileOpen.set(!profileOpen())" [attr.aria-expanded]="profileOpen()">
+            <span class="avatar">{{ auth.initials() }}</span>
+            <span class="profile__copy">
+              <strong>{{ auth.user()?.nombreUsuario }}</strong>
+              <small>{{ auth.user()?.roles?.[0] ?? 'Usuario' }}</small>
+            </span>
+            <app-icon name="chevron" />
+          </button>
+          @if (profileOpen()) {
+            <div class="profile-menu">
+              <div class="profile-menu__identity">
+                <strong>{{ auth.user()?.correo }}</strong>
+                <small>Sesión protegida</small>
+              </div>
+              <a routerLink="/seguridad/cambiar-password">
+                <app-icon name="lock" />
+                Cambiar contraseña
+              </a>
+              <button class="profile-menu__logout" type="button" (click)="logout()" [disabled]="loggingOut()">
+                <app-icon name="logout" />
+                {{ loggingOut() ? 'Cerrando sesión…' : 'Cerrar sesión' }}
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    @if (auth.user()?.requiereCambioPassword) {
+      <div class="security-banner">
+        <app-icon name="warning" />
+        <span>Debes actualizar tu contraseña temporal antes de continuar.</span>
+        <a routerLink="/seguridad/cambiar-password">Actualizar ahora</a>
+      </div>
+    }
+
+    <main class="content"><router-outlet /></main>
+  </section>
+</div>

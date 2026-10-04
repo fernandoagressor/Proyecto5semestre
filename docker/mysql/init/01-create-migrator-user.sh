@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if [ -z "${MYSQL_MIGRATOR_USER:-}" ] || [ -z "${MYSQL_MIGRATOR_PASSWORD:-}" ]; then
+  echo "Las credenciales de Relational Migrator son obligatorias" >&2
+  exit 1
+fi
+
+mysql --protocol=socket -uroot -p"$MYSQL_ROOT_PASSWORD" <<-EOSQL
+CREATE USER IF NOT EXISTS '${MYSQL_MIGRATOR_USER}'@'%' IDENTIFIED BY '${MYSQL_MIGRATOR_PASSWORD}';
+ALTER USER '${MYSQL_MIGRATOR_USER}'@'%' IDENTIFIED BY '${MYSQL_MIGRATOR_PASSWORD}';
+GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT
+ON *.* TO '${MYSQL_MIGRATOR_USER}'@'%';
+FLUSH PRIVILEGES;
+EOSQL

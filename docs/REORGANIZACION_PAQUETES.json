@@ -1,0 +1,1722 @@
+[
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/InmobiliariaApiApplication.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/InmobiliariaApiApplication.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/administracion/aplicacion/AdministracionEmpresaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/administracion/AdministracionEmpresaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/administracion/aplicacion/AdministracionRolService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/administracion/AdministracionRolService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/administracion/aplicacion/AdministracionUsuarioService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/administracion/AdministracionUsuarioService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/administracion/aplicacion/AnaliticaGlobalService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/administracion/AnaliticaGlobalService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/administracion/web/AdministracionDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/administracion/AdministracionDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/administracion/web/SuperAdministracionController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/administracion/SuperAdministracionController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CarteraAlcanceService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CarteraAlcanceService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CarteraGestionService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CarteraGestionService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CarteraMoraJob.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CarteraMoraJob.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CarteraOperativaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CarteraOperativaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/ConciliacionService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/ConciliacionService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/ConfiguracionCarteraService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/ConfiguracionCarteraService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CuotaCalculadora.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CuotaCalculadora.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/PagoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/PagoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/PlanPagoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cartera/PlanPagoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/CanalCobro.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/CanalCobro.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/ConceptoPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/ConceptoPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/ConciliacionBancaria.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/ConciliacionBancaria.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/ConciliacionMovimiento.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/ConciliacionMovimiento.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/ConfiguracionCartera.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/ConfiguracionCartera.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/Cuota.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/Cuota.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoConciliacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoConciliacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoCuentaGenerado.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoCuentaGenerado.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoCuota.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoCuota.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoMovimientoConciliacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoMovimientoConciliacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoPlanPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoPlanPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoRefinanciacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoRefinanciacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/EstadoReversion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/EstadoReversion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/Factura.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/Factura.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/GestionCobro.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/GestionCobro.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/MetodoPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/MetodoPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/OrigenPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/OrigenPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/OrigenPlanPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/OrigenPlanPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/Pago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/Pago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PagoAplicacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PagoAplicacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PagoHistorialEstado.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PagoHistorialEstado.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PagoReversion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PagoReversion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PazSalvo.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PazSalvo.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PlanPago.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PlanPago.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/Refinanciacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/Refinanciacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/RefinanciacionCuota.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/RefinanciacionCuota.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/ConciliacionMovimientoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/ConciliacionMovimientoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/ConciliacionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/ConciliacionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/ConfiguracionCarteraRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/ConfiguracionCarteraRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/CuotaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/CuotaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/EstadoCuentaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/EstadoCuentaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/FacturaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/FacturaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/GestionCobroRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/GestionCobroRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/MetodoPagoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/MetodoPagoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/PagoAplicacionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/PagoAplicacionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/PagoHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/PagoHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/PagoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/PagoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/PagoReversionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/PagoReversionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/PazSalvoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/PazSalvoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/PlanPagoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/PlanPagoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/RefinanciacionCuotaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/RefinanciacionCuotaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/infraestructura/RefinanciacionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cartera/RefinanciacionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CarteraContratoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/CarteraContratoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CarteraController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/cartera/CarteraController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CarteraOperativaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/cartera/CarteraOperativaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CarteraResumenResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/CarteraResumenResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CierreCarteraRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/CierreCarteraRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CierreCarteraResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/CierreCarteraResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ConciliacionController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/cartera/ConciliacionController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ConciliacionCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ConciliacionCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ConciliacionResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ConciliacionResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ConciliarMovimientoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ConciliarMovimientoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ConfiguracionCarteraRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ConfiguracionCarteraRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ConfiguracionCarteraResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ConfiguracionCarteraResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/CuotaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/CuotaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/DocumentoCarteraRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/DocumentoCarteraRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/DocumentoCarteraResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/DocumentoCarteraResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/GestionCobroRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/GestionCobroRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/GestionCobroResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/GestionCobroResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/MetodoPagoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/MetodoPagoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/MoraResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/MoraResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/MotivoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/MotivoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/MovimientoCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/MovimientoCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/MovimientoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/MovimientoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PagoAplicacionRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PagoAplicacionRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PagoAplicacionResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PagoAplicacionResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PagoConfirmarRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PagoConfirmarRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PagoController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/cartera/PagoController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PagoCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PagoCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PagoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PagoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PlanPagoController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/cartera/PlanPagoController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PlanPagoCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PlanPagoCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/PlanPagoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/PlanPagoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/RefinanciacionCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/RefinanciacionCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/RefinanciacionResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/RefinanciacionResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ReversionCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ReversionCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/ReversionResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/ReversionResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cartera/web/SeguimientoCuotaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cartera/SeguimientoCuotaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/aplicacion/ClienteService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/cliente/ClienteService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/dominio/Cliente.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/cliente/Cliente.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/infraestructura/ClienteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/cliente/ClienteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/web/ClienteController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/cliente/ClienteController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/web/ClienteEstadoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cliente/ClienteEstadoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/web/ClienteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cliente/ClienteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/cliente/web/ClienteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/cliente/ClienteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/excepcion/AccesoDenegadoException.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/compartido/excepcion/AccesoDenegadoException.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/excepcion/ConflictoException.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/compartido/excepcion/ConflictoException.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/excepcion/NoAutorizadoException.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/compartido/excepcion/NoAutorizadoException.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/excepcion/RecursoNoEncontradoException.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/compartido/excepcion/RecursoNoEncontradoException.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/excepcion/ReglaNegocioException.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/compartido/excepcion/ReglaNegocioException.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/modelo/EntidadAuditable.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/compartido/EntidadAuditable.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/web/ApiExceptionHandler.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/compartido/ApiExceptionHandler.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/compartido/web/PaginaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/compartido/PaginaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/aplicacion/CrmAlcanceService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/crm/CrmAlcanceService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/aplicacion/OportunidadService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/crm/OportunidadService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/aplicacion/ProspectoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/crm/ProspectoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/aplicacion/SeguimientoComercialService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/crm/SeguimientoComercialService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/ActividadComercial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/ActividadComercial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/CitaComercial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/CitaComercial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/EstadoCitaComercial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/EstadoCitaComercial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/EstadoOportunidad.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/EstadoOportunidad.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/EstadoProspecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/EstadoProspecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/EtapaOportunidad.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/EtapaOportunidad.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/FuenteProspecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/FuenteProspecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/Oportunidad.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/Oportunidad.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/OportunidadEtapaHistorial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/OportunidadEtapaHistorial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/OportunidadLote.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/OportunidadLote.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/Prospecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/Prospecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/TemperaturaProspecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/TemperaturaProspecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/TipoActividadComercial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/crm/TipoActividadComercial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/infraestructura/ActividadComercialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/crm/ActividadComercialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/infraestructura/CitaComercialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/crm/CitaComercialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/infraestructura/OportunidadEtapaHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/crm/OportunidadEtapaHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/infraestructura/OportunidadLoteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/crm/OportunidadLoteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/infraestructura/OportunidadRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/crm/OportunidadRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/infraestructura/ProspectoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/crm/ProspectoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ActividadComercialRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/ActividadComercialRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ActividadComercialResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/ActividadComercialResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/AgendaComercialController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/crm/AgendaComercialController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/CambioEstadoCitaRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/CambioEstadoCitaRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/CambioEtapaOportunidadRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/CambioEtapaOportunidadRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/CierrePerdidaRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/CierrePerdidaRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/CitaComercialRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/CitaComercialRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/CitaComercialResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/CitaComercialResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/HistorialEtapaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/HistorialEtapaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/OportunidadActualizarRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/OportunidadActualizarRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/OportunidadController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/crm/OportunidadController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/OportunidadLoteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/OportunidadLoteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/OportunidadLoteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/OportunidadLoteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/OportunidadRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/OportunidadRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/OportunidadResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/OportunidadResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ProspectoCalificacionRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/ProspectoCalificacionRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ProspectoController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/crm/ProspectoController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ProspectoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/ProspectoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ProspectoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/ProspectoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/ReasignarProspectoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/ReasignarProspectoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/crm/web/SeleccionLoteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/crm/SeleccionLoteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/empresa/aplicacion/EmpresaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/empresa/EmpresaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/empresa/aplicacion/ModuloEmpresaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/empresa/ModuloEmpresaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/empresa/dominio/Empresa.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/empresa/Empresa.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/empresa/infraestructura/EmpresaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/empresa/EmpresaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/empresa/web/EmpresaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/empresa/EmpresaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/empresa/web/EmpresaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/empresa/EmpresaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/AuditoriaConsultaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/AuditoriaConsultaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/AuditoriaRegistroService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/AuditoriaRegistroService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/DashboardService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/DashboardService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/FinanzasGerenciaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/FinanzasGerenciaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/GerenciaAlcanceService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/GerenciaAlcanceService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/MetaComisionService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/MetaComisionService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/ReporteService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/ReporteService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/TareaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/TareaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/aplicacion/TareaVencimientoJob.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/gerencia/TareaVencimientoJob.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/CategoriaCosto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/CategoriaCosto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/Comision.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/Comision.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/CostoProyecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/CostoProyecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/EstadoComision.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/EstadoComision.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/EstadoCosto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/EstadoCosto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/EstadoMeta.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/EstadoMeta.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/EstadoPresupuesto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/EstadoPresupuesto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/EstadoTarea.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/EstadoTarea.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/MetaComercial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/MetaComercial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/PresupuestoProyecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/PresupuestoProyecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/PrioridadTarea.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/PrioridadTarea.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/ReglaComision.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/ReglaComision.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/Tarea.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/Tarea.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/TareaHistorial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/TareaHistorial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/TipoCategoriaCosto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/TipoCategoriaCosto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/TipoReglaComision.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/TipoReglaComision.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/CategoriaCostoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/CategoriaCostoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/ComisionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/ComisionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/CostoProyectoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/CostoProyectoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/MetaComercialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/MetaComercialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/PresupuestoProyectoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/PresupuestoProyectoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/ReglaComisionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/ReglaComisionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/TareaHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/TareaHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/infraestructura/TareaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/gerencia/TareaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/AuditoriaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/AuditoriaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/AuditoriaDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/gerencia/AuditoriaDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/ComisionController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/ComisionController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/ComisionMetaDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/gerencia/ComisionMetaDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/DashboardController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/DashboardController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/DashboardDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/gerencia/DashboardDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/FinanzasDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/gerencia/FinanzasDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/FinanzasGerenciaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/FinanzasGerenciaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/MetaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/MetaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/ReporteController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/ReporteController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/ReporteDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/gerencia/ReporteDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/TareaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/gerencia/TareaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/gerencia/web/TareaDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/gerencia/TareaDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/identidad/dominio/Persona.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/identidad/Persona.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/identidad/infraestructura/PersonaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/identidad/PersonaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/aplicacion/AlcanceProyectoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/inventario/AlcanceProyectoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/aplicacion/AlcanceProyectos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/inventario/AlcanceProyectos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/aplicacion/InventarioService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/inventario/InventarioService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/aplicacion/ProyectoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/inventario/ProyectoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/EstadoEtapa.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/EstadoEtapa.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/EstadoLote.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/EstadoLote.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/EstadoProyecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/EstadoProyecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/EtapaProyecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/EtapaProyecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/Lote.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/Lote.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/LoteHistorialEstado.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/LoteHistorialEstado.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/LotePrecioHistorial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/LotePrecioHistorial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/Manzana.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/Manzana.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/Proyecto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/Proyecto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/infraestructura/EtapaProyectoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/inventario/EtapaProyectoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/infraestructura/LoteHistorialEstadoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/inventario/LoteHistorialEstadoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/infraestructura/LotePrecioHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/inventario/LotePrecioHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/infraestructura/LoteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/inventario/LoteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/infraestructura/ManzanaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/inventario/ManzanaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/infraestructura/ProyectoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/inventario/ProyectoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/CambioEstadoLoteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/CambioEstadoLoteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/CambioEstadoProyectoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/CambioEstadoProyectoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/CambioPrecioLoteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/CambioPrecioLoteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/EtapaRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/EtapaRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/EtapaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/EtapaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/HistorialEstadoLoteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/HistorialEstadoLoteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/HistorialPrecioLoteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/HistorialPrecioLoteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/InventarioController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/inventario/InventarioController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/InventarioResumenResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/InventarioResumenResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/LoteActualizarRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/LoteActualizarRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/LoteCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/LoteCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/LoteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/LoteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/ManzanaRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/ManzanaRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/ManzanaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/ManzanaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/ProyectoController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/inventario/ProyectoController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/ProyectoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/ProyectoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/inventario/web/ProyectoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/inventario/ProyectoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/aplicacion/NotificacionService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/notificacion/NotificacionService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/dominio/EnvioNotificacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/notificacion/EnvioNotificacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/dominio/Notificacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/notificacion/Notificacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/infraestructura/EnvioNotificacionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/notificacion/EnvioNotificacionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/infraestructura/NotificacionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/notificacion/NotificacionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/web/NotificacionController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/notificacion/NotificacionController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/notificacion/web/NotificacionDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/notificacion/NotificacionDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/portal/aplicacion/PortalClienteService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/portal/PortalClienteService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/portal/dominio/SolicitudCambioDatos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/portal/SolicitudCambioDatos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/portal/infraestructura/SolicitudCambioDatosRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/portal/SolicitudCambioDatosRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/portal/web/PortalClienteController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/portal/PortalClienteController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/portal/web/PortalDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/portal/PortalDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/AuthService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/seguridad/AuthService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/BootstrapAdminService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/seguridad/BootstrapAdminService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/ContextoUsuario.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/ContextoUsuario.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/CredencialesService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/seguridad/CredencialesService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/InmobiliariaUserDetailsService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/InmobiliariaUserDetailsService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/JwtService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/JwtService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/LoginAuditService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/seguridad/LoginAuditService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/SessionService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/seguridad/SessionService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/TokenOpacoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/TokenOpacoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/UsuarioPrincipal.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/UsuarioPrincipal.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/configuracion/BootstrapAdminProperties.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/config/BootstrapAdminProperties.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/configuracion/JwtTokenVersionValidator.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/JwtTokenVersionValidator.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/configuracion/PasswordChangeRequiredFilter.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/PasswordChangeRequiredFilter.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/configuracion/SecurityConfig.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/security/SecurityConfig.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/configuracion/SecurityProperties.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/config/SecurityProperties.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/dominio/EstadoUsuario.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/seguridad/EstadoUsuario.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/dominio/IntentoAcceso.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/seguridad/IntentoAcceso.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/dominio/SesionUsuario.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/seguridad/SesionUsuario.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/dominio/TipoUsuario.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/seguridad/TipoUsuario.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/dominio/Usuario.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/seguridad/Usuario.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/infraestructura/IntentoAccesoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/seguridad/IntentoAccesoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/infraestructura/SesionUsuarioRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/seguridad/SesionUsuarioRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/infraestructura/UsuarioRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/seguridad/UsuarioRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/web/AuthController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/seguridad/AuthController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/web/CambioContextoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/seguridad/CambioContextoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/web/CambioPasswordRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/seguridad/CambioPasswordRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/web/LoginRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/seguridad/LoginRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/web/RefreshRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/seguridad/RefreshRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/seguridad/web/TokenResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/seguridad/TokenResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/aplicacion/BaseConocimientoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/servicio/BaseConocimientoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/aplicacion/CitaServicioService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/servicio/CitaServicioService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/aplicacion/ComunicacionClienteService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/servicio/ComunicacionClienteService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/aplicacion/ServicioClienteAlcanceService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/servicio/ServicioClienteAlcanceService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/aplicacion/SolicitudPqrsService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/servicio/SolicitudPqrsService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/ArticuloConocimiento.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/ArticuloConocimiento.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/CategoriaConocimiento.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/CategoriaConocimiento.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/CitaServicio.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/CitaServicio.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/ComunicacionCliente.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/ComunicacionCliente.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/EncuestaSatisfaccion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/EncuestaSatisfaccion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/EstadoCitaServicio.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/EstadoCitaServicio.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/EstadoSolicitud.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/EstadoSolicitud.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/PrioridadServicio.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/PrioridadServicio.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/SolicitudAdjunto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/SolicitudAdjunto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/SolicitudHistorial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/SolicitudHistorial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/SolicitudMensaje.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/SolicitudMensaje.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/SolicitudPqrs.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/SolicitudPqrs.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/TipoSolicitud.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/TipoSolicitud.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/ArticuloConocimientoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/ArticuloConocimientoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/CategoriaConocimientoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/CategoriaConocimientoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/CitaServicioRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/CitaServicioRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/ComunicacionClienteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/ComunicacionClienteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/EncuestaSatisfaccionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/EncuestaSatisfaccionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/SolicitudAdjuntoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/SolicitudAdjuntoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/SolicitudHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/SolicitudHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/SolicitudMensajeRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/SolicitudMensajeRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/infraestructura/SolicitudPqrsRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/servicio/SolicitudPqrsRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/BaseConocimientoController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/servicio/BaseConocimientoController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/CitaServicioController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/servicio/CitaServicioController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/CitaServicioDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/servicio/CitaServicioDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/ComunicacionClienteController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/servicio/ComunicacionClienteController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/ComunicacionDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/servicio/ComunicacionDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/ConocimientoDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/servicio/ConocimientoDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/SolicitudDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/servicio/SolicitudDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/servicio/web/SolicitudPqrsController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/servicio/SolicitudPqrsController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/aplicacion/PlanCuotasService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/simulacion/PlanCuotasService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/aplicacion/SimulacionService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/simulacion/SimulacionService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/dominio/EstadoSimulacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/simulacion/EstadoSimulacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/dominio/Periodicidad.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/simulacion/Periodicidad.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/dominio/Simulacion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/simulacion/Simulacion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/dominio/SimulacionCuota.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/simulacion/SimulacionCuota.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/infraestructura/SimulacionCuotaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/simulacion/SimulacionCuotaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/infraestructura/SimulacionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/simulacion/SimulacionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/web/SimulacionController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/simulacion/SimulacionController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/web/SimulacionCuotaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/simulacion/SimulacionCuotaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/web/SimulacionRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/simulacion/SimulacionRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/simulacion/web/SimulacionResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/simulacion/SimulacionResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/aplicacion/TicketSoporteService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/soporte/TicketSoporteService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/dominio/EstadoTicket.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/soporte/EstadoTicket.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/dominio/TicketAdjunto.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/soporte/TicketAdjunto.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/dominio/TicketHistorial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/soporte/TicketHistorial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/dominio/TicketMensaje.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/soporte/TicketMensaje.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/dominio/TicketSoporte.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/soporte/TicketSoporte.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/infraestructura/TicketAdjuntoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/soporte/TicketAdjuntoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/infraestructura/TicketHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/soporte/TicketHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/infraestructura/TicketMensajeRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/soporte/TicketMensajeRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/infraestructura/TicketSoporteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/soporte/TicketSoporteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/web/SoporteDtos.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/soporte/SoporteDtos.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/soporte/web/TicketSoporteController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/soporte/TicketSoporteController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/aplicacion/ContratoService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/ventas/contrato/ContratoService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/Contrato.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/Contrato.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/ContratoCliente.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/ContratoCliente.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/ContratoFirmante.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/ContratoFirmante.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/ContratoVersion.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/ContratoVersion.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/EstadoContrato.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/EstadoContrato.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/EstadoFirmante.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/EstadoFirmante.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/EstadoValidacionFirma.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/EstadoValidacionFirma.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/FirmaContrato.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/FirmaContrato.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/MetodoFirma.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/MetodoFirma.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/RolContratoCliente.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/RolContratoCliente.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/TipoContrato.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/TipoContrato.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/TipoFirmante.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/TipoFirmante.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/infraestructura/ContratoClienteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/contrato/ContratoClienteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/infraestructura/ContratoFirmanteRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/contrato/ContratoFirmanteRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/infraestructura/ContratoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/contrato/ContratoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/infraestructura/ContratoVersionRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/contrato/ContratoVersionRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/infraestructura/FirmaContratoRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/contrato/FirmaContratoRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoAnularRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoAnularRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoClienteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoClienteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoClienteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoClienteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoCondicionesRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoCondicionesRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/ventas/contrato/ContratoController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoDocumentoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoDocumentoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoFirmanteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoFirmanteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoFirmanteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoFirmanteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/ContratoVersionResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/ContratoVersionResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/FirmaContratoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/FirmaContratoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/web/FirmaContratoResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/contrato/FirmaContratoResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/documento/aplicacion/DocumentoVentaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/ventas/documento/DocumentoVentaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/documento/web/DocumentoVentaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/ventas/documento/DocumentoVentaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/documento/web/DocumentoVentaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/documento/DocumentoVentaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/flujo/aplicacion/FlujoClienteLoteService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/ventas/flujo/FlujoClienteLoteService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/flujo/web/FlujoClienteLoteController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/ventas/flujo/FlujoClienteLoteController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/flujo/web/FlujoClienteLoteRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/flujo/FlujoClienteLoteRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/flujo/web/FlujoClienteLoteResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/flujo/FlujoClienteLoteResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/aplicacion/ReservaService.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/ventas/reserva/ReservaService.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/aplicacion/ReservaVencimientoJob.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/service/ventas/reserva/ReservaVencimientoJob.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/dominio/EstadoPagoReserva.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/reserva/EstadoPagoReserva.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/dominio/EstadoReserva.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/reserva/EstadoReserva.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/dominio/Reserva.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/reserva/Reserva.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/dominio/ReservaHistorial.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/reserva/ReservaHistorial.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/infraestructura/ReservaHistorialRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/reserva/ReservaHistorialRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/infraestructura/ReservaRepository.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/repository/ventas/reserva/ReservaRepository.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaController.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/controller/ventas/reserva/ReservaController.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaCrearRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/reserva/ReservaCrearRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaHistorialResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/reserva/ReservaHistorialResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaMotivoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/reserva/ReservaMotivoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaPagoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/reserva/ReservaPagoRequest.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaResponse.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/reserva/ReservaResponse.java"
+  },
+  {
+    "from": "src/main/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/web/ReservaVencimientoRequest.java",
+    "to": "src/main/java/com/inmobiliaria/inmobiliaria_api/dto/ventas/reserva/ReservaVencimientoRequest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CarteraGestionServiceTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CarteraGestionServiceTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/cartera/aplicacion/CuotaCalculadoraTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/cartera/CuotaCalculadoraTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/CuotaTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/CuotaTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PagoReversionTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PagoReversionTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/cartera/dominio/PagoTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/cartera/PagoTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/cliente/dominio/ClienteTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/cliente/ClienteTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/CitaComercialTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/crm/CitaComercialTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/OportunidadTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/crm/OportunidadTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/crm/dominio/ProspectoTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/crm/ProspectoTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/ComisionMetaTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/ComisionMetaTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/FinanzasGerenciaTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/FinanzasGerenciaTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/ReglaComisionTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/ReglaComisionTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/gerencia/dominio/TareaTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/gerencia/TareaTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/inventario/aplicacion/AlcanceProyectosTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/inventario/AlcanceProyectosTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/inventario/aplicacion/ProyectoServiceTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/inventario/ProyectoServiceTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/LoteTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/LoteTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/inventario/dominio/ProyectoTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/inventario/ProyectoTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/notificacion/dominio/EnvioNotificacionTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/notificacion/EnvioNotificacionTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/portal/dominio/SolicitudCambioDatosTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/portal/SolicitudCambioDatosTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/ContextoMultiempresaTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/security/ContextoMultiempresaTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/CredencialesServiceTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/seguridad/CredencialesServiceTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/seguridad/aplicacion/TokenOpacoServiceTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/security/TokenOpacoServiceTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/seguridad/configuracion/JwtTokenVersionValidatorTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/security/JwtTokenVersionValidatorTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/seguridad/dominio/UsuarioTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/seguridad/UsuarioTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/CitaServicioTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/CitaServicioTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/ComunicacionClienteTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/ComunicacionClienteTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/servicio/dominio/SolicitudPqrsTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/servicio/SolicitudPqrsTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/simulacion/aplicacion/PlanCuotasServiceTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/simulacion/PlanCuotasServiceTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/soporte/dominio/TicketSoporteTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/soporte/TicketSoporteTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/ContratoFirmanteTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/ContratoFirmanteTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/ventas/contrato/dominio/ContratoTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/contrato/ContratoTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/ventas/flujo/aplicacion/FlujoClienteLoteServiceTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/service/ventas/flujo/FlujoClienteLoteServiceTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/dominio/ReservaReversionPagoTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/reserva/ReservaReversionPagoTest.java"
+  },
+  {
+    "from": "src/test/java/com/inmobiliaria/inmobiliaria_api/ventas/reserva/dominio/ReservaTest.java",
+    "to": "src/test/java/com/inmobiliaria/inmobiliaria_api/entity/ventas/reserva/ReservaTest.java"
+  }
+]

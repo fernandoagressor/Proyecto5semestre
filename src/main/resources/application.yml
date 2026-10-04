@@ -1,0 +1,111 @@
+spring:
+  application:
+    name: inmobiliaria-api
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/inmobiliaria_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/nexora}
+      auto-index-creation: false
+      uuid-representation: standard
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:2s}
+      repositories:
+        enabled: false
+  cache:
+    type: redis
+    redis:
+      time-to-live: ${CACHE_DEFAULT_TTL:10m}
+      key-prefix: ${CACHE_KEY_PREFIX:nexora:}
+      use-key-prefix: true
+      cache-null-values: false
+  flyway:
+    enabled: true
+    clean-disabled: true
+    locations: classpath:db/migration
+    validate-migration-naming: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: America/Bogota
+        query:
+          fail_on_pagination_over_collection_fetch: true
+  jackson:
+    time-zone: America/Bogota
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,db,mongo,redis
+  health:
+    db:
+      enabled: true
+    mongo:
+      enabled: true
+    redis:
+      enabled: true
+
+app:
+  persistence:
+    primary-store: mongodb
+    transactional-store: mysql
+    ephemeral-store: redis
+  storage:
+    path: ${APP_STORAGE_PATH:./storage}
+  security:
+    issuer: ${JWT_ISSUER:inmobiliaria-api}
+    jwt-secret: ${JWT_SECRET:}
+    access-token-ttl: ${JWT_ACCESS_TTL:PT15M}
+    refresh-token-ttl: ${JWT_REFRESH_TTL:P30D}
+    allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:4200}
+    max-failed-attempts: ${AUTH_MAX_FAILED_ATTEMPTS:5}
+    lock-duration: ${AUTH_LOCK_DURATION:PT15M}
+  bootstrap-admin:
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+    empresa-codigo: ${BOOTSTRAP_EMPRESA_CODIGO:}
+    empresa-nombre: ${BOOTSTRAP_EMPRESA_NOMBRE:}
+    empresa-nit: ${BOOTSTRAP_EMPRESA_NIT:}
+    documento: ${BOOTSTRAP_ADMIN_DOCUMENTO:}
+    nombres: ${BOOTSTRAP_ADMIN_NOMBRES:}
+    apellidos: ${BOOTSTRAP_ADMIN_APELLIDOS:}
+    username: ${BOOTSTRAP_ADMIN_USERNAME:}
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}

@@ -1,0 +1,381 @@
+<section class="admin-page">
+  <header class="hero global-hero">
+    <div>
+      <span class="eyebrow">NEXORA INTELLIGENCE · CONTROL MULTIEMPRESA</span>
+      <h2>Centro global de administración</h2>
+      <p>Supervisa empresas, proyectos, inventario, ventas y recaudo desde un único espacio seguro y consolidado.</p>
+      <div class="global-live"><i></i> Consolidación en tiempo real <span>·</span> Acceso exclusivo SUPER_ADMIN</div>
+    </div>
+    <div class="hero-actions"><button type="button" class="secondary hero-refresh" (click)="refreshGlobal()" [disabled]="loading()"><app-icon name="refresh" /> Actualizar</button><button type="button" class="primary" (click)="openCompany()"><app-icon name="plus" /> Nueva empresa</button></div>
+  </header>
+
+  @if (issuedCredentials(); as credentials) {
+    <section class="issued-credentials" aria-live="polite">
+      <span class="issued-credentials__icon"><app-icon name="lock" /></span>
+      <div class="issued-credentials__copy"><strong>Acceso generado automáticamente para {{ credentials.empresa }}</strong><small>Entrega estos datos de manera segura; el usuario deberá cambiar la contraseña al ingresar.</small><div class="issued-credentials__values"><span>Usuario: <b>{{ credentials.nombreUsuario }}</b></span><span>Contraseña: <b>{{ credentials.password }}</b></span></div></div>
+      <button type="button" class="secondary" (click)="copyCredential(credentials.password)">Copiar contraseña</button><button type="button" class="issued-credentials__close" (click)="issuedCredentials.set(null)" aria-label="Ocultar credenciales"><app-icon name="close" /></button>
+    </section>
+  }
+
+  <div class="stats-grid global-stats">
+    <button type="button" class="stat-tile" (click)="openGlobalSection('empresas')"><span class="stat-icon blue"><app-icon name="projects" /></span><span class="stat-copy"><small>EMPRESAS TOTALES</small><strong>{{ number(summary()?.empresas) }}</strong><em>{{ number(summary()?.empresasActivas) }} activas</em></span><app-icon class="stat-chevron" name="chevron" /></button>
+    <button type="button" class="stat-tile" (click)="openGlobalSection('proyectos')"><span class="stat-icon cyan"><app-icon name="inventory" /></span><span class="stat-copy"><small>PROYECTOS GLOBALES</small><strong>{{ number(summary()?.proyectos) }}</strong><em>Todas las empresas</em></span><app-icon class="stat-chevron" name="chevron" /></button>
+    <button type="button" class="stat-tile" (click)="openGlobalSection('usuarios')"><span class="stat-icon violet"><app-icon name="crm" /></span><span class="stat-copy"><small>USUARIOS GLOBALES</small><strong>{{ number(summary()?.usuarios) }}</strong><em>{{ number(summary()?.usuariosActivos) }} activos</em></span><app-icon class="stat-chevron" name="chevron" /></button>
+    <button type="button" class="stat-tile" (click)="openGlobalSection('roles')"><span class="stat-icon amber"><app-icon name="audit" /></span><span class="stat-copy"><small>SEGURIDAD Y CONTROL</small><strong>{{ number((summary()?.empresasSuspendidas ?? 0) + (summary()?.empresasInactivas ?? 0)) }}</strong><em>Empresas restringidas</em></span><app-icon class="stat-chevron" name="chevron" /></button>
+  </div>
+
+  <nav class="tabs admin-tabs" aria-label="Secciones de superadministración">
+    <button type="button" [class.active]="activeTab() === 'resumen'" (click)="selectTab('resumen')"><app-icon name="dashboard" /> Visión global</button>
+    <button type="button" [class.active]="activeTab() === 'empresas'" (click)="selectTab('empresas')"><app-icon name="projects" /> Empresas</button>
+    <button type="button" [class.active]="activeTab() === 'proyectos'" (click)="selectTab('proyectos')"><app-icon name="inventory" /> Proyectos</button>
+    <button type="button" [class.active]="activeTab() === 'usuarios'" (click)="selectTab('usuarios')"><app-icon name="crm" /> Usuarios</button>
+    <button type="button" [class.active]="activeTab() === 'roles'" (click)="selectTab('roles')"><app-icon name="audit" /> Roles y permisos</button>
+  </nav>
+
+  @if (activeTab() !== 'resumen' && activeTab() !== 'empresas') {
+    <div class="context-bar global-context">
+      <div><small>{{ globalScope() ? 'VISTA CONSOLIDADA' : 'EMPRESA EN CONFIGURACIÓN' }}</small><strong>{{ globalScope() ? 'Todas las empresas de la plataforma' : selectedCompany()?.nombre }}</strong></div>
+      <label><span>Filtrar información</span><select #companySelector [value]="globalScope() ? '' : (selectedCompany()?.id ?? '')" (change)="selectCompany(companySelector.value)"><option value="">Todas las empresas</option>@for (company of companies()?.contenido ?? []; track company.id) { <option [value]="company.id">{{ company.nombre }} · {{ company.estado }}</option> }</select></label>
+      @if (!globalScope() && selectedCompany(); as company) { <button type="button" class="secondary" [disabled]="company.estado !== 'ACTIVA' || switching() !== null" (click)="enterCompany(company)"><app-icon name="arrow" /> {{ switching() === company.id ? 'Ingresando…' : 'Entrar a la empresa' }}</button> }
+    </div>
+  }
+
+  @if (activeTab() === 'resumen') {
+    @if (loading()) { <div class="overview-loading"><span></span><strong>Consolidando información de todas las empresas…</strong></div> }
+    @else {
+      <div class="finance-overview">
+        <article><span class="finance-icon finance-icon--violet"><app-icon name="sales" /></span><div><small>VENTAS CONSOLIDADAS</small><strong>{{ money(analytics()?.ventas) }}</strong><span>{{ number(analytics()?.contratosVigentes) }} contratos vigentes</span></div></article>
+        <article><span class="finance-icon finance-icon--green"><app-icon name="wallet" /></span><div><small>RECAUDO CONFIRMADO</small><strong>{{ money(analytics()?.recaudo) }}</strong><span>Pagos verificados globalmente</span></div></article>
+        <article><span class="finance-icon finance-icon--blue"><app-icon name="inventory" /></span><div><small>INVENTARIO DISPONIBLE</small><strong>{{ money(analytics()?.inventarioDisponible) }}</strong><span>{{ number(analytics()?.lotesDisponibles) }} lotes comercializables</span></div></article>
+        <article><span class="finance-icon finance-icon--amber"><app-icon name="warning" /></span><div><small>CARTERA VENCIDA</small><strong>{{ money(analytics()?.carteraVencida) }}</strong><span>{{ money(analytics()?.cartera) }} en cartera total</span></div></article>
+      </div>
+
+      <div class="global-analytics-grid">
+        <article class="insight-panel sales-trend"><header><div><span>EVOLUCIÓN REAL</span><h3>Ventas mensuales consolidadas</h3><p>Contratos firmados durante los últimos seis meses.</p></div><i>COP</i></header><app-insight-chart [points]="analytics()?.ventasMensuales ?? []" variant="line" format="currency" /></article>
+        <article class="insight-panel company-distribution"><header><div><span>ESTADO DE PLATAFORMA</span><h3>Distribución de empresas</h3><p>Estado operativo de las organizaciones.</p></div></header><app-insight-chart [points]="companyStatusSeries()" variant="donut" totalLabel="empresas" /></article>
+        <article class="insight-panel inventory-distribution"><header><div><span>INVENTARIO GLOBAL</span><h3>Estado de los lotes</h3><p>{{ number(analytics()?.lotes) }} lotes registrados.</p></div></header><app-insight-chart [points]="analytics()?.lotesPorEstado ?? []" variant="donut" totalLabel="lotes" /></article>
+        <article class="insight-panel collection-trend"><header><div><span>FLUJO DE CAJA</span><h3>Recaudo mensual confirmado</h3><p>Pagos aprobados de todas las empresas.</p></div><i>COP</i></header><app-insight-chart [points]="analytics()?.recaudoMensual ?? []" variant="line" format="currency" /></article>
+        <article class="insight-panel company-ranking"><header><div><span>COMPARATIVO MULTIEMPRESA</span><h3>Ventas por organización</h3><p>Ranking construido con contratos confirmados.</p></div></header><app-insight-chart [points]="companyRanking()" variant="bars" format="currency" /></article>
+        <article class="insight-panel global-health"><header><div><span>EFICIENCIA GLOBAL</span><h3>Salud de la plataforma</h3><p>Indicadores consolidados de disponibilidad.</p></div></header><div class="health-list">@for (indicator of globalHealth(); track indicator.label) { <div [class]="'health-item health-item--' + indicator.tone"><div><strong>{{ indicator.label }}</strong><span>{{ percent(indicator.value) }}</span></div><i><b [style.width.%]="indicator.value"></b></i><small>{{ indicator.detail }}</small></div> }</div></article>
+        <article class="insight-panel operation-activity"><header><div><span>VOLUMEN OPERATIVO</span><h3>Actividad consolidada</h3><p>Proyectos, usuarios, reservas y contratos.</p></div></header><app-insight-chart [points]="globalOperationsSeries()" variant="bars" /></article>
+        <article class="insight-panel module-adoption"><header><div><span>ADOPCIÓN FUNCIONAL</span><h3>Módulos por empresa</h3><p>Capacidades habilitadas en la plataforma.</p></div></header><app-insight-chart [points]="moduleAdoptionSeries()" variant="bars" /></article>
+        <article class="insight-panel geographic-panel"><header><div><span>PRESENCIA GEOGRÁFICA</span><h3>Empresas por ciudad</h3><p>Distribución registrada de organizaciones.</p></div></header><app-insight-chart [points]="regionalSeries()" variant="donut" totalLabel="empresas" /></article>
+        <article class="insight-panel project-status"><header><div><span>PORTAFOLIO</span><h3>Estado de proyectos</h3><p>Proyectos agrupados por situación actual.</p></div></header><app-insight-chart [points]="analytics()?.proyectosPorEstado ?? []" variant="bars" /></article>
+      </div>
+
+      <section class="enterprise-overview"><header class="enterprise-heading"><div><span>DETALLE CONSOLIDADO</span><h3>Desempeño por empresa</h3><p>Información global visible exclusivamente para superadministración.</p></div><button type="button" class="secondary" (click)="openGlobalSection('empresas')">Administrar empresas <app-icon name="chevron" /></button></header>
+        @if ((analytics()?.empresas?.length ?? 0) > 0) { <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Proyectos</th><th>Usuarios</th><th>Lotes</th><th>Ventas</th><th>Recaudo</th><th>Cartera vencida</th><th>Acciones</th></tr></thead><tbody>@for (company of analytics()?.empresas ?? []; track company.empresaId) { <tr><td><div class="entity"><span>{{ company.codigo.slice(0, 2) }}</span><div><strong>{{ company.nombre }}</strong><small>{{ company.codigo }} · {{ company.estado }}</small></div></div></td><td>{{ number(company.proyectos) }}</td><td>{{ number(company.usuarios) }}</td><td>{{ number(company.lotes) }}</td><td><strong>{{ money(company.ventas) }}</strong></td><td>{{ money(company.recaudo) }}</td><td><span [class.attention-value]="company.carteraVencida > 0">{{ money(company.carteraVencida) }}</span></td><td><button type="button" class="table-action" (click)="openCompanyAnalytics(company.empresaId)">Ver empresa</button></td></tr> }</tbody></table></div> }
+        @else { <div class="empty-state"><app-icon name="projects" /><h3>Aún no hay empresas registradas</h3><p>Crea la primera organización para comenzar el análisis global.</p><button type="button" class="primary" (click)="openCompany()"><app-icon name="plus" /> Crear empresa</button></div> }
+      </section>
+    }
+  }
+
+  @if (activeTab() === 'empresas') {
+    <section class="panel"><header class="panel-heading"><div><h3>Gestión global de empresas</h3><p>Alta, límites operativos, administradores iniciales y continuidad del servicio.</p></div><button type="button" class="primary" (click)="openCompany()"><app-icon name="plus" /> Nueva empresa</button></header>
+      <div class="toolbar"><label class="search"><app-icon name="search" /><input [formControl]="companySearch" placeholder="Buscar por nombre, código, NIT o ciudad" /></label><select [formControl]="companyStatus" aria-label="Filtrar estado de empresa"><option value="">Todos los estados</option><option value="ACTIVA">Activas</option><option value="SUSPENDIDA">Suspendidas</option><option value="INACTIVA">Inactivas</option></select></div>
+      @if (loading() || sectionLoading()) { <div class="loading-state">Cargando empresas…</div> }
+      @else if (companies()?.contenido?.length) { <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Estado</th><th>Capacidad</th><th>Uso actual</th><th>Ubicación</th><th class="actions-head">Acciones</th></tr></thead><tbody>@for (company of companies()?.contenido ?? []; track company.id) { <tr [class.selected]="selectedCompany()?.id === company.id"><td><div class="entity"><span>{{ company.codigo.slice(0, 2) }}</span><div><strong>{{ company.nombre }}</strong><small>{{ company.codigo }} · NIT {{ company.nit }}</small></div></div></td><td><span [class]="'status status--' + company.estado.toLowerCase()">{{ company.estado }}</span></td><td><strong>{{ company.limiteProyectos }} proyectos</strong><small>{{ company.limiteUsuarios }} usuarios</small></td><td><strong>{{ company.totalProyectos }} proyectos</strong><small>{{ company.totalUsuarios }} usuarios</small></td><td><strong>{{ company.ciudad || 'Sin ciudad' }}</strong><small>{{ company.departamento || 'Sin departamento' }}</small></td><td class="row-actions"><button type="button" title="Editar empresa" (click)="openCompany(company)">Editar</button><button type="button" (click)="focusCompany(company, 'proyectos')">Gestionar</button><button type="button" class="enter" [disabled]="company.estado !== 'ACTIVA' || switching() !== null" (click)="enterCompany(company)">{{ switching() === company.id ? 'Ingresando…' : 'Entrar' }}</button>@if (company.estado === 'ACTIVA') { <button type="button" class="warn" (click)="changeCompanyStatus(company, 'SUSPENDIDA')">Suspender</button> } @if (company.estado !== 'ACTIVA') { <button type="button" class="success" (click)="changeCompanyStatus(company, 'ACTIVA')">Activar</button> } @if (company.estado === 'SUSPENDIDA') { <button type="button" class="danger" (click)="changeCompanyStatus(company, 'INACTIVA')">Inactivar</button> }</td></tr> }</tbody></table></div> }
+      @else { <div class="empty-state"><app-icon name="projects" /><h3>No se encontraron empresas</h3><p>Ajusta los filtros o registra la primera organización.</p></div> }
+    </section>
+  }
+
+  @if (activeTab() === 'proyectos') {
+    <section class="panel"><header class="panel-heading"><div><h3>{{ globalScope() ? 'Proyectos de todas las empresas' : 'Proyectos de ' + selectedCompany()?.nombre }}</h3><p>Portafolio consolidado, avance operativo y acceso directo a cada organización.</p></div><button type="button" class="primary" (click)="openProjectFor()"><app-icon name="plus" /> Nuevo proyecto</button></header>
+      @if (sectionLoading()) { <div class="loading-state">Consolidando proyectos…</div> }
+      @else if (projects().length) { <div class="project-grid">@for (project of projects(); track project.id) { <article class="project-card"><div class="project-visual"><span>{{ project.codigo.slice(0, 2) }}</span><i [class]="'status status--' + project.estado.toLowerCase()">{{ project.estado }}</i></div><div class="project-copy"><small>{{ companyForProject(project)?.nombre ?? 'Empresa' }} · {{ project.codigo }}</small><h4>{{ project.nombre }}</h4><p><app-icon name="location" /> {{ project.ciudad }}, {{ project.departamento }}</p><div class="progress"><span [style.width.%]="project.porcentajeAvance"></span></div><footer><span>{{ project.porcentajeAvance }} % de avance</span><div><button type="button" (click)="openProjectFor(project)">Editar</button><button type="button" (click)="enterProject(project)">Inventario</button></div></footer></div></article> }</div> }
+      @else { <div class="empty-state"><app-icon name="inventory" /><h3>No hay proyectos para mostrar</h3><p>Selecciona otra empresa o registra un proyecto para comenzar.</p></div> }
+    </section>
+  }
+
+  @if (activeTab() === 'usuarios') {
+    <section class="panel"><header class="panel-heading"><div><h3>{{ globalScope() ? 'Usuarios de todas las empresas' : 'Usuarios de ' + selectedCompany()?.nombre }}</h3><p>Control consolidado de cuentas, empresas, roles y accesos protegidos.</p></div><button type="button" class="primary" (click)="openUserFor()"><app-icon name="plus" /> Nuevo usuario</button></header>
+      <div class="toolbar"><label class="search"><app-icon name="search" /><input [formControl]="userSearch" placeholder="Buscar usuario, nombre, documento o correo" /></label><select [formControl]="userStatus"><option value="">Todos los estados</option><option value="ACTIVO">Activos</option><option value="BLOQUEADO">Bloqueados</option><option value="INACTIVO">Inactivos</option></select></div>
+      @if (sectionLoading()) { <div class="loading-state">Consolidando usuarios…</div> }
+      @else if (users().length) { <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Empresa</th><th>Roles</th><th>Alcance</th><th>Estado</th><th>Último acceso</th><th class="actions-head">Acciones</th></tr></thead><tbody>@for (user of users(); track user.id) { <tr><td><div class="entity"><span>{{ user.nombreCompleto.charAt(0) }}</span><div><strong>{{ user.nombreCompleto }}</strong><small>{{ user.nombreUsuario }} · {{ user.correo }}</small></div></div></td><td><strong>{{ companyForUser(user)?.nombre ?? 'Empresa no disponible' }}</strong><small>{{ companyForUser(user)?.codigo }}</small></td><td><div class="chips">@for (role of user.roles; track role) { <span>{{ role }}</span> }</div></td><td><strong>{{ user.alcances[0]?.tipo ?? 'Sin alcance' }}</strong><small>{{ user.alcances[0]?.proyectoNombre ?? 'Toda la configuración asignada' }}</small></td><td><span [class]="'status status--' + user.estado.toLowerCase()">{{ user.estado }}</span></td><td><strong>{{ user.ultimoAccesoEn || 'Nunca' }}</strong><small>{{ user.requiereCambioPassword ? 'Cambio de contraseña pendiente' : 'Credenciales vigentes' }}</small></td><td class="row-actions"><button type="button" (click)="openUserFor(user)">Editar</button><button type="button" (click)="resetPasswordFor(user)">Credenciales</button>@if (user.estado === 'ACTIVO') { <button type="button" class="warn" (click)="changeUserStatusFor(user, 'BLOQUEADO')">Bloquear</button> } @else { <button type="button" class="success" (click)="changeUserStatusFor(user, 'ACTIVO')">Activar</button> }</td></tr> }</tbody></table></div> }
+      @else { <div class="empty-state"><app-icon name="crm" /><h3>No hay usuarios para mostrar</h3><p>Crea una cuenta o ajusta los filtros actuales.</p></div> }
+    </section>
+  }
+
+  @if (activeTab() === 'roles') {
+    <section class="panel"><header class="panel-heading"><div><h3>{{ globalScope() ? 'Roles y permisos de toda la plataforma' : 'Roles y permisos de ' + selectedCompany()?.nombre }}</h3><p>Visualiza roles del sistema y permisos personalizados sin mezclar información entre empresas.</p></div><button type="button" class="primary" (click)="openRoleFor()"><app-icon name="plus" /> Rol personalizado</button></header>
+      @if (sectionLoading()) { <div class="loading-state">Consolidando seguridad…</div> }
+      @else if (roles().length) { <div class="role-grid">@for (role of roles(); track role.id) { <article class="role-card"><header><span [class.system]="role.sistema"><app-icon [name]="role.sistema ? 'audit' : 'admin'" /></span><div><h4>{{ role.nombre }}</h4><small>{{ role.codigo }} · {{ role.sistema ? 'Sistema global' : (companyForRole(role)?.nombre ?? 'Empresa') }}</small></div><i [class.inactive]="!role.activo">{{ role.activo ? 'ACTIVO' : 'INACTIVO' }}</i></header><p>{{ role.descripcion || 'Sin descripción' }}</p><div class="role-meta"><strong>{{ role.permisos.length }}</strong><span>permisos asignados</span></div><footer>@if (role.sistema || role.protegido) { <span>Rol protegido del sistema</span> } @else { <button type="button" (click)="openRoleFor(role)">Editar rol y permisos</button> }</footer></article> }</div> }
+      @else { <div class="empty-state"><app-icon name="audit" /><h3>No hay roles disponibles</h3><p>Selecciona una empresa o crea el primer rol personalizado.</p></div> }
+    </section>
+  }
+
+  @if (modal() === 'selector_empresa') {
+    <div class="modal-backdrop">
+      <section class="modal company-selector-modal" role="dialog" aria-modal="true" aria-label="Seleccionar empresa para la operación">
+        <header><div><small>OPERACIÓN SEGURA</small><h3>Selecciona la empresa correspondiente</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+        <div class="modal-body"><p class="company-selector-intro">Selecciona de forma explícita dónde deseas crear {{ pendingCreation() === 'proyecto' ? 'el proyecto' : pendingCreation() === 'usuario' ? 'el usuario' : 'el rol' }}. Cada empresa conserva sus datos independientes.</p><div class="company-selector-list">@for (company of companies()?.contenido ?? []; track company.id) { @if (company.estado === 'ACTIVA') { <button type="button" (click)="selectCreationCompany(company)"><span>{{ company.codigo.slice(0, 2) }}</span><div><strong>{{ company.nombre }}</strong><small>{{ company.codigo }} · {{ company.ciudad || 'Sin ciudad' }}</small></div><app-icon name="chevron" /></button> } }</div></div>
+        <footer><button type="button" class="secondary" (click)="closeModal()">Cancelar</button></footer>
+      </section>
+    </div>
+  }
+
+  @if (modal() === 'empresa') {
+    @if (editingCompany()) {
+      <div class="modal-backdrop">
+        <form class="modal modal--wide" [formGroup]="companyForm" (ngSubmit)="saveCompany()">
+          <header>
+            <div><small>ACTUALIZAR EMPRESA</small><h3>{{ editingCompany()?.nombre }}</h3></div>
+            <button type="button" (click)="closeModal()"><app-icon name="close" /></button>
+          </header>
+          <div class="modal-body">
+            <fieldset>
+              <legend>Información y límites</legend>
+              <div class="form-grid">
+                <label><span>Código *</span><input formControlName="codigo" /></label>
+                <label><span>NIT *</span><input formControlName="nit" /></label>
+                <label class="span-2"><span>Nombre o razón social *</span><input formControlName="nombre" /></label>
+                <label><span>Ciudad</span><input formControlName="ciudad" /></label>
+                <label><span>Departamento</span><input formControlName="departamento" /></label>
+                <label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label>
+                <label><span>Teléfono</span><input formControlName="telefono" /></label>
+                <label><span>Correo</span><input type="email" formControlName="correo" /></label>
+                <label><span>Máximo de proyectos *</span><input type="number" min="1" formControlName="limiteProyectos" /></label>
+                <label><span>Máximo de usuarios *</span><input type="number" min="1" formControlName="limiteUsuarios" /></label>
+                <label><span>Zona horaria *</span><input formControlName="zonaHoraria" /></label>
+                <label><span>Moneda *</span><input maxlength="3" formControlName="moneda" /></label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Módulos habilitados</legend>
+              <div class="module-grid module-grid--compact">
+                @for (module of moduleOptions; track module.code) {
+                  <button
+                    type="button"
+                    class="module-card"
+                    [class.selected]="companyModules().has(module.code)"
+                    [class.locked]="module.required"
+                    (click)="toggleCompanyModule(module.code)"
+                  >
+                    <span><app-icon [name]="module.icon" /></span>
+                    <div><strong>{{ module.name }}</strong><small>{{ module.description }}</small></div>
+                    <i>{{ module.required ? 'OBLIGATORIO' : (companyModules().has(module.code) ? 'ACTIVO' : 'INACTIVO') }}</i>
+                  </button>
+                }
+              </div>
+            </fieldset>
+          </div>
+          <footer>
+            <button type="button" class="secondary" (click)="closeModal()">Cancelar</button>
+            <button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar cambios' }}</button>
+          </footer>
+        </form>
+      </div>
+    } @else {
+      <div class="wizard-backdrop">
+        <section class="company-wizard">
+          @if (companyCreated(); as company) {
+            <div class="creation-success">
+              <button class="wizard-close" type="button" (click)="closeModal()" aria-label="Cerrar"><app-icon name="close" /></button>
+              <span class="success-shield"><app-icon name="audit" /></span>
+              <small>OPERACIÓN REGISTRADA</small>
+              <h3>¡Empresa creada correctamente!</h3>
+              <p>{{ company.nombre }} ya está activa y lista para comenzar.</p>
+              <div class="success-company">
+                <span>{{ company.codigo.slice(0, 2) }}</span>
+                <div><strong>{{ company.nombre }}</strong><small>{{ company.codigo }} · NIT {{ company.nit }}</small></div>
+                <i>ACTIVA</i>
+              </div>
+              <div class="success-stats">
+                <div><strong>{{ company.modulos.length }}</strong><span>módulos</span></div>
+                <div><strong>{{ company.limiteProyectos }}</strong><span>proyectos máx.</span></div>
+                <div><strong>{{ company.limiteUsuarios }}</strong><span>usuarios máx.</span></div>
+              </div>
+              <div class="success-admin">
+                <span>{{ companyForm.controls.adminNombres.value.charAt(0) }}{{ companyForm.controls.adminApellidos.value.charAt(0) }}</span>
+                <div><strong>{{ companyForm.controls.adminNombres.value }} {{ companyForm.controls.adminApellidos.value }}</strong><small>{{ companyForm.controls.adminCorreo.value }}</small></div>
+                <em>Administrador creado automáticamente</em>
+              </div>
+              @if (issuedCredentials(); as credentials) {
+                <div class="generated-access">
+                  <strong>Datos de acceso del administrador</strong>
+                  <span>Usuario: <b>{{ credentials.nombreUsuario }}</b></span>
+                  <span>Contraseña automática: <b>{{ credentials.password }}</b></span>
+                  <button type="button" class="secondary" (click)="copyCredential(credentials.password)">Copiar contraseña</button>
+                  <small>La contraseña se muestra únicamente en esta sesión y debe cambiarse en el primer ingreso.</small>
+                </div>
+              }
+              <div class="success-actions">
+                <button type="button" class="primary" (click)="enterCompany(company)">Ingresar a la empresa <app-icon name="chevron" /></button>
+                <button type="button" class="secondary" (click)="closeModal()">Volver al panel</button>
+                <button type="button" class="text-button" (click)="openCompany()">+ Crear otra empresa</button>
+              </div>
+              <div class="context-note"><app-icon name="audit" /> Ingresarás como Super Admin con acceso completo.</div>
+            </div>
+          } @else {
+            <header class="wizard-header">
+              <div>
+                <span>Empresas / Nueva empresa</span>
+                <h3>Crear nueva empresa</h3>
+                <p>Configura una inmobiliaria sin modificar el sistema.</p>
+              </div>
+              <button class="wizard-close" type="button" (click)="closeModal()" aria-label="Cerrar"><app-icon name="close" /></button>
+            </header>
+
+            <div class="wizard-progress">
+              @for (step of [1, 2, 3, 4]; track step) {
+                <div [class.active]="companyWizardStep() === step" [class.done]="companyWizardStep() > step">
+                  <span>{{ companyWizardStep() > step ? '✓' : step }}</span>
+                  <strong>{{ step === 1 ? 'Información' : step === 2 ? 'Administrador' : step === 3 ? 'Módulos y límites' : 'Revisión' }}</strong>
+                </div>
+              }
+            </div>
+
+            <form class="wizard-form" [formGroup]="companyForm" (ngSubmit)="saveCompany()">
+              <div class="wizard-step-label">Paso {{ companyWizardStep() }} de 4</div>
+
+              @if (companyWizardStep() === 1) {
+                <div class="wizard-layout">
+                  <section class="wizard-card">
+                    <header><div><h4>Información de la empresa</h4><p>Datos legales, ubicación e identidad básica.</p></div></header>
+                    <div class="company-logo-input">
+                      <span><app-icon name="projects" /></span>
+                      <label><strong>Logotipo de la empresa</strong><input formControlName="logoUrl" placeholder="URL del logotipo (opcional)" /></label>
+                    </div>
+                    <div class="form-grid">
+                      <label><span>Código interno *</span><input formControlName="codigo" placeholder="ALTV" /></label>
+                      <label><span>Nombre o razón social *</span><input formControlName="nombre" placeholder="Inmobiliaria Altavista S.A.S." /></label>
+                      <label><span>NIT *</span><input formControlName="nit" placeholder="901.884.220-1" /></label>
+                      <label><span>Correo de contacto</span><input type="email" formControlName="correo" placeholder="contacto@empresa.co" /></label>
+                      <label><span>Teléfono</span><input formControlName="telefono" placeholder="+57 300 123 4567" /></label>
+                      <label><span>Departamento</span><input formControlName="departamento" placeholder="Antioquia" /></label>
+                      <label><span>Ciudad</span><input formControlName="ciudad" placeholder="Medellín" /></label>
+                      <label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label>
+                    </div>
+                    <div class="regional-grid">
+                      <label><span>Zona horaria *</span><input formControlName="zonaHoraria" /></label>
+                      <label><span>Moneda *</span><input maxlength="3" formControlName="moneda" /></label>
+                    </div>
+                  </section>
+                  <aside class="wizard-preview">
+                    <small>VISTA PREVIA</small>
+                    <span class="preview-logo">{{ companyForm.controls.codigo.value.slice(0, 2) || 'NC' }}</span>
+                    <h4>{{ companyForm.controls.nombre.value || 'Nombre de la empresa' }}</h4>
+                    <p>{{ companyForm.controls.codigo.value || 'CÓDIGO' }}</p>
+                    <p>{{ companyForm.controls.nit.value || 'NIT' }}</p>
+                    <p>{{ companyForm.controls.ciudad.value || 'Ciudad' }}{{ companyForm.controls.departamento.value ? ', ' + companyForm.controls.departamento.value : '' }}</p>
+                    <i>EN CONFIGURACIÓN</i>
+                    <div><app-icon name="audit" /><span><strong>Creación segura</strong><small>La empresa se activará únicamente al completar los cuatro pasos.</small></span></div>
+                  </aside>
+                </div>
+              }
+
+              @if (companyWizardStep() === 2) {
+                <div class="wizard-layout">
+                  <section class="wizard-card">
+                    <header><div><h4>Administrador inicial</h4><p>Esta persona administrará usuarios, proyectos y permisos.</p></div><span class="account-badge">CUENTA PRINCIPAL</span></header>
+                    <div class="form-grid">
+                      <label><span>Tipo de documento *</span><select formControlName="adminTipoDocumento"><option value="CC">Cédula de ciudadanía</option><option value="CE">Cédula de extranjería</option><option value="PASAPORTE">Pasaporte</option></select></label>
+                      <label><span>Número de documento *</span><input formControlName="adminDocumento" /></label>
+                      <label><span>Nombres *</span><input formControlName="adminNombres" /></label>
+                      <label><span>Apellidos</span><input formControlName="adminApellidos" /></label>
+                      <label><span>Nombre de usuario *</span><input formControlName="adminUsuario" autocomplete="off" /><small class="field-note">Se propone automáticamente con los datos del administrador.</small></label>
+                      <label><span>Correo electrónico *</span><input type="email" formControlName="adminCorreo" /></label>
+                    </div>
+                    <div class="password-section">
+                      <strong>Acceso generado por el sistema</strong>
+                      <label><span>Contraseña automática</span><div><input [type]="showTemporaryPassword() ? 'text' : 'password'" formControlName="adminPassword" autocomplete="new-password" maxlength="72" readonly /><button type="button" (click)="showTemporaryPassword.set(!showTemporaryPassword())">{{ showTemporaryPassword() ? 'Ocultar' : 'Ver' }}</button></div></label>
+                      <button type="button" class="secondary generate-password" (click)="generateAutomaticPassword('empresa')">Generar otra</button>
+                      <div class="password-rules"><span>✓ 20 caracteres</span><span>✓ Mayúscula y minúscula</span><span>✓ Número</span><span>✓ Símbolo</span></div>
+                    </div>
+                    <div class="info-strip"><app-icon name="audit" /> Recibirá el rol Administrador de empresa, alcance completo y cambio obligatorio de contraseña.</div>
+                  </section>
+                  <aside class="wizard-preview admin-preview">
+                    <small>EMPRESA</small><span class="preview-logo">{{ companyForm.controls.codigo.value.slice(0, 2) }}</span><h4>{{ companyForm.controls.nombre.value }}</h4><p>{{ companyForm.controls.nit.value }}</p>
+                    <div><app-icon name="lock" /><span><strong>Acceso protegido</strong><small>Usuario creado con contraseña automática y permisos administrativos.</small></span></div>
+                  </aside>
+                </div>
+              }
+
+              @if (companyWizardStep() === 3) {
+                <div class="wizard-layout wizard-layout--modules">
+                  <section class="wizard-card">
+                    <header><div><h4>Módulos de la empresa</h4><p>Activa únicamente las funciones que utilizará esta inmobiliaria.</p></div><span class="account-badge">{{ activeModuleCount() }} ACTIVOS</span></header>
+                    <div class="module-grid">
+                      @for (module of moduleOptions; track module.code) {
+                        <button type="button" class="module-card" [class.selected]="companyModules().has(module.code)" [class.locked]="module.required" (click)="toggleCompanyModule(module.code)">
+                          <span><app-icon [name]="module.icon" /></span><div><strong>{{ module.name }}</strong><small>{{ module.description }}</small></div><i>{{ module.required ? 'OBLIGATORIO' : (companyModules().has(module.code) ? 'ACTIVO' : 'INACTIVO') }}</i>
+                        </button>
+                      }
+                    </div>
+                  </section>
+                  <aside class="wizard-preview limits-preview">
+                    <small>LÍMITES OPERATIVOS</small>
+                    <label><span>Máximo de proyectos *</span><input type="number" min="1" formControlName="limiteProyectos" /></label>
+                    <label><span>Máximo de usuarios *</span><input type="number" min="1" formControlName="limiteUsuarios" /></label>
+                    <div class="limit-summary"><span><app-icon name="inventory" /> {{ activeModuleCount() }} módulos activos</span><span><app-icon name="projects" /> Hasta {{ companyForm.controls.limiteProyectos.value }} proyectos</span><span><app-icon name="crm" /> Hasta {{ companyForm.controls.limiteUsuarios.value }} usuarios</span></div>
+                  </aside>
+                </div>
+              }
+
+              @if (companyWizardStep() === 4) {
+                <div class="wizard-layout wizard-layout--review">
+                  <section class="review-stack">
+                    <article><header><h4>Información de la empresa</h4><button type="button" (click)="companyWizardStep.set(1)">Editar</button></header><div class="review-company"><span>{{ companyForm.controls.codigo.value.slice(0, 2) }}</span><div><strong>{{ companyForm.controls.nombre.value }}</strong><small>{{ companyForm.controls.codigo.value }} · NIT {{ companyForm.controls.nit.value }}</small></div></div><p>{{ companyForm.controls.ciudad.value }}, {{ companyForm.controls.departamento.value }} · {{ companyForm.controls.moneda.value }}</p></article>
+                    <article><header><h4>Administrador inicial</h4><button type="button" (click)="companyWizardStep.set(2)">Editar</button></header><div class="review-company"><span>{{ companyForm.controls.adminNombres.value.charAt(0) }}{{ companyForm.controls.adminApellidos.value.charAt(0) }}</span><div><strong>{{ companyForm.controls.adminNombres.value }} {{ companyForm.controls.adminApellidos.value }}</strong><small>{{ companyForm.controls.adminUsuario.value }} · {{ companyForm.controls.adminCorreo.value }}</small></div></div><p>Cambio de contraseña obligatorio en el primer acceso.</p></article>
+                    <article><header><h4>Módulos y límites</h4><button type="button" (click)="companyWizardStep.set(3)">Editar</button></header><div class="review-modules">@for (module of moduleOptions; track module.code) { @if (companyModules().has(module.code)) { <span>{{ module.name }}</span> } }</div><p>{{ companyForm.controls.limiteProyectos.value }} proyectos máximo · {{ companyForm.controls.limiteUsuarios.value }} usuarios máximo</p></article>
+                  </section>
+                  <aside class="confirmation-card">
+                    <span class="success-shield"><app-icon name="audit" /></span><h4>Todo está listo</h4><p>Se creará un espacio independiente y seguro.</p>
+                    <ul><li>Empresa y configuración</li><li>Administrador inicial</li><li>{{ activeModuleCount() }} módulos activos</li><li>Límites operativos</li><li>Registro de auditoría</li></ul>
+                    <div class="info-strip">La operación es completa: si ocurre un error, no se crearán datos parciales.</div>
+                    <label class="confirmation-check"><input type="checkbox" [checked]="companyConfirmation()" (change)="companyConfirmation.set($any($event.target).checked)" /><span>Confirmo que revisé la información y deseo activar la empresa.</span></label>
+                    <button type="submit" class="primary create-company" [disabled]="saving() || !companyConfirmation()">{{ saving() ? 'Creando empresa…' : 'Crear y activar empresa' }}</button>
+                  </aside>
+                </div>
+              }
+
+              <footer class="wizard-actions">
+                <button type="button" class="secondary" (click)="closeModal()">Cancelar</button>
+                <div>
+                  @if (companyWizardStep() > 1) { <button type="button" class="secondary" (click)="previousCompanyStep()">← Anterior</button> }
+                  @if (companyWizardStep() < 4) { <button type="button" class="primary" (click)="nextCompanyStep()">Continuar →</button> }
+                </div>
+              </footer>
+            </form>
+          }
+        </section>
+      </div>
+    }
+  }
+
+  @if (modal() === 'usuario') {
+    <div class="modal-backdrop">
+      <form class="modal modal--wide" [formGroup]="userForm" (ngSubmit)="saveUser()">
+        <header><div><small>SEGURIDAD DE EMPRESA</small><h3>{{ editingUser() ? 'Editar usuario' : 'Crear usuario' }}</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+        <div class="modal-body">
+          <div class="form-grid">
+            <label><span>Tipo de documento *</span><select formControlName="tipoDocumento"><option value="CC">CC</option><option value="CE">CE</option><option value="PASAPORTE">Pasaporte</option></select></label>
+            <label><span>Documento *</span><input formControlName="numeroDocumento" [readOnly]="!!editingUser()" /></label>
+            <label><span>Nombres *</span><input formControlName="nombres" /></label>
+            <label><span>Apellidos</span><input formControlName="apellidos" /></label>
+            <label><span>Teléfono</span><input formControlName="telefono" /></label>
+            <label><span>Correo *</span><input type="email" formControlName="correo" /></label>
+            <label><span>Nombre de usuario *</span><input formControlName="nombreUsuario" [readOnly]="!!editingUser()" /></label>
+            @if (!editingUser()) {
+              <label><span>Contraseña generada automáticamente</span><input [type]="showTemporaryPassword() ? 'text' : 'password'" formControlName="passwordTemporal" readonly /><small class="field-note">Se mostrará al guardar el usuario.</small></label>
+            }
+            <label><span>Tipo de alcance *</span><select formControlName="alcanceTipo"><option value="EMPRESA">Toda la empresa</option><option value="PROYECTO">Un proyecto</option><option value="PROPIOS">Registros propios</option></select></label>
+            @if (userForm.controls.alcanceTipo.value === 'PROYECTO') { <label><span>Proyecto *</span><select formControlName="proyectoId"><option [ngValue]="null">Selecciona</option>@for (project of projects(); track project.id) { <option [ngValue]="project.id">{{ project.nombre }}</option> }</select></label> }
+          </div>
+          <fieldset><legend>Roles autorizados</legend><div class="check-grid">@for (role of roles(); track role.id) { <label class="check"><input type="checkbox" [checked]="selectedUserRoles().has(role.id)" (change)="toggleUserRole(role.id)" /><span><strong>{{ role.nombre }}</strong><small>{{ role.codigo }}</small></span></label> }</div></fieldset>
+        </div>
+        <footer><button type="button" class="secondary" (click)="closeModal()">Cancelar</button><button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar usuario' }}</button></footer>
+      </form>
+    </div>
+  }
+
+  @if (modal() === 'rol') {
+    <div class="modal-backdrop"><form class="modal modal--permissions" [formGroup]="roleForm" (ngSubmit)="saveRole()"><header><div><small>RBAC POR EMPRESA</small><h3>{{ editingRole() ? 'Editar rol personalizado' : 'Nuevo rol personalizado' }}</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><div class="form-grid"><label><span>Código *</span><input formControlName="codigo" placeholder="COORDINADOR_VENTAS" /></label><label><span>Nombre *</span><input formControlName="nombre" /></label><label class="span-2"><span>Descripción</span><textarea formControlName="descripcion" rows="2"></textarea></label><label class="toggle"><input type="checkbox" formControlName="activo" /><span>Rol activo</span></label></div><div class="permissions"><div class="permissions-heading"><strong>Permisos</strong><span>{{ selectedPermissions().size }} seleccionados</span></div>@for (group of permissionGroups(); track group.module) { <section><h4>{{ group.module }}</h4><div class="check-grid">@for (permission of group.items; track permission.id) { <label class="check"><input type="checkbox" [checked]="selectedPermissions().has(permission.id)" (change)="togglePermission(permission.id)" /><span><strong>{{ permission.nombre }}</strong><small>{{ permission.codigo }} @if (permission.sensible) { · SENSIBLE }</small></span></label> }</div></section> }</div></div><footer><button type="button" class="secondary" (click)="closeModal()">Cancelar</button><button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar rol' }}</button></footer></form></div>
+  }
+
+  @if (modal() === 'proyecto') {
+    <div class="modal-backdrop"><form class="modal modal--wide" [formGroup]="projectForm" (ngSubmit)="saveProject()"><header><div><small>PORTAFOLIO DE {{ selectedCompany()?.codigo }}</small><h3>{{ editingProject() ? 'Editar proyecto' : 'Crear proyecto' }}</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><div class="form-grid"><label><span>Código *</span><input formControlName="codigo" /></label><label><span>Nombre *</span><input formControlName="nombre" /></label><label><span>Ciudad *</span><input formControlName="ciudad" /></label><label><span>Departamento *</span><input formControlName="departamento" /></label><label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label><label><span>Fecha de inicio</span><input type="date" formControlName="fechaInicio" /></label><label><span>Fin estimado</span><input type="date" formControlName="fechaFinEstimada" /></label><label><span>Máximo de lotes</span><input type="number" min="1" formControlName="maxLotes" /></label><label class="span-2"><span>Descripción</span><textarea rows="3" formControlName="descripcion"></textarea></label></div></div><footer><button type="button" class="secondary" (click)="closeModal()">Cancelar</button><button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Guardando…' : (editingProject() ? 'Guardar cambios' : 'Crear proyecto') }}</button></footer></form></div>
+  }
+
+  @if (toast(); as notification) { <div [class]="'toast toast--' + notification.type"><app-icon [name]="notification.type === 'success' ? 'audit' : 'warning'" /> {{ notification.text }}</div> }
+</section>

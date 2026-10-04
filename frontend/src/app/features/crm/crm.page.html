@@ -1,0 +1,744 @@
+<section class="crm-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">OPERACIÓN COMERCIAL</span>
+      <h2>CRM y embudo de ventas</h2>
+      <p>Convierte prospectos en negocios con seguimiento, agenda y simulaciones financieras.</p>
+    </div>
+    <div class="header-actions">
+      <label class="project-picker"
+        ><span>PROYECTO</span
+        ><select
+          #project
+          [value]="selectedProjectId() ?? ''"
+          (change)="selectProject(project.value)"
+        >
+          <option value="">Todos los proyectos</option>
+          @for (item of projects(); track item.id) {
+            <option [value]="item.id">{{ item.nombre }}</option>
+          }
+        </select></label
+      >
+      @if (auth.hasAuthority('PROSPECTOS_CREAR')) {
+        <button class="primary-button" type="button" (click)="openProspect()">
+          <app-icon name="plus" /> Nuevo prospecto
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (feedback()) {
+    <div class="feedback">
+      <span>{{ feedback() }}</span
+      ><button type="button" (click)="feedback.set('')">×</button>
+    </div>
+  }
+
+  <div class="stats-grid">
+    <article>
+      <span class="stat-icon stat-icon--blue"><app-icon name="crm" /></span>
+      <div>
+        <small>Prospectos visibles</small><strong>{{ prospects()?.totalElementos ?? 0 }}</strong
+        ><em>Base comercial</em>
+      </div>
+    </article>
+    <article>
+      <span class="stat-icon stat-icon--violet"><app-icon name="sales" /></span>
+      <div>
+        <small>Oportunidades abiertas</small><strong>{{ openOpportunityCount() }}</strong
+        ><em>Embudo activo</em>
+      </div>
+    </article>
+    <article>
+      <span class="stat-icon stat-icon--green"><app-icon name="wallet" /></span>
+      <div>
+        <small>Valor del pipeline</small
+        ><strong class="stat-value">{{ currency(pipelineValue()) }}</strong
+        ><em>Estimado en COP</em>
+      </div>
+    </article>
+    <article>
+      <span class="stat-icon stat-icon--orange"><app-icon name="calendar" /></span>
+      <div>
+        <small>Citas del mes</small><strong>{{ appointments()?.totalElementos ?? 0 }}</strong
+        ><em>Agenda comercial</em>
+      </div>
+    </article>
+  </div>
+
+  <div class="module-card">
+    <nav class="tabs">
+      @if (auth.hasAuthority('OPORTUNIDADES_VER')) {
+        <button type="button" [class.active]="tab() === 'pipeline'" (click)="selectTab('pipeline')">
+          <app-icon name="management" /> Pipeline
+        </button>
+      }
+      @if (auth.hasAuthority('PROSPECTOS_VER')) {
+        <button
+          type="button"
+          [class.active]="tab() === 'prospectos'"
+          (click)="selectTab('prospectos')"
+        >
+          <app-icon name="crm" /> Prospectos
+        </button>
+      }
+      @if (auth.hasAuthority('AGENDA_VER')) {
+        <button type="button" [class.active]="tab() === 'agenda'" (click)="selectTab('agenda')">
+          <app-icon name="calendar" /> Agenda
+        </button>
+      }
+      @if (auth.hasAuthority('SIMULACIONES_VER')) {
+        <button
+          type="button"
+          [class.active]="tab() === 'simulaciones'"
+          (click)="selectTab('simulaciones')"
+        >
+          <app-icon name="wallet" /> Simulaciones
+        </button>
+      }
+    </nav>
+
+    <div class="view-toolbar">
+      <label class="search-box"
+        ><app-icon name="search" /><input
+          [formControl]="search"
+          placeholder="Buscar por nombre, código, teléfono o correo"
+      /></label>
+      @if (tab() === 'pipeline' && auth.hasAuthority('OPORTUNIDADES_CREAR')) {
+        <button class="secondary-button" type="button" (click)="openOpportunity()">
+          <app-icon name="plus" /> Oportunidad
+        </button>
+      }
+      @if (tab() === 'agenda' && auth.hasAuthority('AGENDA_GESTIONAR')) {
+        <button class="secondary-button" type="button" (click)="openAppointment()">
+          <app-icon name="plus" /> Cita
+        </button>
+      }
+      @if (tab() === 'simulaciones' && auth.hasAuthority('SIMULACIONES_CREAR')) {
+        <button class="secondary-button" type="button" (click)="openSimulation()">
+          <app-icon name="plus" /> Simulación
+        </button>
+      }
+    </div>
+
+    @if (loading()) {
+      <div class="loading-state">
+        <span></span>
+        <p>Sincronizando operación comercial…</p>
+      </div>
+    } @else if (error()) {
+      <div class="empty-state">
+        <app-icon name="warning" />
+        <h3>No fue posible cargar el CRM</h3>
+        <p>Comprueba la conexión con la API y vuelve a intentarlo.</p>
+        <button class="secondary-button" type="button" (click)="reload()">Reintentar</button>
+      </div>
+    } @else if (tab() === 'pipeline') {
+      <div class="pipeline" aria-label="Embudo de oportunidades">
+        @for (stage of stages; track stage.value) {
+          <section class="pipeline-column">
+            <header>
+              <div>
+                <i></i><strong>{{ stage.label }}</strong>
+              </div>
+              <span>{{ opportunitiesAt(stage.value).length }}</span>
+            </header>
+            <div class="pipeline-column__body">
+              @for (opportunity of opportunitiesAt(stage.value); track opportunity.id) {
+                <article class="opportunity-card">
+                  <div class="opportunity-card__top">
+                    <span>{{ opportunity.codigo }}</span
+                    ><em>{{ opportunity.probabilidadCierre }} %</em>
+                  </div>
+                  <h3>{{ prospectName(opportunity.prospectoId) }}</h3>
+                  <p><app-icon name="projects" /> {{ projectName(opportunity.proyectoId) }}</p>
+                  <strong class="opportunity-value">{{
+                    currency(opportunity.valorEstimado)
+                  }}</strong>
+                  <div class="opportunity-next">
+                    <span>Próxima acción</span
+                    ><strong>{{ dateTime(opportunity.fechaProximaAccion) }}</strong>
+                  </div>
+                  <footer>
+                    @if (auth.hasAuthority('AGENDA_GESTIONAR')) {
+                      <button
+                        type="button"
+                        (click)="openAppointment(opportunity)"
+                        title="Agendar cita"
+                      >
+                        <app-icon name="calendar" />
+                      </button>
+                    }
+                    @if (auth.hasAuthority('SIMULACIONES_CREAR')) {
+                      <button
+                        type="button"
+                        (click)="openSimulation(opportunity)"
+                        title="Crear simulación"
+                      >
+                        <app-icon name="wallet" />
+                      </button>
+                    }
+                    @if (
+                      auth.hasAuthority('OPORTUNIDADES_EDITAR') && auth.hasAuthority('LOTES_VER')
+                    ) {
+                      <button
+                        class="lot-button"
+                        type="button"
+                        (click)="openLotManager(opportunity)"
+                      >
+                        <app-icon name="projects" /> Vincular lote
+                      </button>
+                    }
+                    @if (auth.hasAuthority('OPORTUNIDADES_AVANZAR') && stage.value !== 'CIERRE') {
+                      <button class="advance-button" type="button" (click)="advance(opportunity)">
+                        Avanzar <app-icon name="chevron" />
+                      </button>
+                    }
+                  </footer>
+                </article>
+              } @empty {
+                <div class="column-empty">Sin oportunidades</div>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    } @else if (tab() === 'prospectos') {
+      @if (prospects()?.contenido?.length) {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Prospecto</th>
+                <th>Origen</th>
+                <th>Presupuesto</th>
+                <th>Temperatura</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (prospect of prospects()?.contenido; track prospect.id) {
+                <tr>
+                  <td>
+                    <span class="avatar">{{ prospect.nombres.charAt(0).toUpperCase() }}</span>
+                    <div>
+                      <strong>{{ prospect.nombres }}</strong
+                      ><small>{{
+                        prospect.telefono || prospect.correo || 'Sin datos de contacto'
+                      }}</small>
+                    </div>
+                  </td>
+                  <td>
+                    <strong>{{ label(prospect.fuente) }}</strong
+                    ><small>{{ projectName(prospect.proyectoId ?? 0) }}</small>
+                  </td>
+                  <td>
+                    <strong>{{ currency(prospect.presupuesto) }}</strong
+                    ><small>Capacidad estimada</small>
+                  </td>
+                  <td>
+                    <span [class]="'temperature temperature--' + prospect.temperatura.toLowerCase()"
+                      ><i></i>{{ label(prospect.temperatura) }}</span
+                    >
+                  </td>
+                  <td>
+                    <span class="state-chip">{{ label(prospect.estado) }}</span>
+                  </td>
+                  <td>
+                    <div class="table-actions">
+                      @if (
+                        auth.hasAuthority('PROSPECTOS_CALIFICAR') &&
+                        prospect.estado !== 'CALIFICADO' &&
+                        prospect.estado !== 'CONVERTIDO'
+                      ) {
+                        <button type="button" (click)="qualify(prospect)">Calificar</button>
+                      }
+                      @if (
+                        auth.hasAuthority('OPORTUNIDADES_CREAR') &&
+                        prospect.estado !== 'DESCARTADO' &&
+                        prospect.estado !== 'CONVERTIDO'
+                      ) {
+                        <button type="button" (click)="openOpportunity(prospect)">
+                          Crear negocio
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="empty-state">
+          <app-icon name="crm" />
+          <h3>Sin prospectos registrados</h3>
+          <p>Registra el primer contacto para comenzar la gestión comercial.</p>
+        </div>
+      }
+    } @else if (tab() === 'agenda') {
+      @if (appointments()?.contenido?.length) {
+        <div class="agenda-list">
+          @for (appointment of appointments()?.contenido; track appointment.id) {
+            <article>
+              <time
+                ><strong>{{ dateTime(appointment.fechaInicio).split(',')[0] }}</strong
+                ><span>{{ dateTime(appointment.fechaInicio).split(',')[1] || '' }}</span></time
+              ><i></i>
+              <div class="appointment-copy">
+                <span>{{ appointment.tipo }}</span>
+                <h3>{{ prospectNameForOpportunity(appointment.oportunidadId) }}</h3>
+                <p>{{ appointment.lugar || 'Ubicación por confirmar' }}</p>
+              </div>
+              <div class="appointment-meta">
+                <span
+                  [class]="
+                    'appointment-state appointment-state--' + appointment.estado.toLowerCase()
+                  "
+                  >{{ label(appointment.estado) }}</span
+                ><small>Asesor #{{ appointment.asesorId }}</small>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <app-icon name="calendar" />
+          <h3>Agenda despejada</h3>
+          <p>No hay citas comerciales programadas para este mes.</p>
+        </div>
+      }
+    } @else if (tab() === 'simulaciones') {
+      @if (simulations()?.contenido?.length) {
+        <div class="simulation-grid">
+          @for (simulation of simulations()?.contenido; track simulation.id) {
+            <article class="simulation-card">
+              <header>
+                <div>
+                  <span>{{ simulation.codigo }}</span>
+                  <h3>{{ prospectNameForOpportunity(simulation.oportunidadId) }}</h3>
+                </div>
+                <i
+                  [class]="'simulation-state simulation-state--' + simulation.estado.toLowerCase()"
+                  >{{ label(simulation.estado) }}</i
+                >
+              </header>
+              <div class="simulation-main">
+                <small>Saldo a financiar</small
+                ><strong>{{ currency(simulation.saldoFinanciar) }}</strong
+                ><span>Cuota inicial {{ currency(simulation.cuotaInicial) }}</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Plazo</dt>
+                  <dd>{{ simulation.numeroCuotas }} cuotas</dd>
+                </div>
+                <div>
+                  <dt>Periodicidad</dt>
+                  <dd>{{ label(simulation.periodicidad) }}</dd>
+                </div>
+                <div>
+                  <dt>Vigencia</dt>
+                  <dd>{{ dateTime(simulation.vigenteHasta) }}</dd>
+                </div>
+              </dl>
+              <footer>
+                <span>Lote #{{ simulation.loteId }}</span>
+                @if (simulation.estado === 'BORRADOR' && auth.hasAuthority('SIMULACIONES_ENVIAR')) {
+                  <button type="button" (click)="sendSimulation(simulation)">
+                    Enviar simulación <app-icon name="chevron" />
+                  </button>
+                }
+              </footer>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <app-icon name="wallet" />
+          <h3>Sin simulaciones</h3>
+          <p>Construye una propuesta financiera desde una oportunidad abierta.</p>
+        </div>
+      }
+    }
+  </div>
+</section>
+
+@if (panel()) {
+  <button
+    class="drawer-scrim"
+    type="button"
+    (click)="closePanel()"
+    aria-label="Cerrar panel"
+  ></button>
+  <aside class="drawer" role="dialog" aria-modal="true">
+    <header class="drawer__header">
+      <div>
+        <small>CRM COMERCIAL</small>
+        <h3>
+          @switch (panel()) {
+            @case ('prospecto') {
+              Nuevo prospecto
+            }
+            @case ('oportunidad') {
+              Crear oportunidad
+            }
+            @case ('lotes') {
+              Lotes de la oportunidad
+            }
+            @case ('cita') {
+              Agendar cita
+            }
+            @default {
+              Simulación financiera
+            }
+          }
+        </h3>
+      </div>
+      <button type="button" (click)="closePanel()"><app-icon name="close" /></button>
+    </header>
+
+    @if (panel() === 'prospecto') {
+      <form class="drawer-form" [formGroup]="prospectForm" (ngSubmit)="submitProspect()">
+        <label
+          ><span>Nombre completo *</span
+          ><input formControlName="nombres" placeholder="Nombre del interesado"
+        /></label>
+        <div class="form-grid">
+          <label><span>Teléfono</span><input formControlName="telefono" /></label
+          ><label><span>Correo</span><input type="email" formControlName="correo" /></label>
+        </div>
+        <div class="form-grid">
+          <label
+            ><span>Fuente *</span
+            ><select formControlName="fuente">
+              @for (item of sources; track item.value) {
+                <option [value]="item.value">{{ item.label }}</option>
+              }
+            </select></label
+          ><label
+            ><span>Temperatura *</span
+            ><select formControlName="temperatura">
+              @for (item of temperatures; track item) {
+                <option [value]="item">{{ label(item) }}</option>
+              }
+            </select></label
+          >
+        </div>
+        <label
+          ><span>Presupuesto estimado</span
+          ><input type="text" nexoraMoney formControlName="presupuesto"
+        /></label>
+        <label
+          ><span>Observaciones</span><textarea rows="4" formControlName="observaciones"></textarea>
+        </label>
+        <footer>
+          <button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button
+          ><button class="primary-button" type="submit" [disabled]="submitting()">
+            {{ submitting() ? 'Guardando…' : 'Registrar prospecto' }}
+          </button>
+        </footer>
+      </form>
+    } @else if (panel() === 'oportunidad') {
+      <form class="drawer-form" [formGroup]="opportunityForm" (ngSubmit)="submitOpportunity()">
+        <div class="context-banner">
+          <app-icon name="projects" />
+          <div>
+            <small>PROYECTO</small><strong>{{ projectName(selectedProjectId() ?? 0) }}</strong>
+          </div>
+        </div>
+        <label
+          ><span>Prospecto *</span
+          ><select formControlName="prospectoId">
+            <option [value]="0">Selecciona un prospecto</option>
+            @for (item of prospects()?.contenido ?? []; track item.id) {
+              <option [value]="item.id">{{ item.nombres }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><span>Valor estimado</span
+          ><input type="text" nexoraMoney formControlName="valorEstimado"
+        /></label>
+        <label
+          ><span>Próxima acción</span
+          ><input type="datetime-local" formControlName="fechaProximaAccion"
+        /></label>
+        <footer>
+          <button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button
+          ><button class="primary-button" type="submit" [disabled]="submitting()">
+            Crear oportunidad
+          </button>
+        </footer>
+      </form>
+    } @else if (panel() === 'lotes') {
+      <div class="lot-manager">
+        @if (selectedOpportunity(); as opportunity) {
+          <div class="context-banner">
+            <app-icon name="projects" />
+            <div>
+              <small>{{ opportunity.codigo }} · {{ projectName(opportunity.proyectoId) }}</small
+              ><strong>{{ prospectName(opportunity.prospectoId) }}</strong>
+            </div>
+          </div>
+        }
+        @if (feedback()) {
+          <div class="drawer-feedback">
+            <span>{{ feedback() }}</span
+            ><button type="button" (click)="feedback.set('')">×</button>
+          </div>
+        }
+        @if (lotError()) {
+          <div class="drawer-error">
+            <span>{{ lotError() }}</span
+            ><button type="button" (click)="lotError.set('')">×</button>
+          </div>
+        }
+
+        @if (lotManagementLoading()) {
+          <div class="lot-loading">
+            <span></span>
+            <p>Cargando inventario del proyecto…</p>
+          </div>
+        } @else {
+          <section class="lot-section">
+            <header>
+              <div>
+                <small>LOTES VINCULADOS</small>
+                <h4>{{ opportunityLots().length }} en esta oportunidad</h4>
+              </div>
+              <span>{{ opportunityLots().length }}/10</span>
+            </header>
+            <div class="linked-lots">
+              @for (relation of opportunityLots(); track relation.id) {
+                @if (lotFor(relation.loteId); as lot) {
+                  <article class="linked-lot" [class.linked-lot--selected]="relation.seleccionado">
+                    <div class="lot-copy">
+                      <div>
+                        <strong>{{ lot.codigo }}</strong>
+                        @if (relation.seleccionado) {
+                          <span class="preferred-chip">Preferido</span>
+                        }
+                      </div>
+                      <small
+                        >{{ lot.areaM2 }} m² · {{ currency(lot.valorLista) }} · Prioridad
+                        {{ relation.prioridad }}</small
+                      >
+                    </div>
+                    <div class="lot-actions">
+                      @if (!relation.seleccionado) {
+                        <button
+                          type="button"
+                          (click)="selectOpportunityLot(relation)"
+                          [disabled]="submitting()"
+                        >
+                          Seleccionar
+                        </button>
+                      }
+                      <button
+                        class="remove-lot"
+                        type="button"
+                        (click)="removeOpportunityLot(relation)"
+                        [disabled]="submitting()"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </article>
+                }
+              } @empty {
+                <div class="lot-empty">
+                  <app-icon name="projects" /><strong>Aún no hay lotes vinculados</strong
+                  ><span
+                    >Selecciona un lote disponible del proyecto para continuar con la reserva.</span
+                  >
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="lot-section lot-section--available">
+            <header>
+              <div>
+                <small>INVENTARIO DISPONIBLE</small>
+                <h4>Vincular otro lote</h4>
+              </div>
+              <span>{{ availableOpportunityLots().length }}</span>
+            </header>
+            @if (availableOpportunityLots().length) {
+              <form
+                class="lot-link-form"
+                [formGroup]="opportunityLotForm"
+                (ngSubmit)="submitOpportunityLot()"
+              >
+                <label
+                  ><span>Lote disponible *</span
+                  ><select formControlName="loteId">
+                    <option [value]="0">Selecciona un lote</option>
+                    @for (lot of availableOpportunityLots(); track lot.id) {
+                      <option [value]="lot.id">
+                        {{ lot.codigo }} · {{ lot.areaM2 }} m² · {{ currency(lot.valorLista) }}
+                      </option>
+                    }
+                  </select></label
+                >
+                <label
+                  ><span>Prioridad (1 es la más alta)</span
+                  ><input type="number" min="1" max="10" formControlName="prioridad"
+                /></label>
+                <button
+                  class="primary-button"
+                  type="submit"
+                  [disabled]="submitting() || opportunityLotForm.invalid"
+                >
+                  {{ submitting() ? 'Vinculando…' : 'Vincular lote' }}
+                </button>
+              </form>
+            } @else {
+              <div class="lot-empty lot-empty--compact">
+                <strong>No hay más lotes disponibles</strong
+                ><span
+                  >Todos los lotes disponibles ya están vinculados o el inventario aún no tiene
+                  lotes disponibles.</span
+                >
+              </div>
+            }
+          </section>
+
+          <div class="rule-note">
+            <app-icon name="sales" /><span
+              >El lote preferido aparecerá primero al crear una reserva; solo se mostrarán
+              relaciones cuyo lote continúe disponible.</span
+            >
+          </div>
+        }
+      </div>
+    } @else if (panel() === 'cita') {
+      <form class="drawer-form" [formGroup]="appointmentForm" (ngSubmit)="submitAppointment()">
+        <label
+          ><span>Oportunidad *</span
+          ><select formControlName="oportunidadId">
+            <option [value]="0">Selecciona una oportunidad</option>
+            @for (item of opportunities()?.contenido ?? []; track item.id) {
+              @if (item.estado === 'ABIERTA') {
+                <option [value]="item.id">
+                  {{ item.codigo }} · {{ prospectName(item.prospectoId) }}
+                </option>
+              }
+            }
+          </select></label
+        >
+        <div class="form-grid">
+          <label
+            ><span>Tipo *</span
+            ><select formControlName="tipo">
+              <option value="VISITA">Visita</option>
+              <option value="VIDEOLLAMADA">Videollamada</option>
+              <option value="LLAMADA">Llamada</option>
+              <option value="REUNION">Reunión</option>
+            </select></label
+          ><label
+            ><span>Lugar</span><input formControlName="lugar" placeholder="Sala de ventas"
+          /></label>
+        </div>
+        <div class="form-grid">
+          <label
+            ><span>Inicio *</span
+            ><input type="datetime-local" formControlName="fechaInicio" /></label
+          ><label
+            ><span>Fin *</span><input type="datetime-local" formControlName="fechaFin"
+          /></label>
+        </div>
+        <div class="rule-note">
+          <app-icon name="calendar" /><span
+            >El sistema validará automáticamente cruces en la agenda del asesor.</span
+          >
+        </div>
+        <footer>
+          <button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button
+          ><button class="primary-button" type="submit" [disabled]="submitting()">
+            Agendar cita
+          </button>
+        </footer>
+      </form>
+    } @else if (panel() === 'simulacion') {
+      <form class="drawer-form" [formGroup]="simulationForm" (ngSubmit)="submitSimulation()">
+        <label
+          ><span>Oportunidad *</span
+          ><select formControlName="oportunidadId">
+            <option [value]="0">Selecciona</option>
+            @for (item of opportunities()?.contenido ?? []; track item.id) {
+              @if (item.estado === 'ABIERTA') {
+                <option [value]="item.id">
+                  {{ item.codigo }} · {{ prospectName(item.prospectoId) }}
+                </option>
+              }
+            }
+          </select></label
+        >
+        <label
+          ><span>Lote disponible *</span
+          ><select formControlName="loteId">
+            <option [value]="0">Selecciona</option>
+            @for (item of availableLots(); track item.id) {
+              <option [value]="item.id">
+                {{ item.codigo }} · {{ item.areaM2 }} m² · {{ currency(item.valorLista) }}
+              </option>
+            }
+          </select></label
+        >
+        <div class="form-grid">
+          <label
+            ><span>Descuento</span
+            ><input type="text" nexoraMoney formControlName="descuento" /></label
+          ><label
+            ><span>Cuota inicial</span><input type="text" nexoraMoney formControlName="cuotaInicial"
+          /></label>
+        </div>
+        <div class="form-grid">
+          <label
+            ><span>Número de cuotas *</span
+            ><input type="number" min="1" max="600" formControlName="numeroCuotas" /></label
+          ><label
+            ><span>Tasa E.A. * (0,15 = 15 %)</span
+            ><input
+              type="number"
+              min="0"
+              max="9.999999"
+              step="0.000001"
+              formControlName="tasaEfectivaAnual"
+          /></label>
+        </div>
+        <label
+          ><span>Periodicidad *</span
+          ><select formControlName="periodicidad">
+            @for (item of periodicities; track item) {
+              <option [value]="item">{{ label(item) }}</option>
+            }
+          </select></label
+        >
+        <div class="form-grid">
+          <label
+            ><span>Primera cuota *</span
+            ><input type="date" formControlName="fechaPrimeraCuota" /></label
+          ><label
+            ><span>Vigente hasta *</span
+            ><input type="datetime-local" formControlName="vigenteHasta"
+          /></label>
+        </div>
+        <div class="rule-note">
+          <app-icon name="wallet" /><span
+            >La simulación calcula el cronograma sin alterar la disponibilidad del lote.</span
+          >
+        </div>
+        <footer>
+          <button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button
+          ><button class="primary-button" type="submit" [disabled]="submitting()">
+            Generar simulación
+          </button>
+        </footer>
+      </form>
+    }
+  </aside>
+}

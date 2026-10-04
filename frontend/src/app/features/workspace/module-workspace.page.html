@@ -1,0 +1,41 @@
+<section class="module-page">
+  <header class="module-hero">
+    <div class="module-icon"><app-icon [name]="definition().icon" /></div>
+    <div>
+      <span>{{ definition().eyebrow }}</span>
+      <h2>{{ definition().title }}</h2>
+      <p>{{ definition().description }}</p>
+    </div>
+    <span class="backend-badge"><i></i> Backend disponible</span>
+  </header>
+
+  <div class="module-grid">
+    <article>
+      <span class="section-number">01</span>
+      <h3>Flujos del módulo</h3>
+      <div class="workflow-list">
+        @for (workflow of definition().workflows; track workflow; let index = $index) {
+          <div><span>{{ index + 1 }}</span><strong>{{ workflow }}</strong><app-icon name="chevron" /></div>
+        }
+      </div>
+    </article>
+    <article>
+      <span class="section-number">02</span>
+      <h3>Garantías técnicas</h3>
+      <div class="integration-list">
+        @for (integration of definition().integrations; track integration) {
+          <span><i></i>{{ integration }}</span>
+        }
+      </div>
+      <div class="connection-card">
+        <app-icon name="audit" />
+        <div><strong>Contrato API preparado</strong><small>Rutas, permisos y modelos ya están definidos en Spring Boot.</small></div>
+      </div>
+    </article>
+  </div>
+
+  <footer class="module-footer">
+    <div><strong>Interfaz base lista</strong><span>Este espacio ya está protegido por autenticación y permisos.</span></div>
+    <a routerLink="/dashboard"><app-icon name="arrow" /> Volver al dashboard</a>
+  </footer>
+</section>

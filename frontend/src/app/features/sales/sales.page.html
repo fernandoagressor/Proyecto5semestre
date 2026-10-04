@@ -1,0 +1,241 @@
+<main class="sales-page">
+  <header class="page-header">
+    <div>
+      <small class="eyebrow">RESERVAS Y CONTRATOS</small>
+      <h2>Centro de ventas</h2>
+      <p>Gestiona el cierre comercial desde la reserva del lote hasta la firma y activación de la venta.</p>
+    </div>
+    <div class="header-actions">
+      <label class="project-picker">
+        <span>PROYECTO</span>
+        <select [value]="selectedProjectId() ?? ''" (change)="changeProject($any($event.target).value)">
+          <option value="">Todos los proyectos</option>
+          @for (project of projects(); track project.id) {
+            <option [value]="project.id">{{ project.codigo }} · {{ project.nombre }}</option>
+          }
+        </select>
+      </label>
+      @if ((activeTab() === 'reservas' || activeTab() === 'clientes') && canUseCustomerLotFlow()) {
+        <a class="primary-button" routerLink="/clientes/nuevo"><app-icon name="plus" />Crear cliente y vincular lote</a>
+      } @else if (activeTab() === 'reservas' && auth.hasAuthority('RESERVAS_CREAR')) {
+        <button class="primary-button" type="button" (click)="openReservation()"><app-icon name="plus" />Nueva reserva</button>
+      }
+      @if (activeTab() === 'clientes' && auth.hasAuthority('CLIENTES_CREAR') && !canUseCustomerLotFlow()) {
+        <button class="primary-button" type="button" (click)="openCustomer()"><app-icon name="plus" />Nuevo cliente</button>
+      }
+    </div>
+  </header>
+
+  @if (feedback()) {
+    <div class="feedback feedback--success"><app-icon name="warning" /><span>{{ feedback() }}</span><button type="button" (click)="feedback.set('')">×</button></div>
+  }
+  @if (error()) {
+    <div class="feedback feedback--error"><app-icon name="warning" /><span>{{ error() }}</span><button type="button" (click)="error.set('')">×</button></div>
+  }
+
+  <section class="stats-grid">
+    <article><span class="stat-icon stat-icon--orange"><app-icon name="calendar" /></span><div><small>Pendientes de pago</small><strong>{{ pendingReservations() }}</strong><em>Reservas por validar</em></div></article>
+    <article><span class="stat-icon stat-icon--blue"><app-icon name="inventory" /></span><div><small>Reservas activas</small><strong>{{ activeReservations() }}</strong><em>Lotes asegurados</em></div></article>
+    <article><span class="stat-icon stat-icon--green"><app-icon name="sales" /></span><div><small>Contratos vigentes</small><strong>{{ currentContracts() }}</strong><em>Ventas formalizadas</em></div></article>
+    <article><span class="stat-icon stat-icon--violet"><app-icon name="wallet" /></span><div><small>Valor vendido</small><strong class="stat-value">{{ salesValue() | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><em>Contratos vigentes</em></div></article>
+  </section>
+
+  <section class="module-card">
+    <nav class="tabs" aria-label="Secciones de ventas">
+      @if (auth.hasAuthority('RESERVAS_VER')) { <button type="button" [class.active]="activeTab() === 'reservas'" (click)="setTab('reservas')"><app-icon name="calendar" />Reservas <span>{{ reservations().length }}</span></button> }
+      @if (auth.hasAuthority('CONTRATOS_VER')) { <button type="button" [class.active]="activeTab() === 'contratos'" (click)="setTab('contratos')"><app-icon name="sales" />Contratos <span>{{ contracts().length }}</span></button> }
+      @if (auth.hasAuthority('CLIENTES_VER')) { <button type="button" [class.active]="activeTab() === 'clientes'" (click)="setTab('clientes')"><app-icon name="crm" />Clientes <span>{{ customers().length }}</span></button> }
+    </nav>
+
+    @if (loading()) {
+      <div class="loading-state"><span></span><p>Cargando operación de ventas…</p></div>
+    } @else if (activeTab() === 'reservas') {
+      <div class="view-toolbar">
+        <div class="toolbar-copy"><strong>Reservas de lotes</strong><small>El pago confirmado habilita la conversión contractual.</small></div>
+        <select [value]="reservationStatus()" (change)="filterReservations($any($event.target).value)">
+          <option value="">Todos los estados</option><option value="PENDIENTE_PAGO">Pendiente de pago</option><option value="ACTIVA">Activa</option><option value="CONVERTIDA">Convertida</option><option value="VENCIDA">Vencida</option><option value="CANCELADA">Cancelada</option>
+        </select>
+      </div>
+      @if (reservations().length) {
+        <div class="table-wrap"><table>
+          <thead><tr><th>Reserva</th><th>Cliente</th><th>Proyecto / lote</th><th>Valor</th><th>Vencimiento</th><th>Pago</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            @for (reservation of reservations(); track reservation.id) {
+              <tr>
+                <td><div class="code-cell"><span class="avatar avatar--orange">R</span><div><strong>{{ reservation.codigo }}</strong><small>{{ reservation.fechaReserva | date:'dd MMM y, HH:mm' }}</small></div></div></td>
+                <td><strong>{{ customerName(reservation.clienteId) }}</strong><small>Cliente #{{ reservation.clienteId }}</small></td>
+                <td><strong>{{ projectName(reservation.proyectoId) }}</strong><small>Lote #{{ reservation.loteId }}</small></td>
+                <td><strong>{{ reservation.valorReserva | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><small>{{ reservation.formaPago }}</small></td>
+                <td><strong>{{ reservation.fechaVencimiento | date:'dd MMM y' }}</strong><small>{{ reservation.fechaVencimiento | date:'HH:mm' }}</small></td>
+                <td><span class="chip" [class.chip--green]="reservation.estadoPago === 'CONFIRMADO'" [class.chip--red]="reservation.estadoPago === 'RECHAZADO'">{{ reservation.estadoPago }}</span></td>
+                <td><span class="chip" [class]="'chip chip--' + reservation.estado.toLowerCase()">{{ reservationLabel(reservation.estado) }}</span></td>
+                <td><div class="table-actions">
+                  <button type="button" (click)="viewReservation(reservation)">Ver</button>
+                  @if (reservation.estado === 'PENDIENTE_PAGO' && auth.hasAuthority('PAGOS_CONFIRMAR')) { <button type="button" class="accent" (click)="openPayment(reservation)">Confirmar pago</button> }
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <div class="empty-state"><app-icon name="calendar" /><h3>No hay reservas con este filtro</h3><p>Crea un cliente y selecciona directamente uno de los lotes disponibles.</p>@if (canUseCustomerLotFlow()) { <a class="secondary-button" routerLink="/clientes/nuevo">Crear cliente y reservar</a> } @else if (auth.hasAuthority('RESERVAS_CREAR')) { <button class="secondary-button" type="button" (click)="openReservation()">Crear reserva</button> }</div>
+      }
+    } @else if (activeTab() === 'contratos') {
+      <div class="view-toolbar">
+        <div class="toolbar-copy"><strong>Contratos de venta</strong><small>Versiones, participantes y firmas con trazabilidad.</small></div>
+        <select [value]="contractStatus()" (change)="filterContracts($any($event.target).value)">
+          <option value="">Todos los estados</option><option value="BORRADOR">Borrador</option><option value="NEGOCIACION">Negociación</option><option value="PENDIENTE_FIRMA">Pendiente de firma</option><option value="VIGENTE">Vigente</option><option value="ANULADO">Anulado</option>
+        </select>
+      </div>
+      @if (contracts().length) {
+        <div class="contract-grid">
+          @for (contract of contracts(); track contract.id) {
+            <article class="contract-card">
+              <header><div><small>{{ contract.tipoContrato.replaceAll('_', ' ') }}</small><h3>{{ contract.codigo }}</h3></div><span class="chip" [class]="'chip chip--' + contract.estado.toLowerCase()">{{ contractLabel(contract.estado) }}</span></header>
+              <div class="contract-card__value"><small>Valor total</small><strong>{{ contract.valorTotal | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><span>{{ projectName(contract.proyectoId) }} · Lote #{{ contract.loteId }}</span></div>
+              <dl><div><dt>Cliente</dt><dd>{{ customerName(contract.clientePrincipalId) }}</dd></div><div><dt>Cuota inicial</dt><dd>{{ contract.cuotaInicial | currency:'COP':'symbol-narrow':'1.0-0' }}</dd></div><div><dt>Financiación</dt><dd>{{ contract.numeroCuotas }} cuotas</dd></div></dl>
+              <footer><span>{{ contract.creadoEn | date:'dd MMM y' }}</span><button type="button" (click)="viewContract(contract)">Gestionar <app-icon name="chevron" /></button></footer>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state"><app-icon name="sales" /><h3>Aún no hay contratos</h3><p>Los contratos se crean al convertir una reserva activa con pago confirmado.</p></div>
+      }
+    } @else {
+      <div class="view-toolbar">
+        <label class="search-box"><app-icon name="search" /><input [formControl]="customerSearch" placeholder="Buscar por nombre, documento, teléfono, correo o código" /></label>
+        @if (canUseCustomerLotFlow()) { <a class="secondary-button" routerLink="/clientes/nuevo"><app-icon name="plus" />Crear cliente y reservar</a> } @else if (auth.hasAuthority('CLIENTES_CREAR')) { <button class="secondary-button" type="button" (click)="openCustomer()"><app-icon name="plus" />Registrar cliente</button> }
+      </div>
+      @if (customers().length) {
+        <div class="table-wrap"><table>
+          <thead><tr><th>Cliente</th><th>Documento</th><th>Contacto</th><th>Origen</th><th>Alta</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            @for (customer of customers(); track customer.id) {
+              <tr>
+                <td><div class="code-cell"><span class="avatar">{{ customer.nombres.charAt(0) }}{{ (customer.apellidos ?? '').charAt(0) }}</span><div><strong>{{ customer.nombreCompleto }}</strong><small>{{ customer.codigoCliente }}</small></div></div></td>
+                <td><strong>{{ customer.tipoDocumento }} {{ customer.numeroDocumento }}</strong><small>{{ customer.tipoPersona }}</small></td>
+                <td><strong>{{ customer.telefono || 'Sin teléfono' }}</strong><small>{{ customer.correo || 'Sin correo' }}</small></td>
+                <td><strong>{{ customer.origen || 'Sin registrar' }}</strong></td>
+                <td>{{ customer.fechaAlta | date:'dd MMM y' }}</td>
+                <td><span class="chip" [class.chip--green]="customer.estado === 'ACTIVO'">{{ customer.estado }}</span></td>
+                <td><div class="table-actions">
+                  @if (auth.hasAuthority('CLIENTES_EDITAR')) { <button type="button" (click)="openCustomer(customer)">Editar</button> }
+                  @if (auth.hasAuthority('CLIENTES_INACTIVAR')) { <button type="button" (click)="toggleCustomer(customer)">{{ customer.estado === 'ACTIVO' ? 'Inactivar' : 'Activar' }}</button> }
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <div class="empty-state"><app-icon name="crm" /><h3>No hay clientes registrados</h3><p>Registra el cliente, selecciona un lote y configura la reserva en un solo proceso.</p>@if (canUseCustomerLotFlow()) { <a class="secondary-button" routerLink="/clientes/nuevo">Crear cliente y reservar</a> } @else if (auth.hasAuthority('CLIENTES_CREAR')) { <button class="secondary-button" type="button" (click)="openCustomer()">Registrar cliente</button> }</div>
+      }
+    }
+  </section>
+</main>
+
+@if (selectedReservation(); as reservation) {
+  <button class="drawer-scrim" type="button" aria-label="Cerrar detalle" (click)="closeDetails()"></button>
+  <aside class="drawer">
+    <header class="drawer__header"><div><small>DETALLE DE RESERVA</small><h3>{{ reservation.codigo }}</h3></div><button type="button" (click)="closeDetails()"><app-icon name="close" /></button></header>
+    <div class="drawer-body">
+      <section class="detail-hero"><span class="chip" [class]="'chip chip--' + reservation.estado.toLowerCase()">{{ reservationLabel(reservation.estado) }}</span><strong>{{ reservation.valorReserva | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><p>{{ customerName(reservation.clienteId) }} · {{ projectName(reservation.proyectoId) }}</p></section>
+      <section class="detail-grid"><div><small>Lote</small><strong>#{{ reservation.loteId }}</strong></div><div><small>Oportunidad</small><strong>#{{ reservation.oportunidadId }}</strong></div><div><small>Forma de pago</small><strong>{{ reservation.formaPago }}</strong></div><div><small>Vencimiento</small><strong>{{ reservation.fechaVencimiento | date:'dd/MM/y HH:mm' }}</strong></div></section>
+      <section class="drawer-section"><header><h4>Acciones</h4></header><div class="action-grid">
+        @if ((reservation.estado === 'PENDIENTE_PAGO' || reservation.estado === 'ACTIVA') && auth.hasAuthority('RESERVAS_EDITAR')) { <button type="button" (click)="openExtend(reservation)"><app-icon name="calendar" />Extender vigencia</button> }
+        @if (reservation.estado === 'PENDIENTE_PAGO' && auth.hasAuthority('PAGOS_CONFIRMAR')) { <button type="button" (click)="openPayment(reservation)"><app-icon name="wallet" />Confirmar pago</button> }
+        @if (reservation.estado === 'PENDIENTE_PAGO' && auth.hasAuthority('PAGOS_RECHAZAR')) { <button type="button" (click)="openReservationReason(reservation, 'rechazar')"><app-icon name="warning" />Rechazar pago</button> }
+        @if (reservation.estado === 'ACTIVA' && reservation.estadoPago === 'CONFIRMADO' && auth.hasAuthority('RESERVAS_CONVERTIR_CONTRATO')) { <button type="button" class="action-primary" (click)="openConvert(reservation)"><app-icon name="sales" />Crear contrato</button> }
+        @if ((reservation.estado === 'PENDIENTE_PAGO' || reservation.estado === 'ACTIVA') && auth.hasAuthority('RESERVAS_CANCELAR')) { <button type="button" class="action-danger" (click)="openReservationReason(reservation, 'cancelar')"><app-icon name="close" />Cancelar reserva</button> }
+      </div></section>
+      <section class="drawer-section"><header><h4>Historial</h4><span>{{ reservation.historial.length }} eventos</span></header><div class="timeline">
+        @for (event of reservation.historial; track event.id) { <article><i></i><div><strong>{{ reservationLabel(event.estadoNuevo) }}</strong><p>{{ event.motivo }}</p><small>{{ event.creadoEn | date:'dd MMM y, HH:mm' }}</small></div></article> }
+      </div></section>
+    </div>
+  </aside>
+}
+
+@if (selectedContract(); as contract) {
+  <button class="drawer-scrim" type="button" aria-label="Cerrar contrato" (click)="closeDetails()"></button>
+  <aside class="drawer drawer--wide">
+    <header class="drawer__header"><div><small>EXPEDIENTE CONTRACTUAL</small><h3>{{ contract.codigo }}</h3></div><button type="button" (click)="closeDetails()"><app-icon name="close" /></button></header>
+    <div class="drawer-body">
+      <section class="detail-hero detail-hero--contract"><span class="chip" [class]="'chip chip--' + contract.estado.toLowerCase()">{{ contractLabel(contract.estado) }}</span><strong>{{ contract.valorTotal | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><p>{{ customerName(contract.clientePrincipalId) }} · {{ projectName(contract.proyectoId) }} · Lote #{{ contract.loteId }}</p></section>
+      <section class="detail-grid detail-grid--three"><div><small>Valor del lote</small><strong>{{ contract.valorLote | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div><div><small>Cuota inicial</small><strong>{{ contract.cuotaInicial | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div><div><small>Saldo financiado</small><strong>{{ contract.saldoFinanciado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div></section>
+      @if (contract.estado !== 'ANULADO' && contract.estado !== 'FINALIZADO') {
+        <section class="drawer-section"><header><h4>Flujo del contrato</h4></header><div class="action-grid">
+          @if ((contract.estado === 'BORRADOR' || contract.estado === 'NEGOCIACION') && auth.hasAuthority('CONTRATOS_EDITAR')) { <button type="button" (click)="openContractDocument()"><app-icon name="plus" />Adjuntar versión</button><button type="button" (click)="openParticipant()"><app-icon name="crm" />Agregar participante</button> }
+          @if ((contract.estado === 'BORRADOR' || contract.estado === 'NEGOCIACION') && auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) { <button type="button" (click)="openSigner()"><app-icon name="plus" />Agregar firmante</button> }
+          @if (contract.estado === 'BORRADOR' && auth.hasAuthority('CONTRATOS_EDITAR')) { <button type="button" (click)="startNegotiation()"><app-icon name="arrow" />Iniciar negociación</button> }
+          @if ((contract.estado === 'BORRADOR' || contract.estado === 'NEGOCIACION') && auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) { <button type="button" class="action-primary" (click)="sendForSignature()"><app-icon name="sales" />Enviar a firma</button> }
+          @if (auth.hasAuthority('CONTRATOS_ANULAR')) { <button type="button" class="action-danger" (click)="openCancelContract()"><app-icon name="close" />Anular contrato</button> }
+        </div></section>
+      }
+      <section class="drawer-section"><header><h4>Participantes</h4><span>{{ contract.clientes.length }}</span></header><div class="record-list">
+        @for (participant of contract.clientes; track participant.id) { <article><span class="avatar">{{ customerName(participant.clienteId).charAt(0) }}</span><div><strong>{{ customerName(participant.clienteId) }}</strong><small>{{ participant.rol }} · {{ participant.porcentajeParticipacion }}%</small></div></article> }
+      </div></section>
+      <section class="drawer-section"><header><h4>Versiones documentales</h4><span>{{ contract.versiones.length }}</span></header><div class="record-list">
+        @for (version of contract.versiones; track version.id) { <article><span class="file-badge">V{{ version.numeroVersion }}</span><div><strong>{{ version.motivo }}</strong><small>{{ version.creadoEn | date:'dd MMM y, HH:mm' }} · {{ version.vigente ? 'Vigente' : 'Histórica' }}</small></div>@if (version.archivoId) { <button type="button" (click)="downloadDocument(version.archivoId, contract.codigo + '-V' + version.numeroVersion)">Descargar</button> }</article> }
+      </div></section>
+      <section class="drawer-section"><header><h4>Firmantes</h4><span>{{ contract.firmantes.length }}</span></header><div class="signer-list">
+        @for (signer of contract.firmantes; track signer.id) { <article><div class="signer-order">{{ signer.ordenFirma }}</div><div><strong>{{ customerByPerson(signer.personaId)?.nombreCompleto || 'Persona #' + signer.personaId }}</strong><small>{{ signer.tipoFirmante }} · {{ signer.estado }}</small></div>@if (contract.estado === 'PENDIENTE_FIRMA' && signer.estado !== 'FIRMADA' && auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) { <button type="button" (click)="openSignature(signer)">Registrar firma</button> }@if (signer.fechaFirma) { <time>{{ signer.fechaFirma | date:'dd/MM/y HH:mm' }}</time> }</article> }
+      </div></section>
+      @if (contract.estado === 'VIGENTE') { <div class="sale-complete"><app-icon name="warning" /><div><strong>Venta activada</strong><span>Las firmas válidas están completas y el lote pasó a estado VENDIDO.</span></div></div> }
+      @if (contract.estado === 'ANULADO') { <div class="sale-complete sale-complete--danger"><app-icon name="warning" /><div><strong>Contrato anulado</strong><span>{{ contract.motivoAnulacion }}</span></div></div> }
+    </div>
+  </aside>
+}
+
+@if (modal()) {
+  <div class="modal-backdrop">
+    @if (modal() === 'cliente') {
+      <form class="modal modal--large" [formGroup]="customerForm" (ngSubmit)="saveCustomer()">
+        <header><div><small>MAESTRO DE CLIENTES</small><h3>{{ editingCustomer() ? 'Editar cliente' : 'Registrar cliente' }}</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+        <div class="modal-body"><div class="form-grid">
+          <label><span>Tipo de persona *</span><select formControlName="tipoPersona"><option value="NATURAL">Natural</option><option value="JURIDICA">Jurídica</option></select></label>
+          <label><span>Tipo de documento *</span><select formControlName="tipoDocumento"><option value="CC">Cédula</option><option value="CE">Cédula de extranjería</option><option value="NIT">NIT</option><option value="PASAPORTE">Pasaporte</option></select></label>
+          <label><span>Número de documento *</span><input formControlName="numeroDocumento" /></label><label><span>Nombres o razón social *</span><input formControlName="nombres" /></label>
+          <label><span>Apellidos</span><input formControlName="apellidos" /></label><label><span>Teléfono</span><input formControlName="telefono" /></label>
+          <label><span>Correo</span><input type="email" formControlName="correo" /></label><label><span>Origen</span><input formControlName="origen" /></label>
+          <label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label><label class="span-2"><span>Observaciones</span><textarea rows="3" formControlName="observaciones"></textarea></label>
+        </div></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar cliente' }}</button></footer>
+      </form>
+    }
+    @if (modal() === 'reserva') {
+      <form class="modal modal--large" [formGroup]="reservationForm" (ngSubmit)="saveReservation()">
+        <header><div><small>NUEVA RESERVA</small><h3>Bloquear un lote para el cliente</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+        <div class="modal-body"><div class="rule-note"><app-icon name="warning" /><span>La oportunidad debe estar abierta y tener el lote vinculado previamente desde CRM.</span></div><div class="form-grid">
+          <label><span>Proyecto *</span><select formControlName="projectId" (change)="reservationProjectChanged($any($event.target).value)"><option [value]="0">Selecciona</option>@for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }</select></label>
+          <label><span>Oportunidad *</span><select formControlName="opportunityId" (change)="opportunityChanged($any($event.target).value)"><option [value]="0">Selecciona</option>@for (opportunity of opportunities(); track opportunity.id) { <option [value]="opportunity.id">{{ opportunity.codigo }} · {{ opportunity.etapaActual }}</option> }</select></label>
+          <label><span>Cliente *</span><select formControlName="customerId"><option [value]="0">Selecciona</option>@for (customer of activeCustomers(); track customer.id) { <option [value]="customer.id">{{ customer.nombreCompleto }} · {{ customer.numeroDocumento }}</option> }</select></label>
+          <label><span>Lote vinculado *</span><select formControlName="lotId"><option [value]="0">Selecciona</option>@for (lot of opportunityLots(); track lot.id) { <option [value]="lot.id">{{ lot.codigo }} · {{ lot.valorLista | currency:'COP':'symbol-narrow':'1.0-0' }}</option> }</select></label>
+          <label><span>Simulación aceptada</span><select formControlName="simulationId"><option [value]="0">Sin simulación</option>@for (simulation of simulations(); track simulation.id) { <option [value]="simulation.id">{{ simulation.codigo }} · {{ simulation.valorLote | currency:'COP':'symbol-narrow':'1.0-0' }}</option> }</select></label>
+          <label><span>Vencimiento *</span><input type="datetime-local" formControlName="expiration" /></label><label><span>Valor de reserva *</span><input type="text" nexoraMoney formControlName="value" /></label><label><span>Forma de pago *</span><select formControlName="paymentMethod"><option value="TRANSFERENCIA">Transferencia</option><option value="PSE">PSE</option><option value="TARJETA">Tarjeta</option><option value="EFECTIVO">Efectivo</option><option value="CHEQUE">Cheque</option></select></label>
+        </div></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Creando…' : 'Crear reserva' }}</button></footer>
+      </form>
+    }
+    @if (modal() === 'pago') {
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title"><header><div><small>VALIDACIÓN DE PAGO</small><h3 id="payment-modal-title">Confirmar pago de reserva</h3></div><button type="button" [disabled]="saving()" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><p class="modal-copy">Adjunta el comprobante. Al confirmar, la reserva quedará activa y podrá convertirse en contrato.</p><label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" [disabled]="saving()" (change)="onFileSelected($event)" /><app-icon name="plus" /><span>{{ selectedFile()?.name || 'Seleccionar PDF, PNG o JPG' }}</span><small>Máximo 15 MB</small></label></div><footer><button class="secondary-button" type="button" [disabled]="saving()" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" data-testid="confirm-payment" [disabled]="saving() || !selectedFile()" (click)="confirmPayment()">{{ saving() ? 'Confirmando…' : 'Confirmar pago' }}</button></footer></section>
+    }
+    @if (modal() === 'extender') {
+      <form class="modal" [formGroup]="dateForm" (ngSubmit)="extendReservation()"><header><div><small>VIGENCIA</small><h3>Extender reserva</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><label><span>Nueva fecha y hora *</span><input type="datetime-local" formControlName="expiration" /></label></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">Guardar</button></footer></form>
+    }
+    @if (modal() === 'motivo-reserva' || modal() === 'anular-contrato') {
+      <form class="modal" [formGroup]="reasonForm" (ngSubmit)="modal() === 'anular-contrato' ? cancelContract() : applyReservationReason()"><header><div><small>ACCIÓN SENSIBLE</small><h3>{{ modal() === 'anular-contrato' ? 'Anular contrato' : (reservationReasonAction() === 'rechazar' ? 'Rechazar pago' : 'Cancelar reserva') }}</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><div class="danger-note"><app-icon name="warning" /><span>Esta acción modifica el estado del lote y quedará registrada en el historial.</span></div><label><span>Motivo obligatorio</span><textarea rows="4" formControlName="reason"></textarea></label></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Volver</button><button class="danger-button" type="submit" [disabled]="saving()">Confirmar acción</button></footer></form>
+    }
+    @if (modal() === 'convertir') {
+      <form class="modal modal--large" [formGroup]="contractForm" (ngSubmit)="convertReservation()"><header><div><small>NUEVO CONTRATO</small><h3>Condiciones de la venta</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><div class="form-grid"><label><span>Tipo de contrato *</span><select formControlName="type"><option value="PROMESA_COMPRAVENTA">Promesa de compraventa</option><option value="COMPRAVENTA">Compraventa</option><option value="CESION">Cesión</option></select></label><label><span>Fecha de inicio *</span><input type="date" formControlName="startDate" /></label><label><span>Otros conceptos</span><input type="text" nexoraMoney formControlName="otherConcepts" /></label><label><span>Descuento</span><input type="text" nexoraMoney formControlName="discount" /></label><label><span>Cuota inicial *</span><input type="text" nexoraMoney formControlName="downPayment" /></label><label><span>Número de cuotas *</span><input type="number" min="1" formControlName="installments" /></label><label><span>Fecha de finalización</span><input type="date" formControlName="endDate" /></label></div></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">Crear contrato</button></footer></form>
+    }
+    @if (modal() === 'documento-contrato') {
+      <form class="modal" [formGroup]="documentForm" (ngSubmit)="attachContractDocument()"><header><div><small>CONTROL DE VERSIONES</small><h3>Adjuntar documento</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><label><span>Motivo de la versión *</span><input formControlName="reason" /></label><label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="onFileSelected($event)" /><app-icon name="plus" /><span>{{ selectedFile()?.name || 'Seleccionar documento' }}</span><small>PDF, PNG o JPG · máximo 15 MB</small></label></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving() || !selectedFile()">Adjuntar versión</button></footer></form>
+    }
+    @if (modal() === 'participante') {
+      <form class="modal" [formGroup]="participantForm" (ngSubmit)="addParticipant()"><header><div><small>PARTICIPACIÓN</small><h3>Agregar cliente al contrato</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><label><span>Cliente *</span><select formControlName="customerId">@for (customer of activeCustomers(); track customer.id) { <option [value]="customer.id">{{ customer.nombreCompleto }}</option> }</select></label><div class="form-grid"><label><span>Rol *</span><select formControlName="role"><option value="COPROPIETARIO">Copropietario</option><option value="BENEFICIARIO">Beneficiario</option><option value="APODERADO">Apoderado</option></select></label><label><span>Participación %</span><input type="number" min="0" max="100" formControlName="participation" /></label></div></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">Agregar</button></footer></form>
+    }
+    @if (modal() === 'firmante') {
+      <form class="modal" [formGroup]="signerForm" (ngSubmit)="addSigner()"><header><div><small>RUTA DE FIRMAS</small><h3>Agregar firmante</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><label><span>Persona vinculada a cliente *</span><select formControlName="customerId">@for (customer of activeCustomers(); track customer.id) { <option [value]="customer.id">{{ customer.nombreCompleto }}</option> }</select></label><div class="form-grid"><label><span>Tipo *</span><select formControlName="type"><option value="COMPRADOR">Comprador</option><option value="COPROPIETARIO">Copropietario</option><option value="REPRESENTANTE">Representante</option><option value="VENDEDOR">Vendedor</option><option value="TESTIGO">Testigo</option></select></label><label><span>Orden *</span><input type="number" min="1" formControlName="order" /></label></div><label><span>Fecha programada</span><input type="datetime-local" formControlName="scheduledAt" /></label></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">Agregar firmante</button></footer></form>
+    }
+    @if (modal() === 'firma') {
+      <form class="modal" [formGroup]="signatureForm" (ngSubmit)="registerSignature()"><header><div><small>EVIDENCIA DE FIRMA</small><h3>Registrar firma válida</h3></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header><div class="modal-body"><div class="form-grid"><label><span>Método *</span><select formControlName="method"><option value="ELECTRONICA">Electrónica</option><option value="DIGITAL">Digital</option><option value="MANUSCRITA">Manuscrita</option></select></label><label><span>Fecha y hora</span><input type="datetime-local" formControlName="signedAt" /></label></div><label><span>Proveedor</span><input formControlName="provider" /></label><label><span>Referencia externa</span><input formControlName="externalReference" /></label><label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="onFileSelected($event)" /><app-icon name="plus" /><span>{{ selectedFile()?.name || 'Adjuntar evidencia de firma' }}</span><small>Se calculará la huella SHA-256 automáticamente.</small></label></div><footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving() || !selectedFile()">Registrar firma</button></footer></form>
+    }
+  </div>
+}

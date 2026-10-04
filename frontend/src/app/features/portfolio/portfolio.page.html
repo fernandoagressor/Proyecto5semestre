@@ -1,0 +1,247 @@
+<main class="portfolio-page">
+  <header class="page-header">
+    <div>
+      <small class="eyebrow">CARTERA Y RECAUDOS</small>
+      <h2>Centro de cartera</h2>
+      <p>Controla planes, cuotas, pagos, vencimientos y compromisos de cobro desde el contrato firmado.</p>
+    </div>
+    <div class="header-actions">
+      <button class="secondary-button" type="button" (click)="exportPortfolio()" [disabled]="!contracts().length">
+        <app-icon name="sales" />Exportar cartera
+      </button>
+      @if (auth.hasAuthority('CUOTAS_PROGRAMAR') && configuration()) {
+        <button class="secondary-button" type="button" (click)="openConfiguration()">
+          <app-icon name="admin" />Configuración
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (feedback()) {
+    <div class="feedback feedback--success"><app-icon name="warning" /><span>{{ feedback() }}</span><button type="button" (click)="feedback.set('')">×</button></div>
+  }
+  @if (error()) {
+    <div class="feedback feedback--error"><app-icon name="warning" /><span>{{ error() }}</span><button type="button" (click)="error.set('')">×</button></div>
+  }
+
+  @if (summary(); as data) {
+    <section class="stats-grid">
+      <article><span class="stat-icon stat-icon--blue"><app-icon name="wallet" /></span><div><small>Cartera programada</small><strong>{{ data.carteraTotal | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><em>{{ data.planesActivos }} planes activos</em></div></article>
+      <article><span class="stat-icon stat-icon--green"><app-icon name="sales" /></span><div><small>Total recaudado</small><strong>{{ data.totalRecaudado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><em>Pagos confirmados</em></div></article>
+      <article><span class="stat-icon stat-icon--orange"><app-icon name="calendar" /></span><div><small>Saldo pendiente</small><strong>{{ data.saldoPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><em>{{ data.cuotasProximas }} próximas cuotas</em></div></article>
+      <article><span class="stat-icon stat-icon--red"><app-icon name="warning" /></span><div><small>Cartera vencida</small><strong>{{ data.carteraVencida | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><em>{{ data.porcentajeMora | number:'1.0-2' }}% de mora</em></div></article>
+    </section>
+    @if (data.contratosSinPlan > 0) {
+      <div class="attention"><app-icon name="warning" /><div><strong>{{ data.contratosSinPlan }} contrato(s) vigente(s) todavía no tienen plan</strong><span>Abre el contrato y pulsa “Generar cartera”. Esta acción también permite incorporar contratos firmados antes del Corte 13.</span></div></div>
+    }
+  }
+
+  <section class="module-card">
+    <nav class="tabs" aria-label="Secciones de cartera">
+      @if (auth.hasAuthority('CUOTAS_VER')) { <button type="button" [class.active]="activeTab() === 'contratos'" (click)="setTab('contratos')"><app-icon name="sales" />Contratos y cuotas <span>{{ contracts().length }}</span></button> }
+      @if (auth.hasAuthority('PAGOS_VER')) { <button type="button" [class.active]="activeTab() === 'pagos'" (click)="setTab('pagos')"><app-icon name="wallet" />Pagos <span>{{ payments().length }}</span></button> }
+      @if (auth.hasAuthority('MORA_VER')) { <button type="button" [class.active]="activeTab() === 'mora'" (click)="setTab('mora')"><app-icon name="warning" />Mora y cobro <span>{{ followUpItems().length }}</span></button> }
+    </nav>
+
+    @if (loading()) {
+      <div class="loading-state"><span></span><p>Cargando la operación financiera…</p></div>
+    } @else if (activeTab() === 'contratos') {
+      <div class="view-toolbar">
+        <div class="toolbar-copy"><strong>Contratos vigentes</strong><small>Consulta el plan, registra abonos y exporta el estado de cuenta.</small></div>
+        <label class="search-box"><app-icon name="search" /><input type="search" placeholder="Contrato, cliente, proyecto, documento o lote" [value]="contractSearch()" (input)="searchContracts($any($event.target).value)" /></label>
+      </div>
+      @if (filteredContracts().length) {
+        <div class="table-wrap"><table>
+          <thead><tr><th>Contrato</th><th>Cliente</th><th>Proyecto / lote</th><th>Plan</th><th>Pagado</th><th>Saldo</th><th>Próximo vencimiento</th><th></th></tr></thead>
+          <tbody>
+            @for (contract of filteredContracts(); track contract.contratoId) {
+              <tr>
+                <td><div class="code-cell"><span class="avatar">C</span><div><strong>{{ contract.contratoCodigo }}</strong><small>{{ contract.valorContrato | currency:'COP':'symbol-narrow':'1.0-0' }}</small></div></div></td>
+                <td><strong>{{ contract.clienteNombre }}</strong><small>{{ contract.clienteDocumento }}</small></td>
+                <td><strong>{{ contract.proyectoNombre }}</strong><small>Lote {{ contract.loteCodigo }}</small></td>
+                <td>@if (contract.planPagoId) { <span class="chip chip--green">ACTIVO</span><small>{{ contract.numeroCuotas }} cuotas</small> } @else { <span class="chip chip--orange">SIN PLAN</span><small>{{ contract.numeroCuotas }} cuotas pactadas</small> }</td>
+                <td><strong>{{ contract.totalPagado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><small>de {{ contract.totalProgramado | currency:'COP':'symbol-narrow':'1.0-0' }}</small></td>
+                <td><strong [class.text-danger]="contract.saldoVencido > 0">{{ contract.saldoPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><small>{{ contract.saldoVencido | currency:'COP':'symbol-narrow':'1.0-0' }} vencido</small></td>
+                <td><strong>{{ contract.proximoVencimiento ? (contract.proximoVencimiento | date:'dd MMM y') : 'Sin vencimiento' }}</strong><small>{{ contract.cuotasPendientes }} pendientes · {{ contract.cuotasVencidas }} vencidas</small></td>
+                <td><div class="table-actions"><button type="button" (click)="viewContract(contract)">Ver plan</button>@if (contract.planPagoId && auth.hasAuthority('PAGOS_CREAR')) { <button type="button" class="accent" (click)="openPayment(contract)">Registrar abono</button> }</div></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <div class="empty-state"><app-icon name="wallet" /><h3>No hay contratos vigentes en tu alcance</h3><p>Los contratos aparecerán aquí cuando completen las firmas y pasen a estado VIGENTE.</p></div>
+      }
+    } @else if (activeTab() === 'pagos') {
+      <div class="view-toolbar">
+        <div class="toolbar-copy"><strong>Historial de recaudos</strong><small>Los pagos confirmados son los únicos que afectan las cuotas.</small></div>
+        <select [value]="paymentStatus()" (change)="filterPayments($any($event.target).value)">
+          <option value="">Todos los estados</option><option value="PENDIENTE">Pendiente</option><option value="EN_REVISION">En revisión</option><option value="CONFIRMADO">Confirmado</option><option value="RECHAZADO">Rechazado</option><option value="REVERSADO">Reversado</option>
+        </select>
+      </div>
+      @if (payments().length) {
+        <div class="table-wrap"><table>
+          <thead><tr><th>Pago</th><th>Contrato</th><th>Fecha</th><th>Método / referencia</th><th>Valor</th><th>Aplicación</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            @for (payment of payments(); track payment.id) {
+              <tr>
+                <td><strong>{{ payment.codigo }}</strong><small>#{{ payment.id }}</small></td>
+                <td><strong>{{ contractCode(payment.contratoId) }}</strong><small>Cliente #{{ payment.clienteId }}</small></td>
+                <td><strong>{{ payment.fechaPago | date:'dd MMM y' }}</strong><small>{{ payment.fechaPago | date:'HH:mm' }}</small></td>
+                <td><strong>{{ methodName(payment.metodoPagoId) }}</strong><small>{{ payment.referencia || 'Sin referencia' }}</small></td>
+                <td><strong>{{ payment.valor | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><small>{{ payment.comprobanteId ? 'Con comprobante' : 'Sin comprobante' }}</small></td>
+                <td><strong>{{ payment.aplicaciones.length }} movimiento(s)</strong><small>{{ payment.validadoEn ? (payment.validadoEn | date:'dd/MM/y HH:mm') : 'Sin validar' }}</small></td>
+                <td><span class="chip" [class]="'chip chip--' + payment.estado.toLowerCase()">{{ installmentLabel(payment.estado) }}</span></td>
+                <td><div class="table-actions">
+                  @if ((payment.estado === 'PENDIENTE' || payment.estado === 'EN_REVISION') && auth.hasAuthority('PAGOS_CONFIRMAR')) { <button type="button" class="accent" (click)="confirmExisting(payment)" [disabled]="saving()">Confirmar</button> }
+                  @if ((payment.estado === 'PENDIENTE' || payment.estado === 'EN_REVISION') && auth.hasAuthority('PAGOS_RECHAZAR')) { <button type="button" (click)="openReason(payment, 'rechazar')">Rechazar</button> }
+                  @if (payment.estado === 'CONFIRMADO' && auth.hasAuthority('PAGOS_REVERSAR')) { <button type="button" (click)="openReason(payment, 'reversion')">Solicitar reversión</button> }
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <div class="empty-state"><app-icon name="wallet" /><h3>No hay pagos con este filtro</h3><p>Registra el primer abono desde la pestaña Contratos y cuotas.</p></div>
+      }
+    } @else {
+      <div class="view-toolbar">
+        <div class="toolbar-copy"><strong>Seguimiento preventivo y cobranza</strong><small>Registra llamadas, mensajes, visitas o promesas en cuotas pendientes, parciales y vencidas.</small></div>
+        @if (auth.hasAuthority('MORA_GESTIONAR')) { <button class="secondary-button" type="button" (click)="updateOverdue()" [disabled]="saving()"><app-icon name="refresh" />Actualizar mora</button> }
+      </div>
+      @if (followUpItems().length) {
+        <div class="table-wrap"><table>
+          <thead><tr><th>Contrato</th><th>Cuota</th><th>Estado</th><th>Vencimiento</th><th>Seguimiento</th><th>Saldo</th><th>Interés de mora</th><th>Total pendiente</th><th></th></tr></thead>
+          <tbody>
+            @for (item of followUpItems(); track item.cuotaId) {
+              <tr>
+                <td><strong>{{ contractCode(item.contratoId) }}</strong><small>{{ contractClient(item.contratoId) }}</small></td>
+                <td><span class="installment-number">{{ item.numeroCuota }}</span></td>
+                <td><span class="chip" [class]="'chip chip--' + item.estado.toLowerCase()">{{ installmentLabel(item.estado) }}</span></td>
+                <td><strong>{{ item.fechaVencimiento | date:'dd MMM y' }}</strong><small>@if (item.moraCalculadaHasta) { Mora calculada hasta {{ item.moraCalculadaHasta | date:'dd/MM/y' }} } @else { Sin mora causada }</small></td>
+                <td>@if (item.estado === 'VENCIDA') { <strong class="text-danger">{{ item.diasMora }} días de mora</strong> } @else if (item.diasParaVencimiento === 0) { <strong>Vence hoy</strong> } @else { <strong>{{ item.diasParaVencimiento }} días para vencer</strong> }</td>
+                <td>{{ item.saldo | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                <td>{{ item.interesMora | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                <td><strong [class.text-danger]="item.estado === 'VENCIDA'">{{ item.totalPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></td>
+                <td><div class="table-actions">
+                  <button type="button" (click)="openCollection(item, 'historial')">Ver historial</button>
+                  @if (auth.hasAuthority('MORA_GESTIONAR')) { <button type="button" class="accent" (click)="openCollection(item)">Registrar gestión</button> }
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <div class="empty-state empty-state--success"><app-icon name="warning" /><h3>No hay cuotas con saldo pendiente</h3><p>La cartera dentro de tu alcance no requiere seguimiento.</p></div>
+      }
+    }
+  </section>
+</main>
+
+@if (selectedContract(); as contract) {
+  <button class="drawer-scrim" type="button" aria-label="Cerrar plan" (click)="closeDetails()"></button>
+  <aside class="drawer drawer--wide">
+    <header class="drawer__header"><div><small>ESTADO DE CUENTA</small><h3>{{ contract.contratoCodigo }}</h3></div><button type="button" (click)="closeDetails()"><app-icon name="close" /></button></header>
+    <div class="drawer-body">
+      <section class="detail-hero"><span class="chip" [class.chip--green]="contract.planPagoId">{{ contract.planPagoId ? 'PLAN ACTIVO' : 'SIN PLAN' }}</span><strong>{{ contract.saldoPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><p>{{ contract.clienteNombre }} · {{ contract.proyectoNombre }} · Lote {{ contract.loteCodigo }}</p></section>
+      <section class="detail-grid"><div><small>Valor contrato</small><strong>{{ contract.valorContrato | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div><div><small>Cuota inicial pactada</small><strong>{{ contract.cuotaInicial | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div><div><small>Capital financiado</small><strong>{{ contract.capitalFinanciado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div><div><small>Total pagado al plan</small><strong>{{ contract.totalPagado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div><div><small>Saldo vencido</small><strong class="text-danger">{{ contract.saldoVencido | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div></section>
+      @if (detailLoading()) {
+        <div class="loading-inline"><span></span>Cargando cronograma…</div>
+      } @else if (activePlan(); as plan) {
+        <section class="drawer-section">
+          <header><div><h4>Plan de pagos V{{ plan.versionPlan }}</h4><span>{{ plan.numeroCuotas }} cuotas · {{ plan.periodicidad }} · TEA {{ plan.tasaEfectivaAnual * 100 | number:'1.0-2' }}%</span></div><div class="section-actions"><button type="button" (click)="exportStatement()">Exportar estado</button>@if (auth.hasAuthority('PAGOS_CREAR') && contract.saldoPendiente > 0) { <button type="button" class="accent" (click)="openPayment(contract)">Registrar abono</button> }</div></header>
+          <div class="installment-list">
+            @for (installment of plan.cuotas; track installment.id) {
+              <article>
+                <span class="installment-number">{{ installment.numero }}</span>
+                <div><strong>{{ installment.fechaVencimiento | date:'dd MMM y' }}</strong><small>{{ installmentLabel(installment.estado) }} · {{ installment.diasMora }} días mora</small></div>
+                <div><small>Programado</small><strong>{{ installment.valorProgramado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div>
+                <div><small>Pagado</small><strong>{{ installment.valorPagado | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div>
+                <div><small>Saldo + mora</small><strong [class.text-danger]="installment.estado === 'VENCIDA'">{{ installment.saldo + installment.interesMora | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div>
+                <span class="chip" [class]="'chip chip--' + installment.estado.toLowerCase()">{{ installmentLabel(installment.estado) }}</span>
+              </article>
+            }
+          </div>
+        </section>
+      } @else {
+        <section class="no-plan"><app-icon name="warning" /><div><strong>Este contrato vigente aún no tiene cronograma</strong><p>Se generará con {{ contract.numeroCuotas }} cuotas sobre {{ contract.capitalFinanciado | currency:'COP':'symbol-narrow':'1.0-0' }} y los parámetros vigentes de la empresa.</p></div>@if (auth.hasAuthority('CUOTAS_PROGRAMAR')) { <button class="primary-button" type="button" (click)="synchronizePlan(contract)" [disabled]="saving()">{{ saving() ? 'Generando…' : 'Generar cartera' }}</button> }</section>
+      }
+    </div>
+  </aside>
+}
+
+@if (modal()) {
+  <button class="modal-scrim" type="button" aria-label="Cerrar ventana" (click)="closeModal()"></button>
+  <section class="modal-card" role="dialog" aria-modal="true">
+    @if (modal() === 'pago' && selectedContract(); as contract) {
+      <header><div><small>NUEVO RECAUDO</small><h3>Registrar abono</h3><p>{{ contract.contratoCodigo }} · {{ contract.clienteNombre }}</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+      <div class="modal-body" [formGroup]="paymentForm">
+        <div class="payment-balance"><span>Saldo disponible</span><strong>{{ contract.saldoPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</strong></div>
+        <div class="form-grid">
+          <label><span>Método de pago</span><select formControlName="methodId"><option [ngValue]="0">Selecciona</option>@for (method of methods(); track method.id) { <option [ngValue]="method.id">{{ method.nombre }}</option> }</select></label>
+          <label><span>Fecha y hora</span><input type="datetime-local" formControlName="paidAt" /></label>
+          <label><span>Valor del abono</span><input type="text" nexoraMoney formControlName="amount" /></label>
+          <label><span>Referencia</span><input type="text" formControlName="reference" placeholder="Número de operación" /></label>
+          <label class="span-2"><span>Observaciones</span><textarea rows="3" formControlName="observations"></textarea></label>
+          <label class="file-picker span-2"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="selectFile($event)" /><app-icon name="plus" /><span>{{ selectedFile()?.name || 'Seleccionar comprobante' }}</span><small>PDF, JPG o PNG. Se exige según el método de pago.</small></label>
+        </div>
+      </div>
+      <footer><button class="secondary-button" type="button" (click)="closeModal()" [disabled]="saving()">Cancelar</button><button class="primary-button" type="button" (click)="savePayment()" [disabled]="saving()">{{ saving() ? 'Aplicando pago…' : (auth.hasAuthority('PAGOS_CONFIRMAR') ? 'Registrar y confirmar' : 'Enviar a revisión') }}</button></footer>
+    } @else if (modal() === 'cobro' && selectedFollowUp(); as item) {
+      <header><div><small>{{ collectionView() === 'historial' ? 'HISTORIAL DE GESTIONES' : (item.estado === 'VENCIDA' ? 'GESTIÓN DE COBRANZA' : 'GESTIÓN PREVENTIVA') }}</small><h3>Cuota {{ item.numeroCuota }} · {{ installmentLabel(item.estado) }}</h3><p>{{ contractCode(item.contratoId) }} · {{ item.totalPendiente | currency:'COP':'symbol-narrow':'1.0-0' }} pendiente</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+      @if (collectionView() === 'formulario') {
+        <div class="modal-body" [formGroup]="collectionForm">
+          <div class="form-grid">
+            <label><span>Canal</span><select formControlName="channel"><option value="LLAMADA">Llamada</option><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">Correo</option><option value="SMS">SMS</option><option value="VISITA">Visita</option></select></label>
+            <label><span>Resultado</span><input type="text" formControlName="result" placeholder="Contactado, sin respuesta…" /></label>
+            <label class="span-2"><span>Detalle</span><textarea rows="3" formControlName="detail"></textarea></label>
+            <label><span>Fecha de promesa</span><input type="date" formControlName="promiseDate" /></label>
+            <label><span>Valor prometido</span><input type="text" nexoraMoney formControlName="promiseAmount" /></label>
+          </div>
+          <p class="separation-note"><app-icon name="warning" />La promesa es opcional. Si la registras, completa la fecha y el valor sin superar el saldo de esta cuota.</p>
+          @if (selectedCollections().length) { <div class="history-preview"><strong>Gestiones anteriores de esta cuota: {{ selectedCollections().length }}</strong></div> }
+        </div>
+        <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" (click)="saveCollection()" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Registrar gestión' }}</button></footer>
+      } @else {
+        <div class="modal-body collection-history">
+          @if (feedback()) { <div class="inline-success"><app-icon name="warning" /><span>{{ feedback() }}</span></div> }
+          @if (collectionsLoading()) {
+            <div class="loading-inline"><span></span>Cargando historial…</div>
+          } @else if (selectedCollections().length) {
+            <div class="history-list">
+              @for (management of selectedCollections(); track management.id) {
+                <article>
+                  <header><span class="channel-badge">{{ management.canal }}</span><div><strong>{{ management.resultado }}</strong><small>{{ management.fechaGestion | date:'dd MMM y, HH:mm' }}</small></div></header>
+                  <p>{{ management.detalle || 'Sin observaciones adicionales.' }}</p>
+                  @if (management.promesaPagoFecha && management.promesaPagoValor) {
+                    <div class="promise-card"><span>Promesa de pago</span><strong>{{ management.promesaPagoValor | currency:'COP':'symbol-narrow':'1.0-0' }}</strong><small>Fecha acordada: {{ management.promesaPagoFecha | date:'dd MMM y' }}</small></div>
+                  } @else {
+                    <small class="no-promise">Sin promesa de pago asociada.</small>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <div class="history-empty"><app-icon name="warning" /><strong>Esta cuota aún no tiene gestiones</strong><span>Registra el primer contacto o compromiso de pago.</span></div>
+          }
+        </div>
+        <footer><button class="secondary-button" type="button" (click)="closeModal()">Cerrar</button>@if (auth.hasAuthority('MORA_GESTIONAR')) { <button class="primary-button" type="button" (click)="showCollectionForm()">Nueva gestión</button> }</footer>
+      }
+    } @else if (modal() === 'configuracion') {
+      <header><div><small>CONFIGURACIÓN FINANCIERA</small><h3>Generación de planes</h3><p>Se aplicará a contratos que se firmen o sincronicen después de guardar.</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+      <div class="modal-body" [formGroup]="configurationForm">
+        <div class="form-grid">
+          <label><span>Tasa efectiva anual (%)</span><input type="number" min="0" max="100" step="0.01" formControlName="annualRate" /></label>
+          <label><span>Tasa de mora anual (%)</span><input type="number" min="0" max="100" step="0.01" formControlName="overdueRate" /></label>
+          <label><span>Periodicidad</span><select formControlName="frequency"><option value="MENSUAL">Mensual</option><option value="BIMESTRAL">Bimestral</option><option value="TRIMESTRAL">Trimestral</option><option value="SEMESTRAL">Semestral</option><option value="ANUAL">Anual</option></select></label>
+          <label><span>Días hasta primera cuota</span><input type="number" min="0" max="365" formControlName="firstInstallmentDays" /></label>
+          <label class="toggle span-2"><input type="checkbox" formControlName="automatic" /><span><strong>Generar automáticamente al completar las firmas</strong><small>El plan queda activo y disponible en Cartera inmediatamente.</small></span></label>
+        </div>
+      </div>
+      <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" (click)="saveConfiguration()" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar configuración' }}</button></footer>
+    } @else if (modal() === 'motivo') {
+      <header><div><small>CONTROL DE PAGOS</small><h3>{{ reasonAction() === 'rechazar' ? 'Rechazar pago' : 'Solicitar reversión' }}</h3><p>{{ selectedPayment()?.codigo }}</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
+      <div class="modal-body" [formGroup]="reasonForm"><label><span>Motivo obligatorio</span><textarea rows="4" formControlName="reason" placeholder="Describe la razón y la evidencia de la decisión"></textarea></label>@if (reasonAction() === 'reversion') { <p class="separation-note"><app-icon name="warning" />La reversión queda solicitada. Debe aprobarla un usuario diferente para restaurar los saldos.</p> }</div>
+      <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="danger-button" type="button" (click)="saveReason()" [disabled]="saving()">{{ saving() ? 'Procesando…' : (reasonAction() === 'rechazar' ? 'Rechazar pago' : 'Solicitar reversión') }}</button></footer>
+    }
+  </section>
+}
