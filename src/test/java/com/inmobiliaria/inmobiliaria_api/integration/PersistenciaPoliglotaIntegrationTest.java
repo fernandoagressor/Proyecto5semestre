@@ -2,6 +2,15 @@ package com.inmobiliaria.inmobiliaria_api.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import com.inmobiliaria.inmobiliaria_api.config.PersistenceRolesProperties;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -32,7 +41,8 @@ class PersistenciaPoliglotaIntegrationTest {
             new MySQLContainer<>(DockerImageName.parse("mysql:8.4.11"))
                     .withDatabaseName("nexora_test")
                     .withUsername("nexora_test")
-                    .withPassword("nexora_test_password");
+                    .withPassword("nexora_test_password")
+                    .withCommand("--log-bin-trust-function-creators=1");
 
     @Container
     static final MongoDBContainer MONGODB =
@@ -67,6 +77,9 @@ class PersistenciaPoliglotaIntegrationTest {
     @Autowired
     private PersistenceRolesProperties persistenceRoles;
 
+    @Autowired
+    private SecuenciaService secuencias;
+
     @Test
     void lasTresPersistenciasRespondenDesdeLaAplicacion() {
         Integer mysqlResult = jdbcTemplate.queryForObject("SELECT 1", Integer.class);
@@ -91,5 +104,37 @@ class PersistenciaPoliglotaIntegrationTest {
                 .isEqualTo(PersistenceRolesProperties.Store.MYSQL);
         assertThat(persistenceRoles.ephemeralStore())
                 .isEqualTo(PersistenceRolesProperties.Store.REDIS);
+    }
+    @Test
+    void lasSecuenciasEntreganNumerosConsecutivosSinRepetir() throws Exception {
+        String nombre = "prueba-" + System.nanoTime();
+
+        // 1. Empieza en 1 y avanza de uno en uno
+        assertThat(secuencias.siguiente(nombre)).isEqualTo(1L);
+        assertThat(secuencias.siguiente(nombre)).isEqualTo(2L);
+
+        // 2. asegurarMinimo salta adelante (migración de datos existentes)
+        secuencias.asegurarMinimo(nombre, 100L);
+        assertThat(secuencias.siguiente(nombre)).isEqualTo(101L);
+
+        // 3. asegurarMinimo nunca retrocede
+        secuencias.asegurarMinimo(nombre, 50L);
+        assertThat(secuencias.siguiente(nombre)).isEqualTo(102L);
+
+        // 4. 200 peticiones simultáneas → 200 números distintos
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        try {
+            List<Future<Long>> resultados = new ArrayList<>();
+            for (int i = 0; i < 200; i++) {
+                resultados.add(pool.submit(() -> secuencias.siguiente(nombre)));
+            }
+            Set<Long> numeros = new HashSet<>();
+            for (Future<Long> resultado : resultados) {
+                numeros.add(resultado.get());
+            }
+            assertThat(numeros).hasSize(200);
+        } finally {
+            pool.shutdown();
+        }
     }
 }
