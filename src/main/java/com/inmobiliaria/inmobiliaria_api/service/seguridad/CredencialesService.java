@@ -5,6 +5,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegoci
 import com.inmobiliaria.inmobiliaria_api.entity.seguridad.Usuario;
 import com.inmobiliaria.inmobiliaria_api.repository.seguridad.UsuarioRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.security.TokenVersionCache;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import com.inmobiliaria.inmobiliaria_api.service.gerencia.AuditoriaRegistroService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +17,7 @@ public class CredencialesService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenVersionCache tokenVersionCache;
     private final SessionService sessionService;
     private final AuditoriaRegistroService auditoria;
 
@@ -23,12 +25,14 @@ public class CredencialesService {
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
             SessionService sessionService,
-            AuditoriaRegistroService auditoria
+            AuditoriaRegistroService auditoria,
+            TokenVersionCache tokenVersionCache
     ) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.sessionService = sessionService;
         this.auditoria = auditoria;
+        this.tokenVersionCache = tokenVersionCache;
     }
 
     @Transactional
@@ -50,6 +54,7 @@ public class CredencialesService {
 
         usuario.cambiarPassword(passwordEncoder.encode(request.passwordNueva()));
         usuarioRepository.saveAndFlush(usuario);
+        tokenVersionCache.invalidar(usuarioId);
         sessionService.revocarTodas(
                 usuarioId,
                 "Cambio de contraseña realizado por el usuario"

@@ -31,6 +31,7 @@ public class AuthService {
     private final EmpresaRepository empresaRepository;
     private final JdbcTemplate jdbcTemplate;
     private final AuditoriaRegistroService auditoria;
+    private final LimiteIntentosLoginService limiteIntentos;
 
     public AuthService(
             AuthenticationManager authenticationManager,
@@ -40,7 +41,8 @@ public class AuthService {
             LoginAuditService loginAuditService,
             EmpresaRepository empresaRepository,
             JdbcTemplate jdbcTemplate,
-            AuditoriaRegistroService auditoria
+            AuditoriaRegistroService auditoria,
+            LimiteIntentosLoginService limiteIntentos
     ) {
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
@@ -50,6 +52,7 @@ public class AuthService {
         this.empresaRepository = empresaRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.auditoria = auditoria;
+        this.limiteIntentos = limiteIntentos;
     }
 
     public TokenResponse login(
@@ -58,6 +61,7 @@ public class AuthService {
             String agente
     ) {
         String identificador = request.identificador().trim();
+        limiteIntentos.verificar(ip);
         try {
             Authentication authentication = authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(
@@ -83,6 +87,7 @@ public class AuthService {
             return crearRespuesta(principal, refreshToken);
         } catch (AuthenticationException exception) {
             loginAuditService.registrarFallo(identificador, ip, agente);
+            limiteIntentos.registrarFallo(ip);
             throw new NoAutorizadoException("Credenciales inválidas");
         }
     }
