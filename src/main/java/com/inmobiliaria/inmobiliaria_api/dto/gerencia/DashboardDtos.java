@@ -3,11 +3,12 @@ package com.inmobiliaria.inmobiliaria_api.dto.gerencia;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.io.Serializable;
 
 public final class DashboardDtos {
     private DashboardDtos() { }
 
-    public record Serie(String categoria, BigDecimal valor, long cantidad) { }
+    public record Serie(String categoria, BigDecimal valor, long cantidad) implements Serializable { }
 
     public record ResumenGerencial(LocalDate desde, LocalDate hasta, Long proyectoId,
                                    BigDecimal ventas, long contratos,
@@ -17,24 +18,24 @@ public final class DashboardDtos {
                                    BigDecimal margen, long lotesDisponibles,
                                    BigDecimal inventarioDisponible,
                                    long oportunidadesAbiertas, long tareasVencidas,
-                                   long pqrsAbiertas) { }
+                                   long pqrsAbiertas) implements Serializable { }
 
     public record ResumenComercial(LocalDate desde, LocalDate hasta, Long proyectoId,
                                    long oportunidadesNuevas, long oportunidadesGanadas,
                                    long oportunidadesPerdidas, BigDecimal valorEmbudo,
                                    BigDecimal tasaConversion, long reservasActivas,
-                                   List<Serie> embudo, List<Serie> ventasPorAsesor) { }
+                                   List<Serie> embudo, List<Serie> ventasPorAsesor) implements Serializable { }
 
     public record ResumenCartera(LocalDate corte, Long proyectoId,
                                  BigDecimal saldoTotal, BigDecimal saldoVencido,
                                  BigDecimal recaudoMes, BigDecimal indiceMora,
                                  long cuotasVencidas, long promesasPendientes,
-                                 List<Serie> edadesMora) { }
+                                 List<Serie> edadesMora)implements Serializable { }
 
     public record ResumenServicio(LocalDate desde, LocalDate hasta, Long proyectoId,
                                   long solicitudesAbiertas, long solicitudesVencidas,
                                   BigDecimal horasPrimeraRespuesta,
                                   BigDecimal satisfaccionPromedio,
                                   long citasPendientes, long ticketsAbiertos,
-                                  List<Serie> solicitudesPorTipo) { }
+                                  List<Serie> solicitudesPorTipo)implements Serializable { }
 }
