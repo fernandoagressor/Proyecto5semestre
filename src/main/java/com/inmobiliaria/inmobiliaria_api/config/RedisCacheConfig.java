@@ -6,7 +6,6 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
 
 /**
  * Habilita la abstracción de caché de Spring. Redis es el proveedor configurado
@@ -16,13 +15,13 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 @EnableCaching
 public class RedisCacheConfig {
     public static final String DASHBOARDS = "dashboards";
-    public static final String TOKRN_VERSION="token-version";
+    public static final String TOKEN_VERSION ="token-version";
 
     @Bean
     RedisCacheManagerBuilderCustomizer nexoraCore(){
         return builder -> builder
                 .withCacheConfiguration(DASHBOARDS, base(Duration.ofMinutes(5)))
-                .withCacheConfiguration(TOKRN_VERSION, base(Duration.ofMinutes(15)))
+                .withCacheConfiguration(TOKEN_VERSION, base(Duration.ofMinutes(15)))
                 .transactionAware();
     }
     private static RedisCacheConfiguration base(Duration ttl){

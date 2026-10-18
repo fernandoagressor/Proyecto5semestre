@@ -9,6 +9,7 @@ import com.inmobiliaria.inmobiliaria_api.repository.empresa.EmpresaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.identidad.PersonaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.seguridad.UsuarioRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.security.TokenVersionCache;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import com.inmobiliaria.inmobiliaria_api.service.gerencia.AuditoriaRegistroService;
@@ -32,6 +33,7 @@ public class AdministracionUsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
+    private final TokenVersionCache tokenVersionCache;
     private final AuditoriaRegistroService auditoria;
 
     public AdministracionUsuarioService(
@@ -40,7 +42,8 @@ public class AdministracionUsuarioService {
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
             JdbcTemplate jdbcTemplate,
-            AuditoriaRegistroService auditoria
+            AuditoriaRegistroService auditoria,
+            TokenVersionCache tokenVersionCache
     ) {
         this.empresaRepository = empresaRepository;
         this.personaRepository = personaRepository;
@@ -48,6 +51,7 @@ public class AdministracionUsuarioService {
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
         this.auditoria = auditoria;
+        this.tokenVersionCache = tokenVersionCache;
     }
 
     @Transactional(readOnly = true)
@@ -291,6 +295,7 @@ public class AdministracionUsuarioService {
                 passwordEncoder.encode(request.passwordTemporal()),
                 usuarioId,
                 empresaId);
+        tokenVersionCache.invalidar(usuarioId);
         revocarSesiones(usuarioId, request.motivo());
         auditoria.registrar(
                 new ContextoUsuario(actorId, empresaId),
