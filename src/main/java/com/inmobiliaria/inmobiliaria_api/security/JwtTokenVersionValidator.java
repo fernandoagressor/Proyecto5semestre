@@ -1,6 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.security;
 
-import com.inmobiliaria.inmobiliaria_api.repository.seguridad.UsuarioRepository;
+
+import org.antlr.v4.runtime.Token;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -17,10 +18,10 @@ public class JwtTokenVersionValidator implements OAuth2TokenValidator<Jwt> {
             null
     );
 
-    private final UsuarioRepository usuarioRepository;
+    private final TokenVersionCache tokenVersionCache;
 
-    public JwtTokenVersionValidator(UsuarioRepository usuarioRepository) {
-        this.usuarioRepository = usuarioRepository;
+    public JwtTokenVersionValidator(TokenVersionCache tokenVersionCache) {
+        this.tokenVersionCache = tokenVersionCache;
     }
 
     @Override
@@ -36,7 +37,7 @@ public class JwtTokenVersionValidator implements OAuth2TokenValidator<Jwt> {
         long versionEmitida = versionToken instanceof Number number
                 ? number.longValue()
                 : 0L;
-        return usuarioRepository.findTokenVersionById(usuarioId)
+        return tokenVersionCache.obtener(usuarioId)
                 .filter(versionActual -> versionActual == versionEmitida)
                 .map(version -> OAuth2TokenValidatorResult.success())
                 .orElseGet(() -> OAuth2TokenValidatorResult.failure(TOKEN_REVOCADO));

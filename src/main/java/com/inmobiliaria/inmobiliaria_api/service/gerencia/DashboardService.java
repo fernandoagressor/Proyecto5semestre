@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.service.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.config.RedisCacheConfig;
 import com.inmobiliaria.inmobiliaria_api.dto.gerencia.DashboardDtos;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
@@ -9,6 +10,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +26,11 @@ public class DashboardService {
         this.jdbcTemplate = jdbcTemplate;
         this.alcanceService = alcanceService;
     }
-
+    @Cacheable(
+            cacheNames = RedisCacheConfig.DASHBOARDS,
+            key = "'gerencial:' + #contexto.empresaId() + ':' + #contexto.usuarioId()"
+                    + " + ':' + #proyectoId + ':' + #desde + ':' + #hasta"
+    )
     @Transactional(readOnly = true)
     public DashboardDtos.ResumenGerencial gerencial(ContextoUsuario contexto, Long proyectoId,
                                                       LocalDate desde, LocalDate hasta) {
@@ -88,6 +95,11 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = RedisCacheConfig.DASHBOARDS,
+            key = "'comercial:' + #contexto.empresaId() + ':' + #contexto.usuarioId()"
+                    + " + ':' + #proyectoId + ':' + #desde + ':' + #hasta"
+    )
     public DashboardDtos.ResumenComercial comercial(ContextoUsuario contexto, Long proyectoId,
                                                       LocalDate desde, LocalDate hasta) {
         PeriodoDashboard periodo = periodo(desde, hasta);
@@ -144,6 +156,11 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = RedisCacheConfig.DASHBOARDS,
+            key = "'cartera:' + #contexto.empresaId() + ':' + #contexto.usuarioId()"
+                    + " + ':' + #proyectoId + ':' + #corte"
+    )
     public DashboardDtos.ResumenCartera cartera(ContextoUsuario contexto, Long proyectoId,
                                                  LocalDate corte) {
         LocalDate fechaCorte = corte == null ? LocalDate.now(BOGOTA) : corte;
@@ -193,6 +210,11 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = RedisCacheConfig.DASHBOARDS,
+            key = "'servicio:' + #contexto.empresaId() + ':' + #contexto.usuarioId()"
+                    + " + ':' + #proyectoId + ':' + #desde + ':' + #hasta"
+    )
     public DashboardDtos.ResumenServicio servicio(ContextoUsuario contexto, Long proyectoId,
                                                    LocalDate desde, LocalDate hasta) {
         PeriodoDashboard periodo = periodo(desde, hasta);

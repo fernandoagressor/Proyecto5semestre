@@ -11,7 +11,7 @@ spring:
       minimum-idle: ${DB_POOL_MIN_IDLE:2}
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/nexora}
+      uri: ${MONGODB_URI:mongodb://localhost:27017/nexora?replicaSet=rs0&directConnection=true}
       auto-index-creation: false
       uuid-representation: standard
     redis:
