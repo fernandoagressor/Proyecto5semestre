@@ -27,6 +27,16 @@ services:
   mongodb:
     image: mongo:8.0.32
     restart: unless-stopped
+
+    entrypoint:
+      - bash
+      - -c
+      - |
+        head -c 756 /dev/urandom | base64 > /etc/mongo-keyfile
+        chmod 400 /etc/mongo-keyfile
+        chown mongodb:mongodb /etc/mongo-keyfile
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /etc/mongo-keyfile
+
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-nexora_root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-NexoraDevMongoRoot2026}
@@ -46,13 +56,14 @@ services:
       test:
         - CMD-SHELL
         - >-
-          mongosh --quiet --host localhost --port 27017
+          mongosh --quiet
           --username "$${MONGO_INITDB_ROOT_USERNAME}"
           --password "$${MONGO_INITDB_ROOT_PASSWORD}"
           --authenticationDatabase admin
-          --eval "quit(db.adminCommand('ping').ok ? 0 : 2)"
+          --eval "try { rs.status(); } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}); }
+          quit(db.hello().isWritablePrimary ? 0 : 1);"
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 18
       start_period: 30s
 
@@ -116,7 +127,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-inmobiliaria_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota
       DB_USER: ${DB_USER:-inmobiliaria}
       DB_PASSWORD: ${DB_PASSWORD:-NexoraDevMysql2026}
-      MONGODB_URI: mongodb://${MONGO_APP_USER:-nexora_app}:${MONGO_APP_PASSWORD:-NexoraDevMongoApp2026}@mongodb:27017/${MONGO_DATABASE:-nexora}?authSource=${MONGO_DATABASE:-nexora}&directConnection=true
+      MONGODB_URI: mongodb://${MONGO_APP_USER:-nexora_app}:${MONGO_APP_PASSWORD:-NexoraDevMongoApp2026}@mongodb:27017/${MONGO_DATABASE:-nexora}?authSource=${MONGO_DATABASE:-nexora}&replicaSet=rs0
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-NexoraDevRedis2026}

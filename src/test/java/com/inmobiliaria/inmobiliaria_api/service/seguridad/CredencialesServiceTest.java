@@ -5,6 +5,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegoci
 import com.inmobiliaria.inmobiliaria_api.entity.seguridad.Usuario;
 import com.inmobiliaria.inmobiliaria_api.repository.seguridad.UsuarioRepository;
 import com.inmobiliaria.inmobiliaria_api.service.gerencia.AuditoriaRegistroService;
+import com.inmobiliaria.inmobiliaria_api.security.TokenVersionCache;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,8 @@ class CredencialesServiceTest {
     private SessionService sessionService;
     @Mock
     private AuditoriaRegistroService auditoria;
+    @Mock
+    private TokenVersionCache tokenVersionCache;
     @InjectMocks
     private CredencialesService service;
 

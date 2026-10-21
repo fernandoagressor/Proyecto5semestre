@@ -1,6 +1,5 @@
 package com.inmobiliaria.inmobiliaria_api.security;
 
-import com.inmobiliaria.inmobiliaria_api.repository.seguridad.UsuarioRepository;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -12,26 +11,26 @@ import static org.mockito.Mockito.when;
 
 class JwtTokenVersionValidatorTest {
 
-    private final UsuarioRepository repository = mock(UsuarioRepository.class);
-    private final JwtTokenVersionValidator validator = new JwtTokenVersionValidator(repository);
+    private final TokenVersionCache cache = mock(TokenVersionCache.class);
+    private final JwtTokenVersionValidator validator = new JwtTokenVersionValidator(cache);
 
     @Test
     void aceptaUnTokenConLaVersionVigente() {
-        when(repository.findTokenVersionById(7L)).thenReturn(Optional.of(2L));
+        when(cache.obtener(7L)).thenReturn(Optional.of(2L));
 
         assertThat(validator.validate(jwt(2L)).hasErrors()).isFalse();
     }
 
     @Test
     void rechazaUnTokenEmitidoAntesDelCambioDePassword() {
-        when(repository.findTokenVersionById(7L)).thenReturn(Optional.of(3L));
+        when(cache.obtener(7L)).thenReturn(Optional.of(3L));
 
         assertThat(validator.validate(jwt(2L)).hasErrors()).isTrue();
     }
 
     @Test
     void conservaTokensDelCorteAnteriorMientrasNoCambienLasCredenciales() {
-        when(repository.findTokenVersionById(7L)).thenReturn(Optional.of(0L));
+        when(cache.obtener(7L)).thenReturn(Optional.of(0L));
 
         assertThat(validator.validate(jwt(null)).hasErrors()).isFalse();
     }

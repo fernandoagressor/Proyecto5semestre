@@ -15,6 +15,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.DemasiadosIntentosException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -103,6 +104,16 @@ public class ApiExceptionHandler {
         );
         problem.setTitle("Conflicto");
         problem.setType(URI.create("urn:inmobiliaria:error:conflicto"));
+        return problem;
+    }
+    @ExceptionHandler(DemasiadosIntentosException.class)
+    ProblemDetail demasiadosIntentos(DemasiadosIntentosException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.TOO_MANY_REQUESTS,
+                exception.getMessage()
+        );
+        problem.setTitle("Demasiados intentos");
+        problem.setType(URI.create("urn:inmobiliaria:error:demasiados-intentos"));
         return problem;
     }
 }
