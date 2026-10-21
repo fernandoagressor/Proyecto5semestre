@@ -37,7 +37,8 @@ class PersistenciaPoliglotaIntegrationTest {
     @Container
     static final MongoDBContainer MONGODB =
             new MongoDBContainer(DockerImageName.parse("mongo:8.0.32"))
-                    .withReplicaSet();
+                    .withReplicaSet()
+                    .withEnv("GLIBC_TUNABLES", "glibc.pthread.rseq=1");
 
     @Container
     static final GenericContainer<?> REDIS =
