@@ -63,7 +63,8 @@ class ArquitecturaCapasTest {
     @Test
     void noConservaPaquetesDeLaArquitecturaAnterior() throws IOException {
         Pattern legacy = Pattern.compile(
-                "\\.(aplicacion|dominio|infraestructura|web|configuracion)(\\.|;)"
+                Pattern.quote(ROOT_PACKAGE)
+                        + "\\.(aplicacion|dominio|infraestructura|web|configuracion)(\\.|;)"
         );
         try (Stream<Path> paths = Files.walk(ROOT)) {
             for (Path path : paths.filter(value -> value.toString().endsWith(".java")).toList()) {
