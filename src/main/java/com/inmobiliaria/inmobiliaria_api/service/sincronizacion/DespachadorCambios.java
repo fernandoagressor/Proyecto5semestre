@@ -10,14 +10,19 @@ import java.util.stream.Collectors;
  */
 public class DespachadorCambios {
 
+    public static final String FLUJO = "nexora-principal";
+
     private final Map<String, ProyectorLectura> proyectoresPorColeccion;
+    private final AlmacenTokenReanudacion tokens;
 
     public DespachadorCambios(List<ProyectorLectura> proyectores, AlmacenTokenReanudacion tokens) {
         this.proyectoresPorColeccion = proyectores.stream()
                 .collect(Collectors.toMap(ProyectorLectura::coleccion, Function.identity()));
+        this.tokens = tokens;
     }
 
     public void procesar(CambioDocumento cambio) {
         proyectoresPorColeccion.get(cambio.coleccion()).aplicar(cambio);
+        tokens.guardar(FLUJO, cambio.tokenReanudacion());
     }
 }

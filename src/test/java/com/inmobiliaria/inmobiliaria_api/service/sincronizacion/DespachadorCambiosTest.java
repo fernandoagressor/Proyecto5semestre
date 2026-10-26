@@ -5,6 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.inOrder;
+import org.mockito.InOrder;
 
 import java.util.List;
 import java.util.Map;
@@ -37,5 +39,17 @@ class DespachadorCambiosTest {
     private static CambioDocumento cambio(String coleccion, String token) {
         return new CambioDocumento(
                 coleccion, TipoCambio.INSERCION, 15L, Map.of("estado", "ABIERTA"), token);
+    }
+    @Test
+    void guardaElTokenDespuesDeAplicarElCambio() {
+        DespachadorCambios despachador =
+                new DespachadorCambios(List.of(proyectorSolicitudes), tokens);
+        CambioDocumento cambio = cambio("solicitudes", "token-7");
+
+        despachador.procesar(cambio);
+
+        InOrder orden = inOrder(proyectorSolicitudes, tokens);
+        orden.verify(proyectorSolicitudes).aplicar(cambio);
+        orden.verify(tokens).guardar(DespachadorCambios.FLUJO, "token-7");
     }
 }
