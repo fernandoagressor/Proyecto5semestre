@@ -77,4 +77,13 @@ class DespachadorCambiosTest {
         verify(proyectorSolicitudes, never()).aplicar(any());
         verify(tokens).guardar(DespachadorCambios.FLUJO, "token-9");
     }
+    @Test
+    void rechazaDosProyectoresParaLaMismaColeccion() {
+        ProyectorLectura otroDeSolicitudes = proyector("solicitudes");
+
+        assertThatThrownBy(() -> new DespachadorCambios(
+                List.of(proyectorSolicitudes, otroDeSolicitudes), tokens))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Hay más de un proyector para la colección solicitudes");
+    }
 }

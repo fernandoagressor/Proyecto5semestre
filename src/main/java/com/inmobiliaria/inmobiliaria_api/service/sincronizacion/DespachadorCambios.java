@@ -17,7 +17,14 @@ public class DespachadorCambios {
 
     public DespachadorCambios(List<ProyectorLectura> proyectores, AlmacenTokenReanudacion tokens) {
         this.proyectoresPorColeccion = proyectores.stream()
-                .collect(Collectors.toMap(ProyectorLectura::coleccion, Function.identity()));
+                .collect(Collectors.toMap(
+                        ProyectorLectura::coleccion,
+                        Function.identity(),
+                        (primero, segundo) -> {
+                            throw new IllegalStateException(
+                                    "Hay más de un proyector para la colección "
+                                            + primero.coleccion());
+                        }));
         this.tokens = tokens;
     }
 
@@ -28,5 +35,6 @@ public class DespachadorCambios {
         }
         tokens.guardar(FLUJO, cambio.tokenReanudacion());
     }
+
 
 }
