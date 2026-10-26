@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.inOrder;
 import org.mockito.InOrder;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 
 import java.util.List;
 import java.util.Map;
@@ -51,5 +53,17 @@ class DespachadorCambiosTest {
         InOrder orden = inOrder(proyectorSolicitudes, tokens);
         orden.verify(proyectorSolicitudes).aplicar(cambio);
         orden.verify(tokens).guardar(DespachadorCambios.FLUJO, "token-7");
+    }
+    @Test
+    void siElProyectorFallaNoAvanzaElTokenYPropagaElError() {
+        DespachadorCambios despachador =
+                new DespachadorCambios(List.of(proyectorSolicitudes), tokens);
+        CambioDocumento cambio = cambio("solicitudes", "token-8");
+        IllegalStateException falloMySql = new IllegalStateException("MySQL no responde");
+        doThrow(falloMySql).when(proyectorSolicitudes).aplicar(cambio);
+
+        assertThatThrownBy(() -> despachador.procesar(cambio)).isSameAs(falloMySql);
+
+        verify(tokens, never()).guardar(any(), any());
     }
 }
