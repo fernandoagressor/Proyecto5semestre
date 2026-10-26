@@ -36,4 +36,24 @@ class TraductorCambiosTest {
     private static BsonDocument clave(long id) {
         return new BsonDocument("_id", new BsonInt64(id));
     }
+    // Ciclo 2
+    @ParameterizedTest
+    @EnumSource(value = OperationType.class, names = {"UPDATE", "REPLACE"})
+    void lasActualizacionesYLosReemplazosSonActualizaciones(OperationType operacion) {
+        CambioDocumento cambio = traductor.traducir(
+                "solicitudes", operacion, clave(15L),
+                new Document("_id", 15L).append("estado", "CERRADA"), TOKEN);
+
+        assertThat(cambio.tipo()).isEqualTo(TipoCambio.ACTUALIZACION);
+    }
+    // Ciclo 3
+    @Test
+    void unaEliminacionConservaElIdPeroNoTraeDatos() {
+        CambioDocumento cambio = traductor.traducir(
+                "solicitudes", OperationType.DELETE, clave(15L), null, TOKEN);
+
+        assertThat(cambio.tipo()).isEqualTo(TipoCambio.ELIMINACION);
+        assertThat(cambio.id()).isEqualTo(15L);
+        assertThat(cambio.datos()).isEmpty();
+    }
 }

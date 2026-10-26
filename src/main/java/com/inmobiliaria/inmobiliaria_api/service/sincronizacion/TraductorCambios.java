@@ -11,9 +11,15 @@ public class TraductorCambios {
 
     public CambioDocumento traducir(String coleccion, OperationType operacion,
                                     BsonDocument clave, Document documento, BsonDocument token) {
-        Map<String, Object> datos = new LinkedHashMap<>(documento);
+        Map<String, Object> datos = documento == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(documento);
         datos.remove("_id");
-        return new CambioDocumento(coleccion, TipoCambio.INSERCION,
+        return new CambioDocumento(coleccion,
+                operacion == OperationType.INSERT ? TipoCambio.INSERCION
+                        : operacion == OperationType.DELETE ? TipoCambio.ELIMINACION
+                        : TipoCambio.ACTUALIZACION,
                 clave.get("_id").asNumber().longValue(), datos, token.toJson());
     }
+
 }
