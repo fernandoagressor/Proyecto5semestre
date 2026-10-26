@@ -22,8 +22,8 @@ class DespachadorCambiosTest {
 
     @Test
     void enviaElCambioSoloAlProyectorDeSuColeccion() {
-        DespachadorCambios despachador =
-                new DespachadorCambios(List.of(proyectorSolicitudes, proyectorTickets), tokens);
+        DespachadorCambios despachador = despachadorCon(proyectorSolicitudes);
+
         CambioDocumento cambio = cambio("solicitudes", "token-1");
 
         despachador.procesar(cambio);
@@ -42,6 +42,9 @@ class DespachadorCambiosTest {
         return new CambioDocumento(
                 coleccion, TipoCambio.INSERCION, 15L, Map.of("estado", "ABIERTA"), token);
     }
+    private DespachadorCambios despachadorCon(ProyectorLectura... proyectores) {
+        return new DespachadorCambios(List.of(proyectores), tokens);
+    }
     @Test
     void guardaElTokenDespuesDeAplicarElCambio() {
         DespachadorCambios despachador =
@@ -56,8 +59,7 @@ class DespachadorCambiosTest {
     }
     @Test
     void siElProyectorFallaNoAvanzaElTokenYPropagaElError() {
-        DespachadorCambios despachador =
-                new DespachadorCambios(List.of(proyectorSolicitudes), tokens);
+        DespachadorCambios despachador = despachadorCon(proyectorSolicitudes);
         CambioDocumento cambio = cambio("solicitudes", "token-8");
         IllegalStateException falloMySql = new IllegalStateException("MySQL no responde");
         doThrow(falloMySql).when(proyectorSolicitudes).aplicar(cambio);
@@ -66,10 +68,10 @@ class DespachadorCambiosTest {
 
         verify(tokens, never()).guardar(any(), any());
     }
+
     @Test
     void unCambioDeUnaColeccionSinProyectorSoloAvanzaElToken() {
-        DespachadorCambios despachador =
-                new DespachadorCambios(List.of(proyectorSolicitudes), tokens);
+        DespachadorCambios despachador = despachadorCon(proyectorSolicitudes);
         CambioDocumento cambio = cambio("contadores", "token-9");
 
         despachador.procesar(cambio);
@@ -77,6 +79,7 @@ class DespachadorCambiosTest {
         verify(proyectorSolicitudes, never()).aplicar(any());
         verify(tokens).guardar(DespachadorCambios.FLUJO, "token-9");
     }
+
     @Test
     void rechazaDosProyectoresParaLaMismaColeccion() {
         ProyectorLectura otroDeSolicitudes = proyector("solicitudes");
