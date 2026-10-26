@@ -22,7 +22,7 @@ class DespachadorCambiosTest {
 
     @Test
     void enviaElCambioSoloAlProyectorDeSuColeccion() {
-        DespachadorCambios despachador = despachadorCon(proyectorSolicitudes);
+        DespachadorCambios despachador = despachadorCon(proyectorSolicitudes, proyectorTickets);
 
         CambioDocumento cambio = cambio("solicitudes", "token-1");
 
