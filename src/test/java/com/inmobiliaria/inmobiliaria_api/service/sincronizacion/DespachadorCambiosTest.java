@@ -66,4 +66,15 @@ class DespachadorCambiosTest {
 
         verify(tokens, never()).guardar(any(), any());
     }
+    @Test
+    void unCambioDeUnaColeccionSinProyectorSoloAvanzaElToken() {
+        DespachadorCambios despachador =
+                new DespachadorCambios(List.of(proyectorSolicitudes), tokens);
+        CambioDocumento cambio = cambio("contadores", "token-9");
+
+        despachador.procesar(cambio);
+
+        verify(proyectorSolicitudes, never()).aplicar(any());
+        verify(tokens).guardar(DespachadorCambios.FLUJO, "token-9");
+    }
 }

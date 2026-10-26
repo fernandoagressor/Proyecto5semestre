@@ -22,7 +22,11 @@ public class DespachadorCambios {
     }
 
     public void procesar(CambioDocumento cambio) {
-        proyectoresPorColeccion.get(cambio.coleccion()).aplicar(cambio);
+        ProyectorLectura proyector = proyectoresPorColeccion.get(cambio.coleccion());
+        if (proyector != null) {
+            proyector.aplicar(cambio);
+        }
         tokens.guardar(FLUJO, cambio.tokenReanudacion());
     }
+
 }
