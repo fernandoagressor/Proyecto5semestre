@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.crm;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.CambioEtapaOportunidadRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.HistorialEtapaResponse;
@@ -12,60 +14,62 @@ import com.inmobiliaria.inmobiliaria_api.entity.crm.EstadoOportunidad;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.EstadoProspecto;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.EtapaOportunidad;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Oportunidad;
-import com.inmobiliaria.inmobiliaria_api.entity.crm.OportunidadEtapaHistorial;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.OportunidadLote;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Prospecto;
 import com.inmobiliaria.inmobiliaria_api.entity.inventario.EstadoLote;
 import com.inmobiliaria.inmobiliaria_api.entity.inventario.Lote;
-import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadEtapaHistorialRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadLoteRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
-import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
-import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
+import java.util.regex.Pattern;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Oportunidades comerciales. Desde la rama 8 viven en la colección {@code oportunidades} de
+ * MongoDB, con sus lotes de interés, historial de etapas y actividades embebidos.
+ *
+ * <p>Cada operación lee el documento, aplica la regla y lo guarda con una sola escritura; si otro
+ * usuario lo modificó entretanto, se responde 409. Los lotes y el alcance siguen en MySQL.
+ * Los cambios que provoca la venta llegan por {@link PendientesCrmService}.</p>
+ */
 @Service
 public class OportunidadService {
 
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
-    private static final long MAXIMO_LOTES_INTERES = 10;
 
     private final OportunidadRepository oportunidadRepository;
-    private final OportunidadLoteRepository oportunidadLoteRepository;
-    private final OportunidadEtapaHistorialRepository historialRepository;
     private final LoteRepository loteRepository;
     private final ProspectoService prospectoService;
     private final CrmAlcanceService crmAlcanceService;
+    private final SecuenciaService secuencias;
 
     public OportunidadService(
             OportunidadRepository oportunidadRepository,
-            OportunidadLoteRepository oportunidadLoteRepository,
-            OportunidadEtapaHistorialRepository historialRepository,
             LoteRepository loteRepository,
             ProspectoService prospectoService,
-            CrmAlcanceService crmAlcanceService
+            CrmAlcanceService crmAlcanceService,
+            SecuenciaService secuencias
     ) {
         this.oportunidadRepository = oportunidadRepository;
-        this.oportunidadLoteRepository = oportunidadLoteRepository;
-        this.historialRepository = historialRepository;
         this.loteRepository = loteRepository;
         this.prospectoService = prospectoService;
         this.crmAlcanceService = crmAlcanceService;
+        this.secuencias = secuencias;
     }
 
     @Transactional(readOnly = true)
@@ -79,60 +83,34 @@ public class OportunidadService {
             int pagina,
             int tamano
     ) {
-        Specification<Oportunidad> filtro = filtroAlcance(contexto);
-        if (estado != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("estado"), estado));
-        }
-        if (etapa != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("etapaActual"), etapa));
-        }
-        if (proyectoId != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("proyectoId"), proyectoId));
-        }
-        if (asesorId != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("asesorId"), asesorId));
-        }
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(crmAlcanceService.filtroMongo(contexto));
+        if (estado != null) condiciones.add(where("estado").is(estado.name()));
+        if (etapa != null) condiciones.add(where("etapaActual").is(etapa.name()));
+        if (proyectoId != null) condiciones.add(where("proyectoId").is(proyectoId));
+        if (asesorId != null) condiciones.add(where("asesorId").is(asesorId));
         String busqueda = normalizar(texto);
         if (busqueda != null) {
-            String patron = "%" + busqueda.toLowerCase(Locale.ROOT) + "%";
-            filtro = filtro.and((root, query, cb) ->
-                    cb.like(cb.lower(root.get("codigo")), patron));
+            condiciones.add(where("codigo").regex(Pattern.quote(busqueda), "i"));
         }
-
-        Page<Oportunidad> resultado = oportunidadRepository.findAll(
-                filtro,
+        return PaginaResponse.from(oportunidadRepository.buscarResumen(
+                new Criteria().andOperator(condiciones),
                 PageRequest.of(
                         paginaValida(pagina),
                         tamanoValido(tamano),
-                        Sort.by(Sort.Direction.DESC, "creadoEn")
+                        Sort.by(Sort.Direction.DESC, "creadoEn").and(Sort.by(Sort.Direction.DESC, "id"))
                 )
-        );
-        return PaginaResponse.from(resultado, OportunidadResponse::from);
+        ), OportunidadResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public OportunidadResponse obtener(
-            ContextoUsuario contexto,
-            Long oportunidadId
-    ) {
-        return OportunidadResponse.from(
-                obtenerAutorizada(contexto, oportunidadId)
-        );
+    public OportunidadResponse obtener(ContextoUsuario contexto, Long oportunidadId) {
+        return OportunidadResponse.from(obtenerAutorizada(contexto, oportunidadId));
     }
 
     @Transactional
-    public OportunidadResponse crear(
-            ContextoUsuario contexto,
-            OportunidadRequest request
-    ) {
-        Prospecto prospecto = prospectoService.obtenerAutorizado(
-                contexto,
-                request.prospectoId()
-        );
+    public OportunidadResponse crear(ContextoUsuario contexto, OportunidadRequest request) {
+        Prospecto prospecto = prospectoService.obtenerAutorizado(contexto, request.prospectoId());
         if (prospecto.getEstado() != EstadoProspecto.CALIFICADO) {
             throw new ReglaNegocioException(
                     "El prospecto debe estar calificado para crear una oportunidad"
@@ -144,26 +122,15 @@ public class OportunidadService {
                     "El proyecto de la oportunidad no coincide con el prospecto"
             );
         }
-        if (oportunidadRepository.existsByProspectoIdAndEstado(
-                prospecto.getId(),
-                EstadoOportunidad.ABIERTA
-        )) {
-            throw new ConflictoException(
-                    "El prospecto ya tiene una oportunidad abierta"
-            );
+        if (oportunidadRepository.existsByProspectoIdAndEstado(prospecto.getId(), EstadoOportunidad.ABIERTA)) {
+            throw new ConflictoException("El prospecto ya tiene una oportunidad abierta");
         }
 
         Long asesorId = crmAlcanceService.validarAsesor(
                 contexto,
-                request.asesorId() == null
-                        ? prospecto.getAsesorId()
-                        : request.asesorId()
+                request.asesorId() == null ? prospecto.getAsesorId() : request.asesorId()
         );
-        crmAlcanceService.verificarRegistro(
-                contexto,
-                request.proyectoId(),
-                asesorId
-        );
+        crmAlcanceService.verificarRegistro(contexto, request.proyectoId(), asesorId);
 
         Oportunidad oportunidad = new Oportunidad(
                 contexto.empresaId(),
@@ -174,306 +141,134 @@ public class OportunidadService {
                 request.valorEstimado(),
                 request.fechaProximaAccion()
         );
-        oportunidad = oportunidadRepository.save(oportunidad);
-        historialRepository.save(new OportunidadEtapaHistorial(
-                oportunidad.getId(),
-                null,
-                oportunidad.getEtapaActual(),
-                contexto.usuarioId(),
-                "Creación de la oportunidad"
-        ));
-        return OportunidadResponse.from(oportunidad);
+        oportunidad.identificar(secuencias.siguiente(SecuenciasCrm.OPORTUNIDADES));
+        oportunidad.registrarEtapa(secuencias.siguiente(SecuenciasCrm.HISTORIAL_ETAPAS), null,
+                oportunidad.getEtapaActual(), contexto.usuarioId(), "Creación de la oportunidad");
+        try {
+            return OportunidadResponse.from(oportunidadRepository.insertar(oportunidad));
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictoException("No fue posible asignar un código único a la oportunidad");
+        }
     }
 
     @Transactional
-    public OportunidadResponse actualizar(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            OportunidadActualizarRequest request
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
-        oportunidad.actualizarDatos(
-                request.valorEstimado(),
-                request.fechaProximaAccion()
-        );
-        return OportunidadResponse.from(oportunidad);
+    public OportunidadResponse actualizar(ContextoUsuario contexto, Long oportunidadId,
+                                          OportunidadActualizarRequest request) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
+        oportunidad.actualizarDatos(request.valorEstimado(), request.fechaProximaAccion());
+        return OportunidadResponse.from(guardar(oportunidad));
     }
 
     @Transactional
-    public OportunidadResponse cambiarEtapa(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            CambioEtapaOportunidadRequest request
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
-        EtapaOportunidad anterior = oportunidad.cambiarEtapa(
-                request.etapa(),
-                request.probabilidad()
-        );
-        historialRepository.save(new OportunidadEtapaHistorial(
-                oportunidad.getId(),
-                anterior,
-                oportunidad.getEtapaActual(),
-                contexto.usuarioId(),
-                normalizar(request.observacion())
-        ));
-        return OportunidadResponse.from(oportunidad);
+    public OportunidadResponse cambiarEtapa(ContextoUsuario contexto, Long oportunidadId,
+                                            CambioEtapaOportunidadRequest request) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
+        EtapaOportunidad anterior = oportunidad.cambiarEtapa(request.etapa(), request.probabilidad());
+        oportunidad.registrarEtapa(secuencias.siguiente(SecuenciasCrm.HISTORIAL_ETAPAS), anterior,
+                oportunidad.getEtapaActual(), contexto.usuarioId(), normalizar(request.observacion()));
+        return OportunidadResponse.from(guardar(oportunidad));
     }
 
     @Transactional
-    public OportunidadResponse cerrarPerdida(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            String motivo
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
+    public OportunidadResponse cerrarPerdida(ContextoUsuario contexto, Long oportunidadId, String motivo) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
         oportunidad.cerrarPerdida(requerido(motivo), ahora());
-        return OportunidadResponse.from(oportunidad);
+        return OportunidadResponse.from(guardar(oportunidad));
     }
 
     @Transactional
-    public OportunidadResponse reabrir(
-            ContextoUsuario contexto,
-            Long oportunidadId
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
+    public OportunidadResponse reabrir(ContextoUsuario contexto, Long oportunidadId) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
         oportunidad.reabrir();
-        return OportunidadResponse.from(oportunidad);
-    }
-
-    @Transactional
-    public Oportunidad ganarPorContrato(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            LocalDateTime fecha,
-            Long contratoId
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
-        EtapaOportunidad anterior = oportunidad.getEtapaActual();
-        oportunidad.ganarPorContrato(fecha);
-        historialRepository.save(new OportunidadEtapaHistorial(
-                oportunidad.getId(),
-                anterior,
-                oportunidad.getEtapaActual(),
-                contexto.usuarioId(),
-                "Venta confirmada por contrato " + contratoId
-        ));
-        return oportunidad;
-    }
-
-    @Transactional
-    public Oportunidad reabrirPorAnulacionContrato(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            Long contratoId
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
-        EtapaOportunidad anterior = oportunidad.getEtapaActual();
-        oportunidad.reabrirPorAnulacionContrato();
-        historialRepository.save(new OportunidadEtapaHistorial(
-                oportunidad.getId(),
-                anterior,
-                oportunidad.getEtapaActual(),
-                contexto.usuarioId(),
-                "Venta reabierta por anulación del contrato " + contratoId
-        ));
-        return oportunidad;
+        return OportunidadResponse.from(guardar(oportunidad));
     }
 
     @Transactional(readOnly = true)
-    public List<OportunidadLoteResponse> listarLotes(
-            ContextoUsuario contexto,
-            Long oportunidadId
-    ) {
-        obtenerAutorizada(contexto, oportunidadId);
-        return oportunidadLoteRepository
-                .findByOportunidadIdOrderByPrioridadAsc(oportunidadId)
-                .stream()
+    public List<OportunidadLoteResponse> listarLotes(ContextoUsuario contexto, Long oportunidadId) {
+        return obtenerAutorizada(contexto, oportunidadId).getLotesInteres().stream()
                 .map(OportunidadLoteResponse::from)
                 .toList();
     }
 
     @Transactional
-    public OportunidadLoteResponse agregarLote(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            Long loteId,
-            Integer prioridad
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
+    public OportunidadLoteResponse agregarLote(ContextoUsuario contexto, Long oportunidadId,
+                                               Long loteId, Integer prioridad) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
         exigirAbierta(oportunidad);
-        if (oportunidadLoteRepository.countByOportunidadId(oportunidadId)
-                >= MAXIMO_LOTES_INTERES) {
-            throw new ReglaNegocioException(
-                    "Una oportunidad no puede tener más de diez lotes de interés"
-            );
+        if (oportunidad.getLotesInteres().size() >= Oportunidad.MAXIMO_LOTES_INTERES) {
+            throw new ReglaNegocioException("Una oportunidad no puede tener más de diez lotes de interés");
         }
-        if (oportunidadLoteRepository.existsByOportunidadIdAndLoteId(
-                oportunidadId,
-                loteId
-        )) {
-            throw new ConflictoException(
-                    "El lote ya está vinculado a la oportunidad"
-            );
+        if (oportunidad.tieneLote(loteId)) {
+            throw new ConflictoException("El lote ya está vinculado a la oportunidad");
         }
         Lote lote = obtenerLote(oportunidad, loteId);
         if (lote.getEstado() != EstadoLote.DISPONIBLE) {
-            throw new ReglaNegocioException(
-                    "Solo se pueden vincular lotes disponibles"
-            );
+            throw new ReglaNegocioException("Solo se pueden vincular lotes disponibles");
         }
-        OportunidadLote relacion = new OportunidadLote(
-                oportunidadId,
-                loteId,
-                prioridad == null ? 1 : prioridad
-        );
-        return OportunidadLoteResponse.from(
-                oportunidadLoteRepository.save(relacion)
-        );
+        OportunidadLote relacion = oportunidad.agregarLote(secuencias.siguiente(SecuenciasCrm.LOTES_INTERES),
+                loteId, prioridad == null ? 1 : prioridad);
+        guardar(oportunidad);
+        return OportunidadLoteResponse.from(relacion);
     }
 
     @Transactional
-    public void quitarLote(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            Long loteId
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
+    public void quitarLote(ContextoUsuario contexto, Long oportunidadId, Long loteId) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
         exigirAbierta(oportunidad);
-        OportunidadLote relacion = obtenerRelacion(oportunidadId, loteId);
-        oportunidadLoteRepository.delete(relacion);
+        exigirLote(oportunidad, loteId);
+        oportunidad.quitarLote(loteId);
+        guardar(oportunidad);
     }
 
     @Transactional
-    public OportunidadLoteResponse seleccionarLote(
-            ContextoUsuario contexto,
-            Long oportunidadId,
-            Long loteId,
-            boolean seleccionado
-    ) {
-        Oportunidad oportunidad = obtenerParaActualizar(
-                contexto,
-                oportunidadId
-        );
+    public OportunidadLoteResponse seleccionarLote(ContextoUsuario contexto, Long oportunidadId,
+                                                   Long loteId, boolean seleccionado) {
+        Oportunidad oportunidad = obtenerParaActualizar(contexto, oportunidadId);
         exigirAbierta(oportunidad);
-        OportunidadLote objetivo = obtenerRelacion(oportunidadId, loteId);
+        exigirLote(oportunidad, loteId);
         obtenerLote(oportunidad, loteId);
-        if (seleccionado) {
-            oportunidadLoteRepository
-                    .findByOportunidadIdOrderByPrioridadAsc(oportunidadId)
-                    .forEach(relacion ->
-                            relacion.seleccionar(
-                                    relacion.getId().equals(objetivo.getId())
-                            )
-                    );
-        } else {
-            objetivo.seleccionar(false);
-        }
+        OportunidadLote objetivo = oportunidad.seleccionarLote(loteId, seleccionado);
+        guardar(oportunidad);
         return OportunidadLoteResponse.from(objetivo);
     }
 
     @Transactional(readOnly = true)
-    public List<HistorialEtapaResponse> historialEtapas(
-            ContextoUsuario contexto,
-            Long oportunidadId
-    ) {
-        obtenerAutorizada(contexto, oportunidadId);
-        return historialRepository
-                .findByOportunidadIdOrderByCreadoEnAsc(oportunidadId)
-                .stream()
+    public List<HistorialEtapaResponse> historialEtapas(ContextoUsuario contexto, Long oportunidadId) {
+        return obtenerAutorizada(contexto, oportunidadId).getHistorialEtapas().stream()
                 .map(HistorialEtapaResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Oportunidad obtenerAutorizada(
-            ContextoUsuario contexto,
-            Long oportunidadId
-    ) {
+    public Oportunidad obtenerAutorizada(ContextoUsuario contexto, Long oportunidadId) {
         Oportunidad oportunidad = oportunidadRepository
                 .findByIdAndEmpresaId(oportunidadId, contexto.empresaId())
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "La oportunidad no existe"
-                ));
-        crmAlcanceService.verificarRegistro(
-                contexto,
-                oportunidad.getProyectoId(),
-                oportunidad.getAsesorId()
-        );
+                .orElseThrow(() -> new RecursoNoEncontradoException("La oportunidad no existe"));
+        crmAlcanceService.verificarRegistro(contexto, oportunidad.getProyectoId(), oportunidad.getAsesorId());
         return oportunidad;
     }
 
-    @Transactional
-    public Oportunidad obtenerParaActualizar(
-            ContextoUsuario contexto,
-            Long oportunidadId
-    ) {
-        Oportunidad oportunidad = oportunidadRepository
-                .findForUpdate(oportunidadId, contexto.empresaId())
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "La oportunidad no existe"
-                ));
-        crmAlcanceService.verificarRegistro(
-                contexto,
-                oportunidad.getProyectoId(),
-                oportunidad.getAsesorId()
-        );
-        return oportunidad;
+    /**
+     * Lee la oportunidad para modificarla. Ya no bloquea: la concurrencia la controla la versión
+     * del documento al guardar (ver {@link #guardar(Oportunidad)}).
+     */
+    @Transactional(readOnly = true)
+    public Oportunidad obtenerParaActualizar(ContextoUsuario contexto, Long oportunidadId) {
+        return obtenerAutorizada(contexto, oportunidadId);
     }
 
-    private Specification<Oportunidad> filtroAlcance(
-            ContextoUsuario contexto
-    ) {
-        AlcanceProyectos alcance = crmAlcanceService.obtener(contexto);
-        return (root, query, cb) -> {
-            Predicate empresa = cb.equal(
-                    root.get("empresaId"),
-                    contexto.empresaId()
-            );
-            if (alcance.empresaCompleta()) {
-                return empresa;
-            }
-            List<Predicate> permitidos = new ArrayList<>();
-            if (!alcance.proyectos().isEmpty()) {
-                permitidos.add(
-                        root.get("proyectoId").in(alcance.proyectos())
-                );
-            }
-            if (alcance.registrosPropios()) {
-                permitidos.add(cb.equal(
-                        root.get("asesorId"),
-                        contexto.usuarioId()
-                ));
-            }
-            Predicate alcanceRegistro = permitidos.isEmpty()
-                    ? cb.disjunction()
-                    : cb.or(permitidos.toArray(Predicate[]::new));
-            return cb.and(empresa, alcanceRegistro);
-        };
+    /** Guarda los cambios; 409 si otro usuario guardó la oportunidad entretanto. */
+    public Oportunidad guardar(Oportunidad oportunidad) {
+        try {
+            return oportunidadRepository.guardar(oportunidad);
+        } catch (OptimisticLockingFailureException ex) {
+            throw new ConflictoException("La oportunidad fue modificada por otro usuario");
+        }
+    }
+
+    /** Borra una oportunidad recién creada por una operación que luego falló (compensación). */
+    public void eliminarPorCompensacion(Long oportunidadId) {
+        oportunidadRepository.eliminar(oportunidadId);
     }
 
     private Lote obtenerLote(Oportunidad oportunidad, Long loteId) {
@@ -486,31 +281,20 @@ public class OportunidadService {
         ));
     }
 
-    private OportunidadLote obtenerRelacion(
-            Long oportunidadId,
-            Long loteId
-    ) {
-        return oportunidadLoteRepository
-                .findByOportunidadIdAndLoteId(oportunidadId, loteId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "El lote no está vinculado a la oportunidad"
-                ));
+    private static void exigirLote(Oportunidad oportunidad, Long loteId) {
+        if (!oportunidad.tieneLote(loteId)) {
+            throw new RecursoNoEncontradoException("El lote no está vinculado a la oportunidad");
+        }
     }
 
     private static void exigirAbierta(Oportunidad oportunidad) {
         if (oportunidad.getEstado() != EstadoOportunidad.ABIERTA) {
-            throw new ReglaNegocioException(
-                    "La oportunidad debe estar abierta"
-            );
+            throw new ReglaNegocioException("La oportunidad debe estar abierta");
         }
     }
 
     private static String generarCodigo(String prefijo) {
-        return prefijo + "-"
-                + UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 12)
+        return prefijo + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)
                 .toUpperCase(Locale.ROOT);
     }
 

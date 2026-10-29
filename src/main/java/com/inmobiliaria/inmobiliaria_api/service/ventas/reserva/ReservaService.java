@@ -16,7 +16,6 @@ import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.EstadoReserva;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.Reserva;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.ReservaHistorial;
 import com.inmobiliaria.inmobiliaria_api.repository.cliente.ClienteRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadLoteRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteHistorialEstadoRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.simulacion.SimulacionRepository;
@@ -26,6 +25,7 @@ import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import com.inmobiliaria.inmobiliaria_api.service.crm.CrmAlcanceService;
 import com.inmobiliaria.inmobiliaria_api.service.crm.OportunidadService;
+import com.inmobiliaria.inmobiliaria_api.service.crm.PendientesCrmService;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
@@ -57,7 +57,7 @@ public class ReservaService {
     private final ReservaHistorialRepository historialRepository;
     private final ClienteRepository clienteRepository;
     private final OportunidadService oportunidadService;
-    private final OportunidadLoteRepository oportunidadLoteRepository;
+    private final PendientesCrmService pendientesCrm;
     private final SimulacionRepository simulacionRepository;
     private final LoteRepository loteRepository;
     private final LoteHistorialEstadoRepository loteHistorialRepository;
@@ -69,7 +69,7 @@ public class ReservaService {
             ReservaHistorialRepository historialRepository,
             ClienteRepository clienteRepository,
             OportunidadService oportunidadService,
-            OportunidadLoteRepository oportunidadLoteRepository,
+            PendientesCrmService pendientesCrm,
             SimulacionRepository simulacionRepository,
             LoteRepository loteRepository,
             LoteHistorialEstadoRepository loteHistorialRepository,
@@ -80,7 +80,7 @@ public class ReservaService {
         this.historialRepository = historialRepository;
         this.clienteRepository = clienteRepository;
         this.oportunidadService = oportunidadService;
-        this.oportunidadLoteRepository = oportunidadLoteRepository;
+        this.pendientesCrm = pendientesCrm;
         this.simulacionRepository = simulacionRepository;
         this.loteRepository = loteRepository;
         this.loteHistorialRepository = loteHistorialRepository;
@@ -156,10 +156,7 @@ public class ReservaService {
         ).orElseThrow(() -> new ReglaNegocioException(
                 "El cliente debe estar activo en la empresa"
         ));
-        if (!oportunidadLoteRepository.existsByOportunidadIdAndLoteId(
-                oportunidad.getId(),
-                request.loteId()
-        )) {
+        if (!oportunidad.tieneLote(request.loteId())) {
             throw new ReglaNegocioException(
                     "El lote debe estar vinculado a la oportunidad"
             );
@@ -196,7 +193,7 @@ public class ReservaService {
                 request.simulacionId(),
                 ahora
         );
-        oportunidad.vincularCliente(cliente.getId());
+        oportunidad.validarReserva(cliente.getId());
 
         Reserva reserva = reservaRepository.save(new Reserva(
                 contexto.empresaId(),
@@ -212,6 +209,13 @@ public class ReservaService {
                 valorReserva,
                 request.formaPago().trim()
         ));
+        // El cliente se vincula a la oportunidad (MongoDB) cuando esta transacción se confirma.
+        pendientesCrm.clienteDeReserva(
+                contexto.empresaId(),
+                oportunidad.getId(),
+                cliente.getId(),
+                contexto.usuarioId()
+        );
 
         EstadoLote estadoAnterior = lote.reservar();
         loteHistorialRepository.save(new LoteHistorialEstado(

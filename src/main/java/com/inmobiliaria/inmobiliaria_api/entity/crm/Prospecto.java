@@ -1,70 +1,46 @@
 package com.inmobiliaria.inmobiliaria_api.entity.crm;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
-@Entity
-@Table(name = "prospectos")
-public class Prospecto extends EntidadAuditable {
+/**
+ * Prospecto comercial, guardado en MongoDB (rama 8). Los montos se guardan como Decimal128.
+ * La conversión por venta la aplica {@code ProcesadorPendientesCrm} cuando se firma el contrato.
+ */
+@Document(collection = Prospecto.COLECCION)
+public class Prospecto {
+
+    public static final String COLECCION = "prospectos";
+
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "empresa_id", nullable = false)
     private Long empresaId;
-
-    @Column(name = "proyecto_id")
     private Long proyectoId;
-
-    @Column(name = "persona_id")
     private Long personaId;
-
-    @Column(name = "cliente_id")
     private Long clienteId;
-
-    @Column(name = "asesor_id")
     private Long asesorId;
-
-    @Column(nullable = false, length = 160)
     private String nombres;
-
-    @Column(length = 40)
     private String telefono;
-
-    @Column(length = 180)
     private String correo;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 80)
     private FuenteProspecto fuente;
-
-    @Column(precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal presupuesto;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
     private TemperaturaProspecto temperatura;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private EstadoProspecto estado;
-
-    @Column(columnDefinition = "TEXT")
     private String observaciones;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
 
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected Prospecto() {
@@ -86,6 +62,8 @@ public class Prospecto extends EntidadAuditable {
         this.proyectoId = proyectoId;
         this.asesorId = asesorId;
         this.estado = EstadoProspecto.NUEVO;
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
         actualizarDatos(
                 proyectoId,
                 nombres,
@@ -190,6 +168,38 @@ public class Prospecto extends EntidadAuditable {
         temperatura = TemperaturaProspecto.CALIENTE;
     }
 
+    /** Asigna el identificador de un prospecto nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("El prospecto ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
+    }
+
+    /**
+     * Aplica la venta firmada (desde la cola de pendientes). La venta ya está confirmada en MySQL,
+     * así que solo se rechaza si el prospecto ya se convirtió para otro cliente.
+     *
+     * @return si hubo cambios
+     */
+    public boolean aplicarVentaGanada(Long nuevoClienteId) {
+        if (estado == EstadoProspecto.CONVERTIDO) {
+            if (clienteId != null && !clienteId.equals(nuevoClienteId)) {
+                throw new ReglaNegocioException("El prospecto ya fue convertido para otro cliente");
+            }
+            return false;
+        }
+        clienteId = nuevoClienteId;
+        estado = EstadoProspecto.CONVERTIDO;
+        temperatura = TemperaturaProspecto.CALIENTE;
+        return true;
+    }
+
     public void reabrirPorAnulacionContrato() {
         if (estado != EstadoProspecto.CONVERTIDO) {
             return;
@@ -256,5 +266,13 @@ public class Prospecto extends EntidadAuditable {
 
     public Long getVersion() {
         return version;
+    }
+
+    public LocalDateTime getCreadoEn() {
+        return creadoEn;
+    }
+
+    public LocalDateTime getActualizadoEn() {
+        return actualizadoEn;
     }
 }

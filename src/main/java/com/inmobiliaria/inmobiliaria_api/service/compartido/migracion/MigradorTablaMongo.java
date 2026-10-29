@@ -2,6 +2,7 @@ package com.inmobiliaria.inmobiliaria_api.service.compartido.migracion;
 
 import com.inmobiliaria.inmobiliaria_api.repository.compartido.DocumentosMigradosRepository;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.bson.Document;
+import org.bson.types.Decimal128;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -138,6 +140,15 @@ public abstract class MigradorTablaMongo implements ApplicationRunner {
 
     protected Object fecha(ResultSet rs, String columna) throws SQLException {
         return documentos.valorMongo(rs.getObject(columna, LocalDateTime.class));
+    }
+
+    /**
+     * Monto para un campo marcado con {@code @Field(targetType = DECIMAL128)}: se escribe como
+     * Decimal128 (el conversor por defecto de Spring lo guardaría como texto).
+     */
+    protected static Decimal128 decimal(ResultSet rs, String columna) throws SQLException {
+        BigDecimal valor = rs.getBigDecimal(columna);
+        return valor == null ? null : new Decimal128(valor);
     }
 
     protected static Long largo(ResultSet rs, String columna) throws SQLException {

@@ -74,7 +74,7 @@ public class DashboardService {
                 """, rs -> rs.next() ? new Inventario(rs.getLong("cantidad"), rs.getBigDecimal("valor"))
                 : new Inventario(0, BigDecimal.ZERO), contexto.empresaId(), proyecto, proyecto);
         long oportunidades = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long tareasVencidas = entero("""
@@ -108,23 +108,23 @@ public class DashboardService {
         Long asesor = !alcance.empresaCompleta() && proyecto == null && alcance.registrosPropios()
                 ? contexto.usuarioId() : null;
         long nuevas = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ?
                   AND DATE(creado_en) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto, asesor, asesor);
         long ganadas = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ? AND estado = 'GANADA'
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'GANADA'
                   AND DATE(fecha_cierre) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto, asesor, asesor);
         long perdidas = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ? AND estado = 'PERDIDA'
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'PERDIDA'
                   AND DATE(fecha_cierre) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto, asesor, asesor);
         BigDecimal embudoValor = decimal("""
                 SELECT COALESCE(SUM(valor_estimado * probabilidad_cierre / 100),0)
-                FROM oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
+                FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto, asesor, asesor);
         long reservas = entero("""
@@ -133,7 +133,7 @@ public class DashboardService {
                 """, contexto.empresaId(), proyecto, proyecto, asesor, asesor);
         List<DashboardDtos.Serie> embudo = jdbcTemplate.query("""
                 SELECT etapa_actual categoria, COALESCE(SUM(valor_estimado),0) valor, COUNT(*) cantidad
-                FROM oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
+                FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 GROUP BY etapa_actual ORDER BY MIN(id)
                 """, (rs, row) -> new DashboardDtos.Serie(rs.getString("categoria"),

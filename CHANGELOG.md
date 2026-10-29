@@ -36,6 +36,18 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   inicio de sesión desde una IP nueva, 3 o más exportaciones de auditoría en 24 horas y acciones de
   superadministración entre las 22:00 y las 06:00. No repite una alerta abierta del mismo tipo y
   usuario, y notifica a quienes tienen `AUDITORIA_ALERTAS_GESTIONAR`.
+- **CRM en MongoDB (rama 8a).** Colecciones `prospectos`, `oportunidades` (con lotes de interés,
+  historial de etapas, actividades y presentaciones embebidos) y `citas_comerciales`. Montos como
+  Decimal128; control por versión (409).
+- **Cola `crm_pendientes` (V26).** La reserva, la firma y la anulación del contrato escriben en
+  MySQL, dentro de su transacción, el cambio que le toca al CRM (cliente de la reserva, venta
+  ganada, venta anulada). Se aplica en MongoDB al confirmarse y, si falla, se reintenta cada 30 s
+  (`APP_CRM_PENDIENTES_INTERVALO`). La firma manda: gana la oportunidad aunque se hubiera cerrado.
+- El flujo cliente-lote borra el prospecto y la oportunidad creados en MongoDB si su transacción
+  hace rollback.
+- V26 suelta las llaves de reservas, contratos y simulaciones hacia oportunidades y siembra
+  `lectura_oportunidades`; el dashboard comercial lee la tabla espejo. Migradores con
+  `APP_MIGRACION_CRM_ENABLED`.
 
 ## [0.2.0] - 2026-10-20
 
