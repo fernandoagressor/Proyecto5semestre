@@ -1,141 +1,82 @@
 package com.inmobiliaria.inmobiliaria_api.service.servicio;
 
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudPqrs;
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.DocumentosMigradosRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudPqrsRepository;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.migracion.MigradorTablaMongo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.bson.Document;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Copia a MongoDB las PQRS que todavía están solo en MySQL (rama 5).
- *
- * <ul>
- *   <li>Corre al arrancar y es idempotente: solo inserta las solicitudes cuyo id aún no existe
- *       en MongoDB, así que no pisa lo que ya se atendió en la colección nueva.</li>
- *   <li>Cada solicitud se arma con sus mensajes, adjuntos, historial y la última encuesta
- *       embebidos, conservando los ids y la versión de MySQL.</li>
- *   <li>Antes de copiar sube las secuencias de {@code contadores} al id máximo de cada tabla,
- *       para que una solicitud nueva nunca reciba un id que ya usó MySQL.</li>
- * </ul>
- *
- * <p>Las fechas se convierten con el mismo conversor de Spring Data que usa el repositorio,
- * así un documento migrado se lee igual que uno creado por la aplicación.</p>
+ * Copia a MongoDB las PQRS que todavía están solo en MySQL (rama 5): cada solicitud con sus
+ * mensajes, adjuntos, historial y la última encuesta embebidos, conservando ids y versión.
  *
  * <p>Se desactiva con {@code app.migracion.pqrs.enabled=false}.</p>
  */
 @Component
 @ConditionalOnProperty(prefix = "app.migracion.pqrs", name = "enabled", havingValue = "true", matchIfMissing = true)
-public class MigradorSolicitudesPqrs implements ApplicationRunner {
+public class MigradorSolicitudesPqrs extends MigradorTablaMongo {
 
-    private static final Logger log = LoggerFactory.getLogger(MigradorSolicitudesPqrs.class);
-    static final int LOTE = 500;
-    /**
-     * Spring Data guarda la propiedad {@code id} de los objetos embebidos como {@code _id}
-     * (igual que en la raíz); el migrador escribe lo mismo para que se lean igual.
-     */
-    private static final String ID_EMBEBIDO = "_id";
-
-    private final JdbcTemplate jdbcTemplate;
     private final SolicitudPqrsRepository repository;
-    private final SecuenciaService secuencias;
 
     public MigradorSolicitudesPqrs(JdbcTemplate jdbcTemplate,
+                                   DocumentosMigradosRepository documentos,
                                    SolicitudPqrsRepository repository,
                                    SecuenciaService secuencias) {
-        this.jdbcTemplate = jdbcTemplate;
+        super(jdbcTemplate, documentos, secuencias);
         this.repository = repository;
-        this.secuencias = secuencias;
     }
 
     @Override
-    public void run(ApplicationArguments args) {
-        int migradas = migrar();
-        if (migradas > 0) {
-            log.info("Se copiaron {} solicitudes PQRS de MySQL a MongoDB", migradas);
-        }
+    protected String coleccion() {
+        return SolicitudPqrs.COLECCION;
     }
 
-    /** @return cuántas solicitudes se insertaron en MongoDB en esta ejecución */
-    public int migrar() {
+    @Override
+    protected Class<?> claseDocumento() {
+        return SolicitudPqrs.class;
+    }
+
+    @Override
+    protected Map<String, String> secuencias() {
+        Map<String, String> secuencias = new LinkedHashMap<>();
+        secuencias.put(SecuenciasPqrs.SOLICITUDES, "solicitudes_pqrs");
+        secuencias.put(SecuenciasPqrs.MENSAJES, "solicitud_mensajes");
+        secuencias.put(SecuenciasPqrs.ADJUNTOS, "solicitud_adjuntos");
+        secuencias.put(SecuenciasPqrs.HISTORIAL, "solicitud_historial");
+        return secuencias;
+    }
+
+    @Override
+    protected void prepararColeccion() {
         repository.asegurarIndices();
-        asegurarSecuencias();
-        int migradas = 0;
-        long ultimoId = 0;
-        while (true) {
-            List<Map<String, Object>> lote = jdbcTemplate.query("""
-                    SELECT id, empresa_id, proyecto_id, codigo, cliente_id, contrato_id, asignado_a,
-                           tipo, categoria, asunto, descripcion, prioridad, estado, fecha_limite,
-                           fecha_primera_respuesta, fecha_resolucion, fecha_cierre, creado_en,
-                           actualizado_en, version
-                    FROM solicitudes_pqrs
-                    WHERE id > ?
-                    ORDER BY id
-                    LIMIT ?
-                    """, (rs, fila) -> solicitud(rs), ultimoId, LOTE);
-            if (lote.isEmpty()) {
-                return migradas;
-            }
-            ultimoId = (Long) lote.get(lote.size() - 1).get("_id");
-            List<Long> ids = lote.stream().map(s -> (Long) s.get("_id")).toList();
-            Set<Long> existentes = repository.idsExistentes(ids);
-            List<Long> faltantes = ids.stream().filter(id -> !existentes.contains(id)).toList();
-            if (faltantes.isEmpty()) {
-                continue;
-            }
-            Map<Long, List<Document>> mensajes = mensajes(faltantes);
-            Map<Long, List<Document>> adjuntos = adjuntos(faltantes);
-            Map<Long, List<Document>> historial = historial(faltantes);
-            Map<Long, Document> encuestas = encuestas(faltantes);
-            List<Document> documentos = new ArrayList<>();
-            for (Map<String, Object> datos : lote) {
-                Long id = (Long) datos.get("_id");
-                if (existentes.contains(id)) {
-                    continue;
-                }
-                Document documento = new Document(datos);
-                documento.put("mensajes", mensajes.getOrDefault(id, List.of()));
-                documento.put("adjuntos", adjuntos.getOrDefault(id, List.of()));
-                documento.put("historial", historial.getOrDefault(id, List.of()));
-                poner(documento, "encuesta", encuestas.get(id));
-                documentos.add(documento);
-            }
-            migradas += repository.insertarMigrados(documentos);
-        }
     }
 
-    private void asegurarSecuencias() {
-        secuencias.asegurarMinimo(SecuenciasPqrs.SOLICITUDES, maximo("solicitudes_pqrs"));
-        secuencias.asegurarMinimo(SecuenciasPqrs.MENSAJES, maximo("solicitud_mensajes"));
-        secuencias.asegurarMinimo(SecuenciasPqrs.ADJUNTOS, maximo("solicitud_adjuntos"));
-        secuencias.asegurarMinimo(SecuenciasPqrs.HISTORIAL, maximo("solicitud_historial"));
+    @Override
+    protected String consultaRaiz() {
+        return """
+                SELECT id, empresa_id, proyecto_id, codigo, cliente_id, contrato_id, asignado_a,
+                       tipo, categoria, asunto, descripcion, prioridad, estado, fecha_limite,
+                       fecha_primera_respuesta, fecha_resolucion, fecha_cierre, creado_en,
+                       actualizado_en, version
+                FROM solicitudes_pqrs
+                WHERE id > ?
+                ORDER BY id
+                LIMIT ?
+                """;
     }
 
-    private long maximo(String tabla) {
-        Long maximo = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM " + tabla, Long.class);
-        return maximo == null ? 0 : maximo;
-    }
-
-    private Map<String, Object> solicitud(ResultSet rs) throws SQLException {
-        Map<String, Object> d = new LinkedHashMap<>();
-        d.put("_id", rs.getLong("id"));
-        d.put("_class", SolicitudPqrs.class.getName());
+    @Override
+    protected Document raiz(ResultSet rs) throws SQLException {
+        Document d = new Document();
         poner(d, "empresaId", largo(rs, "empresa_id"));
         poner(d, "proyectoId", largo(rs, "proyecto_id"));
         poner(d, "codigo", rs.getString("codigo"));
@@ -158,11 +99,12 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
         return d;
     }
 
-    private Map<Long, List<Document>> mensajes(Collection<Long> solicitudes) {
-        return agrupar("""
+    @Override
+    protected void completar(Map<Long, Document> porId) {
+        Map<Long, List<Document>> mensajes = agrupar("""
                 SELECT id, solicitud_id, usuario_id, mensaje, es_interno, canal, creado_en
                 FROM solicitud_mensajes WHERE solicitud_id IN (%s) ORDER BY creado_en, id
-                """, solicitudes, rs -> {
+                """, "solicitud_id", porId.keySet(), rs -> {
             Document m = new Document(ID_EMBEBIDO, rs.getLong("id"));
             poner(m, "usuarioId", largo(rs, "usuario_id"));
             poner(m, "mensaje", rs.getString("mensaje"));
@@ -171,26 +113,20 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
             poner(m, "creadoEn", fecha(rs, "creado_en"));
             return m;
         });
-    }
-
-    private Map<Long, List<Document>> adjuntos(Collection<Long> solicitudes) {
-        return agrupar("""
+        Map<Long, List<Document>> adjuntos = agrupar("""
                 SELECT id, solicitud_id, mensaje_id, archivo_id, creado_en
                 FROM solicitud_adjuntos WHERE solicitud_id IN (%s) ORDER BY creado_en, id
-                """, solicitudes, rs -> {
+                """, "solicitud_id", porId.keySet(), rs -> {
             Document a = new Document(ID_EMBEBIDO, rs.getLong("id"));
             poner(a, "mensajeId", largo(rs, "mensaje_id"));
             poner(a, "archivoId", largo(rs, "archivo_id"));
             poner(a, "creadoEn", fecha(rs, "creado_en"));
             return a;
         });
-    }
-
-    private Map<Long, List<Document>> historial(Collection<Long> solicitudes) {
-        return agrupar("""
+        Map<Long, List<Document>> historial = agrupar("""
                 SELECT id, solicitud_id, campo, valor_anterior, valor_nuevo, usuario_id, motivo, creado_en
                 FROM solicitud_historial WHERE solicitud_id IN (%s) ORDER BY creado_en, id
-                """, solicitudes, rs -> {
+                """, "solicitud_id", porId.keySet(), rs -> {
             Document h = new Document(ID_EMBEBIDO, rs.getLong("id"));
             poner(h, "campo", rs.getString("campo"));
             poner(h, "valorAnterior", rs.getString("valor_anterior"));
@@ -200,52 +136,26 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
             poner(h, "creadoEn", fecha(rs, "creado_en"));
             return h;
         });
-    }
-
-    /** La última encuesta de cada solicitud (el documento admite una sola). */
-    private Map<Long, Document> encuestas(Collection<Long> solicitudes) {
-        Map<Long, Document> porSolicitud = new HashMap<>();
-        agrupar("""
+        // El documento admite una sola encuesta: se queda la más reciente.
+        Map<Long, List<Document>> encuestas = agrupar("""
                 SELECT id, solicitud_id, cliente_id, puntuacion, comentario, respondida_en
                 FROM encuestas_satisfaccion WHERE solicitud_id IN (%s) ORDER BY id
-                """, solicitudes, rs -> {
+                """, "solicitud_id", porId.keySet(), rs -> {
             Document e = new Document();
             poner(e, "clienteId", largo(rs, "cliente_id"));
             e.put("puntuacion", rs.getInt("puntuacion"));
             poner(e, "comentario", rs.getString("comentario"));
             poner(e, "respondidaEn", fecha(rs, "respondida_en"));
             return e;
-        }).forEach((solicitud, lista) -> porSolicitud.put(solicitud, lista.get(lista.size() - 1)));
-        return porSolicitud;
-    }
-
-    private Map<Long, List<Document>> agrupar(String sql, Collection<Long> solicitudes, Fila fila) {
-        String marcadores = solicitudes.stream().map(id -> "?").collect(Collectors.joining(","));
-        Map<Long, List<Document>> grupos = new HashMap<>();
-        jdbcTemplate.query(sql.formatted(marcadores), rs -> {
-            grupos.computeIfAbsent(rs.getLong("solicitud_id"), id -> new ArrayList<>()).add(fila.leer(rs));
-        }, solicitudes.toArray());
-        return grupos;
-    }
-
-    private Object fecha(ResultSet rs, String columna) throws SQLException {
-        return repository.valorMongo(rs.getObject(columna, LocalDateTime.class));
-    }
-
-    private static Long largo(ResultSet rs, String columna) throws SQLException {
-        long valor = rs.getLong(columna);
-        return rs.wasNull() ? null : valor;
-    }
-
-    /** Spring Data no escribe los campos nulos; el migrador hace lo mismo. */
-    private static void poner(Map<String, Object> documento, String campo, Object valor) {
-        if (valor != null) {
-            documento.put(campo, valor);
-        }
-    }
-
-    @FunctionalInterface
-    private interface Fila {
-        Document leer(ResultSet rs) throws SQLException;
+        });
+        porId.forEach((id, documento) -> {
+            documento.put("mensajes", mensajes.getOrDefault(id, List.of()));
+            documento.put("adjuntos", adjuntos.getOrDefault(id, List.of()));
+            documento.put("historial", historial.getOrDefault(id, List.of()));
+            List<Document> respuestas = encuestas.get(id);
+            if (respuestas != null && !respuestas.isEmpty()) {
+                documento.put("encuesta", respuestas.get(respuestas.size() - 1));
+            }
+        });
     }
 }

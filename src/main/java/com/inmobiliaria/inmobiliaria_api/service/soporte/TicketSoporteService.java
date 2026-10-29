@@ -1,19 +1,17 @@
 package com.inmobiliaria.inmobiliaria_api.service.soporte;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.soporte.SoporteDtos;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.PrioridadServicio;
 import com.inmobiliaria.inmobiliaria_api.entity.soporte.EstadoTicket;
-import com.inmobiliaria.inmobiliaria_api.entity.soporte.TicketAdjunto;
-import com.inmobiliaria.inmobiliaria_api.entity.soporte.TicketHistorial;
 import com.inmobiliaria.inmobiliaria_api.entity.soporte.TicketMensaje;
 import com.inmobiliaria.inmobiliaria_api.entity.soporte.TicketSoporte;
-import com.inmobiliaria.inmobiliaria_api.repository.soporte.TicketAdjuntoRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.soporte.TicketHistorialRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.soporte.TicketMensajeRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.soporte.TicketSoporteRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.AccesoDenegadoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
@@ -23,6 +21,7 @@ import com.inmobiliaria.inmobiliaria_api.service.servicio.ServicioClienteAlcance
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -30,34 +29,41 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Tickets de soporte técnico. Desde la rama 6 viven en MongoDB (colección
+ * {@code tickets_soporte}) con su conversación, adjuntos e historial embebidos.
+ *
+ * <p>Cada operación lee el documento, aplica la regla y lo guarda con una sola escritura; si
+ * otro agente lo modificó entretanto, la versión no coincide y se responde 409. Las consultas de
+ * alcance y de archivos siguen en MySQL dentro de la transacción JPA de cada método.</p>
+ */
 @Service
 public class TicketSoporteService {
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private static final DateTimeFormatter DIA = DateTimeFormatter.ofPattern("yyyyMMdd");
+    static final String SECUENCIA_TICKETS = "tickets_soporte";
+    static final String SECUENCIA_MENSAJES = "ticket_mensajes";
+    static final String SECUENCIA_ADJUNTOS = "ticket_adjuntos";
+    static final String SECUENCIA_HISTORIAL = "ticket_historial";
+
     private final TicketSoporteRepository repository;
-    private final TicketMensajeRepository mensajeRepository;
-    private final TicketAdjuntoRepository adjuntoRepository;
-    private final TicketHistorialRepository historialRepository;
+    private final SecuenciaService secuencias;
     private final ServicioClienteAlcanceService alcanceService;
     private final NotificacionService notificacionService;
     private final JdbcTemplate jdbcTemplate;
 
     public TicketSoporteService(TicketSoporteRepository repository,
-                                TicketMensajeRepository mensajeRepository,
-                                TicketAdjuntoRepository adjuntoRepository,
-                                TicketHistorialRepository historialRepository,
+                                SecuenciaService secuencias,
                                 ServicioClienteAlcanceService alcanceService,
                                 NotificacionService notificacionService,
                                 JdbcTemplate jdbcTemplate) {
         this.repository = repository;
-        this.mensajeRepository = mensajeRepository;
-        this.adjuntoRepository = adjuntoRepository;
-        this.historialRepository = historialRepository;
+        this.secuencias = secuencias;
         this.alcanceService = alcanceService;
         this.notificacionService = notificacionService;
         this.jdbcTemplate = jdbcTemplate;
@@ -67,26 +73,30 @@ public class TicketSoporteService {
     public PaginaResponse<SoporteDtos.Response> listar(ContextoUsuario contexto, EstadoTicket estado,
                                                        Long asignadoA, int pagina, int tamano) {
         boolean cliente = alcanceService.clienteAutenticado(contexto).isPresent();
-        Specification<TicketSoporte> filtro = (root, query, cb) -> cb.equal(root.get("empresaId"), contexto.empresaId());
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(where("empresaId").is(contexto.empresaId()));
         if (cliente) {
-            filtro = filtro.and((root, query, cb) -> cb.equal(root.get("solicitanteId"), contexto.usuarioId()));
+            condiciones.add(where("solicitanteId").is(contexto.usuarioId()));
         } else {
             AlcanceProyectos alcance = alcanceService.alcanceInterno(contexto);
             if (!alcance.empresaCompleta()) {
-                filtro = filtro.and((root, query, cb) -> {
-                    var permitidos = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-                    if (!alcance.proyectos().isEmpty()) permitidos.add(root.get("proyectoId").in(alcance.proyectos()));
-                    if (alcance.registrosPropios()) permitidos.add(cb.or(
-                            cb.equal(root.get("solicitanteId"), contexto.usuarioId()),
-                            cb.equal(root.get("asignadoA"), contexto.usuarioId())));
-                    return permitidos.isEmpty() ? cb.disjunction() : cb.or(permitidos.toArray(jakarta.persistence.criteria.Predicate[]::new));
-                });
+                List<Criteria> permitidos = new ArrayList<>();
+                if (!alcance.proyectos().isEmpty()) permitidos.add(where("proyectoId").in(alcance.proyectos()));
+                if (alcance.registrosPropios()) {
+                    permitidos.add(where("solicitanteId").is(contexto.usuarioId()));
+                    permitidos.add(where("asignadoA").is(contexto.usuarioId()));
+                }
+                condiciones.add(permitidos.isEmpty()
+                        ? where("id").in(List.of())
+                        : new Criteria().orOperator(permitidos));
             }
         }
-        if (estado != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("estado"), estado));
-        if (asignadoA != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("asignadoA"), asignadoA));
-        Page<TicketSoporte> resultado = repository.findAll(filtro, PageRequest.of(
-                Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100), Sort.by(Sort.Direction.DESC, "creadoEn")));
+        if (estado != null) condiciones.add(where("estado").is(estado.name()));
+        if (asignadoA != null) condiciones.add(where("asignadoA").is(asignadoA));
+        Page<TicketSoporte> resultado = repository.buscarResumen(
+                new Criteria().andOperator(condiciones),
+                PageRequest.of(Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100),
+                        Sort.by(Sort.Direction.DESC, "creadoEn").and(Sort.by(Sort.Direction.DESC, "id"))));
         return PaginaResponse.from(resultado, SoporteDtos.Response::from);
     }
 
@@ -115,35 +125,34 @@ public class TicketSoporteService {
                 contexto.usuarioId(), requerido(request.asunto()), requerido(request.categoria()),
                 request.prioridad() == null ? PrioridadServicio.MEDIA : request.prioridad(),
                 requerido(request.descripcion()));
-        try { ticket = repository.save(ticket); }
+        ticket.identificar(secuencias.siguiente(SECUENCIA_TICKETS));
+        ticket.agregarMensaje(secuencias.siguiente(SECUENCIA_MENSAJES), contexto.usuarioId(), ticket.getDescripcion(), false);
+        try { ticket = repository.insertar(ticket); }
         catch (DataIntegrityViolationException ex) { throw new ConflictoException("No fue posible asignar un código único al ticket"); }
-        mensajeRepository.save(new TicketMensaje(ticket.getId(), contexto.usuarioId(), ticket.getDescripcion(), false));
         return SoporteDtos.Response.from(ticket);
     }
 
     @Transactional(readOnly = true)
     public SoporteDtos.Response obtener(ContextoUsuario contexto, Long id) {
-        return SoporteDtos.Response.from(autorizado(contexto, id, false));
+        return SoporteDtos.Response.from(autorizado(contexto, id));
     }
 
     @Transactional(readOnly = true)
     public List<SoporteDtos.MensajeResponse> mensajes(ContextoUsuario contexto, Long id) {
-        autorizado(contexto, id, false);
+        TicketSoporte ticket = autorizado(contexto, id);
         boolean cliente = alcanceService.clienteAutenticado(contexto).isPresent();
-        List<TicketMensaje> mensajes = cliente
-                ? mensajeRepository.findByTicketIdAndInternoFalseOrderByCreadoEnAsc(id)
-                : mensajeRepository.findByTicketIdOrderByCreadoEnAsc(id);
-        return mensajes.stream().map(SoporteDtos.MensajeResponse::from).toList();
+        return ticket.mensajes(!cliente).stream().map(SoporteDtos.MensajeResponse::from).toList();
     }
 
     @Transactional
     public SoporteDtos.MensajeResponse responder(ContextoUsuario contexto, Long id, SoporteDtos.MensajeRequest request) {
-        TicketSoporte ticket = autorizado(contexto, id, true);
+        TicketSoporte ticket = autorizado(contexto, id);
         boolean cliente = alcanceService.clienteAutenticado(contexto).isPresent();
         if (cliente && request.interno()) throw new AccesoDenegadoException("El cliente no puede crear notas internas");
         if (!cliente && !request.interno()) ticket.registrarRespuesta(ahora());
-        TicketMensaje mensaje = mensajeRepository.save(new TicketMensaje(id, contexto.usuarioId(),
-                requerido(request.mensaje()), request.interno()));
+        TicketMensaje mensaje = ticket.agregarMensaje(secuencias.siguiente(SECUENCIA_MENSAJES), contexto.usuarioId(),
+                requerido(request.mensaje()), request.interno());
+        repository.guardar(ticket);
         Long destino = cliente ? ticket.getAsignadoA() : ticket.getSolicitanteId();
         if (!request.interno()) notificacionService.crear(contexto.empresaId(), destino, "SOPORTE_RESPUESTA",
                 "Nueva respuesta en " + ticket.getCodigo(), ticket.getAsunto(), "TICKET_SOPORTE", id, "MEDIA");
@@ -153,10 +162,11 @@ public class TicketSoporteService {
     @Transactional
     public SoporteDtos.Response asignar(ContextoUsuario contexto, Long id, SoporteDtos.AsignarRequest request) {
         alcanceService.validarUsuarioEmpresa(contexto, request.usuarioId());
-        TicketSoporte ticket = autorizado(contexto, id, true);
+        TicketSoporte ticket = autorizado(contexto, id);
         Long anterior = ticket.asignar(request.usuarioId());
-        historialRepository.save(new TicketHistorial(id, "asignado_a", texto(anterior), texto(request.usuarioId()),
-                contexto.usuarioId(), normalizar(request.motivo())));
+        ticket.registrarCambio(secuencias.siguiente(SECUENCIA_HISTORIAL), "asignado_a", texto(anterior),
+                texto(request.usuarioId()), contexto.usuarioId(), normalizar(request.motivo()));
+        ticket = repository.guardar(ticket);
         notificacionService.crear(contexto.empresaId(), request.usuarioId(), "SOPORTE_ASIGNADO",
                 "Ticket asignado " + ticket.getCodigo(), ticket.getAsunto(), "TICKET_SOPORTE", id, "ALTA");
         return SoporteDtos.Response.from(ticket);
@@ -164,10 +174,11 @@ public class TicketSoporteService {
 
     @Transactional
     public SoporteDtos.Response cambiarEstado(ContextoUsuario contexto, Long id, SoporteDtos.EstadoRequest request) {
-        TicketSoporte ticket = autorizado(contexto, id, true);
+        TicketSoporte ticket = autorizado(contexto, id);
         EstadoTicket anterior = ticket.cambiarEstado(request.estado(), ahora());
-        historialRepository.save(new TicketHistorial(id, "estado", anterior.name(), request.estado().name(),
-                contexto.usuarioId(), normalizar(request.motivo())));
+        ticket.registrarCambio(secuencias.siguiente(SECUENCIA_HISTORIAL), "estado", anterior.name(),
+                request.estado().name(), contexto.usuarioId(), normalizar(request.motivo()));
+        ticket = repository.guardar(ticket);
         notificacionService.crear(contexto.empresaId(), ticket.getSolicitanteId(), "SOPORTE_ESTADO",
                 "Estado actualizado " + ticket.getCodigo(), "El ticket cambió a " + request.estado().name(),
                 "TICKET_SOPORTE", id, "MEDIA");
@@ -176,38 +187,37 @@ public class TicketSoporteService {
 
     @Transactional
     public SoporteDtos.AdjuntoResponse adjuntar(ContextoUsuario contexto, Long id, SoporteDtos.AdjuntoRequest request) {
-        autorizado(contexto, id, true);
+        TicketSoporte ticket = autorizado(contexto, id);
         Integer archivos = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM archivos WHERE id = ? AND empresa_id = ? AND estado = 'ACTIVO'",
                 Integer.class, request.archivoId(), contexto.empresaId());
         if (archivos == null || archivos == 0) throw new ReglaNegocioException("El archivo no existe o no está activo");
-        if (request.mensajeId() != null && mensajeRepository.findByIdAndTicketId(request.mensajeId(), id).isEmpty()) {
+        if (request.mensajeId() != null && !ticket.tieneMensaje(request.mensajeId())) {
             throw new ReglaNegocioException("El mensaje no pertenece al ticket");
         }
-        if (adjuntoRepository.existsByTicketIdAndArchivoId(id, request.archivoId())) {
+        if (ticket.tieneArchivo(request.archivoId())) {
             throw new ConflictoException("El archivo ya está adjunto al ticket");
         }
-        return SoporteDtos.AdjuntoResponse.from(adjuntoRepository.save(
-                new TicketAdjunto(id, request.mensajeId(), request.archivoId())));
+        var adjunto = ticket.adjuntar(secuencias.siguiente(SECUENCIA_ADJUNTOS), request.mensajeId(), request.archivoId());
+        repository.guardar(ticket);
+        return SoporteDtos.AdjuntoResponse.from(adjunto);
     }
 
     @Transactional(readOnly = true)
     public List<SoporteDtos.AdjuntoResponse> adjuntos(ContextoUsuario contexto, Long id) {
-        autorizado(contexto, id, false);
-        return adjuntoRepository.findByTicketIdOrderByCreadoEnAsc(id).stream().map(SoporteDtos.AdjuntoResponse::from).toList();
+        return autorizado(contexto, id).getAdjuntos().stream().map(SoporteDtos.AdjuntoResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
     public List<SoporteDtos.HistorialResponse> historial(ContextoUsuario contexto, Long id) {
-        autorizado(contexto, id, false);
+        TicketSoporte ticket = autorizado(contexto, id);
         if (alcanceService.clienteAutenticado(contexto).isPresent()) {
             throw new AccesoDenegadoException("El historial interno no está disponible en el portal");
         }
-        return historialRepository.findByTicketIdOrderByCreadoEnAsc(id).stream().map(SoporteDtos.HistorialResponse::from).toList();
+        return ticket.getHistorial().stream().map(SoporteDtos.HistorialResponse::from).toList();
     }
 
-    private TicketSoporte autorizado(ContextoUsuario contexto, Long id, boolean bloqueo) {
-        TicketSoporte ticket = (bloqueo ? repository.findForUpdate(id, contexto.empresaId())
-                : repository.findByIdAndEmpresaId(id, contexto.empresaId()))
+    private TicketSoporte autorizado(ContextoUsuario contexto, Long id) {
+        TicketSoporte ticket = repository.findByIdAndEmpresaId(id, contexto.empresaId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("El ticket no existe"));
         if (alcanceService.clienteAutenticado(contexto).isPresent()
                 && !contexto.usuarioId().equals(ticket.getSolicitanteId())) {

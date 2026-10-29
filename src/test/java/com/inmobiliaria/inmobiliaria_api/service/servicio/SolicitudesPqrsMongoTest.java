@@ -9,6 +9,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.servicio.PrioridadServicio;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudMensaje;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudPqrs;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.TipoSolicitud;
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.DocumentosMigradosRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudPqrsRepository;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.sincronizacion.CambioDocumento;
@@ -97,7 +98,7 @@ class SolicitudesPqrsMongoTest {
         mongo = new MongoTemplate(cliente, "pqrs_" + System.nanoTime());
         repository = new SolicitudPqrsRepository(mongo);
         secuencias = new SecuenciaService(mongo);
-        migrador = new MigradorSolicitudesPqrs(jdbc, repository, secuencias);
+        migrador = new MigradorSolicitudesPqrs(jdbc, new DocumentosMigradosRepository(mongo), repository, secuencias);
         // Las filas de prueba no tienen empresas, clientes ni archivos reales detrás.
         jdbc.execute("SET FOREIGN_KEY_CHECKS = 0");
         sembrarMySql();

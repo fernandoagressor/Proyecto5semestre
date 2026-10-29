@@ -5,17 +5,8 @@ import static org.springframework.data.mongodb.core.query.Query.query;
 
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.EstadoSolicitud;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudPqrs;
-import com.mongodb.ErrorCategory;
-import com.mongodb.MongoBulkWriteException;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.InsertManyOptions;
-import com.mongodb.client.model.Projections;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -98,49 +89,5 @@ public class SolicitudPqrsRepository {
                 .on("estado", Sort.Direction.ASC).named("idx_solicitudes_pqrs_empresa_asignado_estado"));
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("proyectoId", Sort.Direction.ASC)
                 .named("idx_solicitudes_pqrs_empresa_proyecto"));
-    }
-
-    // --- Migración desde MySQL ---------------------------------------------------------------
-
-    /** De los ids recibidos, devuelve los que ya existen en MongoDB. */
-    public Set<Long> idsExistentes(Collection<Long> ids) {
-        Set<Long> existentes = new HashSet<>();
-        if (ids.isEmpty()) {
-            return existentes;
-        }
-        mongoTemplate.getCollection(SolicitudPqrs.COLECCION)
-                .find(Filters.in("_id", ids))
-                .projection(Projections.include("_id"))
-                .forEach(documento -> existentes.add(documento.get("_id", Number.class).longValue()));
-        return existentes;
-    }
-
-    /**
-     * Inserta documentos ya armados por el migrador. Los que ya existan (otra instancia los
-     * migró al mismo tiempo) se ignoran.
-     *
-     * @return cuántos se insertaron
-     */
-    public int insertarMigrados(List<Document> documentos) {
-        if (documentos.isEmpty()) {
-            return 0;
-        }
-        try {
-            mongoTemplate.getCollection(SolicitudPqrs.COLECCION)
-                    .insertMany(documentos, new InsertManyOptions().ordered(false));
-            return documentos.size();
-        } catch (MongoBulkWriteException e) {
-            boolean soloDuplicados = e.getWriteErrors().stream()
-                    .allMatch(error -> ErrorCategory.fromErrorCode(error.getCode()) == ErrorCategory.DUPLICATE_KEY);
-            if (!soloDuplicados || e.getWriteConcernError() != null) {
-                throw e;
-            }
-            return documentos.size() - e.getWriteErrors().size();
-        }
-    }
-
-    /** Convierte un valor Java al tipo que guarda Spring Data (por ejemplo LocalDateTime → Date). */
-    public Object valorMongo(Object valor) {
-        return valor == null ? null : mongoTemplate.getConverter().convertToMongoType(valor);
     }
 }

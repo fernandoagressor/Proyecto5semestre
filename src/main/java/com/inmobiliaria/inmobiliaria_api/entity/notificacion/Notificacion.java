@@ -1,43 +1,43 @@
 package com.inmobiliaria.inmobiliaria_api.entity.notificacion;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "notificaciones")
-public class Notificacion extends EntidadAuditable {
+/**
+ * Notificación dentro de la aplicación, guardada en MongoDB (rama 6).
+ *
+ * <p>Los intentos de entrega por canales externos (correo, SMS, WhatsApp, push) viven embebidos
+ * en {@code envios}. Ids numéricos desde {@code contadores}; las migradas conservan el id de MySQL.</p>
+ */
+@Document(collection = Notificacion.COLECCION)
+public class Notificacion {
+
+    public static final String COLECCION = "notificaciones";
+
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "empresa_id")
     private Long empresaId;
-    @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
-    @Column(nullable = false, length = 40)
     private String tipo;
-    @Column(nullable = false, length = 180)
     private String titulo;
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String mensaje;
-    @Column(name = "entidad_tipo", length = 50)
     private String entidadTipo;
-    @Column(name = "entidad_id")
     private Long entidadId;
-    @Column(nullable = false, length = 15)
     private String prioridad;
-    @Column(name = "leida_en")
     private LocalDateTime leidaEn;
-    @Column(name = "expira_en")
     private LocalDateTime expiraEn;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
+    private List<EnvioNotificacion> envios = new ArrayList<>();
+
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected Notificacion() { }
@@ -54,10 +54,34 @@ public class Notificacion extends EntidadAuditable {
         this.entidadId = entidadId;
         this.prioridad = prioridad;
         this.expiraEn = expiraEn;
+        this.creadoEn = ahora();
+        this.actualizadoEn = creadoEn;
+    }
+
+    /** Asigna el identificador de una notificación nueva. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("La notificación ya tiene identificador " + id);
+        }
+        id = nuevoId;
     }
 
     public void marcarLeida(LocalDateTime fecha) {
-        if (leidaEn == null) { leidaEn = fecha; }
+        if (leidaEn == null) {
+            leidaEn = fecha;
+            actualizadoEn = ahora();
+        }
+    }
+
+    /** Vigente si no tiene vencimiento o aún no llega. */
+    public boolean vigente(LocalDateTime ahora) {
+        return expiraEn == null || expiraEn.isAfter(ahora);
+    }
+
+    public EnvioNotificacion agregarEnvio(long envioId, Long plantillaId, String canal, String destinatario) {
+        EnvioNotificacion envio = new EnvioNotificacion(envioId, plantillaId, canal, destinatario, ahora());
+        envios.add(envio);
+        return envio;
     }
 
     public Long getId() { return id; }
@@ -71,4 +95,12 @@ public class Notificacion extends EntidadAuditable {
     public String getPrioridad() { return prioridad; }
     public LocalDateTime getLeidaEn() { return leidaEn; }
     public LocalDateTime getExpiraEn() { return expiraEn; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
+    public List<EnvioNotificacion> getEnvios() { return List.copyOf(envios); }
+    public Long getVersion() { return version; }
+
+    private static LocalDateTime ahora() {
+        return LocalDateTime.now(BOGOTA);
+    }
 }
