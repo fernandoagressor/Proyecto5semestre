@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Repository;
 
 /** Acceso a la colección {@code exportaciones_auditoria} de MongoDB. */
 @Repository
-public class ExportacionAuditoriaRepository {
+public class ExportacionAuditoriaRepository implements IndicesMongo {
 
     private final MongoTemplate mongoTemplate;
 
@@ -34,6 +35,7 @@ public class ExportacionAuditoriaRepository {
     }
 
     /** Crea los índices de la colección; es idempotente. */
+    @Override
     public void asegurarIndices() {
         mongoTemplate.indexOps(ExportacionAuditoria.class).ensureIndex(new Index()
                 .on("empresaId", Sort.Direction.ASC).on("usuarioId", Sort.Direction.ASC)

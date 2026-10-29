@@ -1,39 +1,28 @@
 package com.inmobiliaria.inmobiliaria_api.entity.gerencia;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "tarea_historial")
-public class TareaHistorial extends EntidadAuditable {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+/** Cambio de estado o reasignación de una tarea; vive embebido en {@link Tarea}. */
+public class TareaHistorial {
     private Long id;
-    @Column(name = "tarea_id", nullable = false)
     private Long tareaId;
-    @Column(name = "estado_anterior", length = 20)
     private String estadoAnterior;
-    @Column(name = "estado_nuevo", nullable = false, length = 20)
     private String estadoNuevo;
-    @Column(name = "usuario_id")
     private Long usuarioId;
-    @Column(length = 500)
     private String comentario;
+    private LocalDateTime creadoEn;
 
     protected TareaHistorial() { }
 
-    public TareaHistorial(Long tareaId, String estadoAnterior, String estadoNuevo,
-                          Long usuarioId, String comentario) {
+    public TareaHistorial(Long id, Long tareaId, String estadoAnterior, String estadoNuevo,
+                          Long usuarioId, String comentario, LocalDateTime creadoEn) {
+        this.id = id;
         this.tareaId = tareaId;
         this.estadoAnterior = estadoAnterior;
         this.estadoNuevo = estadoNuevo;
         this.usuarioId = usuarioId;
         this.comentario = comentario == null || comentario.isBlank() ? null : comentario.trim();
+        this.creadoEn = creadoEn;
     }
 
     public Long getId() { return id; }
@@ -42,4 +31,5 @@ public class TareaHistorial extends EntidadAuditable {
     public String getEstadoNuevo() { return estadoNuevo; }
     public Long getUsuarioId() { return usuarioId; }
     public String getComentario() { return comentario; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }

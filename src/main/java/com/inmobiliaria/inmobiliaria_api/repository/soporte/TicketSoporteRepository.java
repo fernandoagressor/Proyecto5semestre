@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.soporte;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Repository;
 
 /** Acceso a la colección {@code tickets_soporte} de MongoDB. */
 @Repository
-public class TicketSoporteRepository {
+public class TicketSoporteRepository implements IndicesMongo {
 
     private static final List<String> DETALLE = List.of("mensajes", "adjuntos", "historial");
 
@@ -57,6 +58,7 @@ public class TicketSoporteRepository {
     }
 
     /** Crea los índices de la colección; es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(TicketSoporte.class);
         indices.ensureIndex(new Index().on("codigo", Sort.Direction.ASC)

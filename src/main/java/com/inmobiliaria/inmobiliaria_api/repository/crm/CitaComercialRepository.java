@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.crm;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Repository;
 
 /** Acceso a la colección {@code citas_comerciales} de MongoDB. */
 @Repository
-public class CitaComercialRepository {
+public class CitaComercialRepository implements IndicesMongo {
 
     private static final List<String> FINALIZADAS = List.of(EstadoCitaComercial.CANCELADA.name(),
             EstadoCitaComercial.REALIZADA.name(), EstadoCitaComercial.NO_ASISTIO.name());
@@ -70,6 +71,7 @@ public class CitaComercialRepository {
     }
 
     /** Crea los índices de la colección; es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(CitaComercial.class);
         indices.ensureIndex(new Index().on("asesorId", Sort.Direction.ASC).on("fechaInicio", Sort.Direction.ASC)

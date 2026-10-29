@@ -56,6 +56,16 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   (nuevo tipo `SIMULACION_ACEPTADA` y columna `simulacion_id`, V27). V27 también suelta la llave
   de reservas hacia simulaciones. `MigradorSimulaciones` copia el histórico con sus cuotas
   (`APP_MIGRACION_SIMULACIONES_ENABLED`).
+- **Seguimiento en MongoDB (rama 9).** Colecciones `tareas` (con el historial embebido),
+  `gestiones_cobro` y `estados_cuenta`. Cambiar el estado o reasignar una tarea usa control por
+  versión (409); el vencimiento automático salta la tarea que cambió entretanto y la retoma en la
+  siguiente corrida. Las gestiones de cobro guardan el proyecto del contrato y los estados de
+  cuenta siguen siendo únicos por contrato y fecha de corte.
+- El dashboard gerencial cuenta las tareas vencidas desde `lectura_tareas` (V28 la siembra) y el
+  de cartera cuenta las promesas de pago en MongoDB. Migradores con
+  `APP_MIGRACION_SEGUIMIENTO_ENABLED`.
+- `InicializadorIndicesMongo` crea al arrancar los índices de todas las colecciones (únicos, TTL
+  y de consulta) aunque su migrador esté apagado (`APP_MONGO_INDICES_ENABLED`).
 
 ## [0.2.0] - 2026-10-20
 

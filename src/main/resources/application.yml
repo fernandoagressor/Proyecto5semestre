@@ -90,12 +90,16 @@ app:
     ephemeral-store: redis
   storage:
     path: ${APP_STORAGE_PATH:./storage}
+  mongo:
+    indices:
+      # Crea al arrancar los índices de todas las colecciones (únicos, TTL y de consulta).
+      enabled: ${APP_MONGO_INDICES_ENABLED:true}
   sync:
     # Change Stream de MongoDB -> tablas espejo de lectura en MySQL (rama 4).
     enabled: ${APP_SYNC_ENABLED:true}
     espera-reintento: ${APP_SYNC_ESPERA_REINTENTO:PT5S}
   migracion:
-    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 a 8b).
+    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 a 9).
     pqrs:
       enabled: ${APP_MIGRACION_PQRS_ENABLED:true}
     soporte:
@@ -108,6 +112,8 @@ app:
       enabled: ${APP_MIGRACION_CRM_ENABLED:true}
     simulaciones:
       enabled: ${APP_MIGRACION_SIMULACIONES_ENABLED:true}
+    seguimiento:
+      enabled: ${APP_MIGRACION_SEGUIMIENTO_ENABLED:true}
   crm:
     pendientes:
       # Reintento de los cambios de la venta pendientes de aplicar al CRM en MongoDB (rama 8).

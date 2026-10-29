@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -23,7 +24,7 @@ import org.springframework.stereotype.Repository;
  * <p>A propósito solo ofrece insertar y consultar: la bitácora es inmutable.</p>
  */
 @Repository
-public class EventoAuditoriaRepository {
+public class EventoAuditoriaRepository implements IndicesMongo {
 
     private final MongoTemplate mongoTemplate;
 
@@ -56,6 +57,7 @@ public class EventoAuditoriaRepository {
     }
 
     /** Crea los índices de la colección; es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(EventoAuditoria.class);
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("ocurridoEn", Sort.Direction.DESC)

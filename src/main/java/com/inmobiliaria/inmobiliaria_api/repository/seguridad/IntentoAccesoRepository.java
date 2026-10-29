@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.seguridad;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Repository;
  * MongoDB borra cada intento {@link #RETENCION} después de ocurrido (índice TTL).
  */
 @Repository
-public class IntentoAccesoRepository {
+public class IntentoAccesoRepository implements IndicesMongo {
 
     /** Tiempo que se conserva cada intento. */
     public static final Duration RETENCION = Duration.ofDays(90);
@@ -44,6 +45,7 @@ public class IntentoAccesoRepository {
     }
 
     /** Crea los índices de la colección (incluido el TTL de {@link #RETENCION}); es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(IntentoAcceso.class);
         indices.ensureIndex(new Index().on("identificador", Sort.Direction.ASC)

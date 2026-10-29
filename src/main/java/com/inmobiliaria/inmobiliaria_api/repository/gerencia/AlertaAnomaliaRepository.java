@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Repository;
 
 /** Acceso a la colección {@code alertas_anomalia} de MongoDB. */
 @Repository
-public class AlertaAnomaliaRepository {
+public class AlertaAnomaliaRepository implements IndicesMongo {
 
     private final MongoTemplate mongoTemplate;
 
@@ -59,6 +60,7 @@ public class AlertaAnomaliaRepository {
     }
 
     /** Crea los índices de la colección; es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(AlertaAnomalia.class);
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("estado", Sort.Direction.ASC)

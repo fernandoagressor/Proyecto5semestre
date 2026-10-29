@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.service.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.repository.cartera.GestionCobroRepository;
 import com.inmobiliaria.inmobiliaria_api.config.RedisCacheConfig;
 import com.inmobiliaria.inmobiliaria_api.dto.gerencia.DashboardDtos;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
@@ -21,10 +22,13 @@ public class DashboardService {
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private final JdbcTemplate jdbcTemplate;
     private final GerenciaAlcanceService alcanceService;
+    private final GestionCobroRepository gestionCobroRepository;
 
-    public DashboardService(JdbcTemplate jdbcTemplate, GerenciaAlcanceService alcanceService) {
+    public DashboardService(JdbcTemplate jdbcTemplate, GerenciaAlcanceService alcanceService,
+                            GestionCobroRepository gestionCobroRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.alcanceService = alcanceService;
+        this.gestionCobroRepository = gestionCobroRepository;
     }
     @Cacheable(
             cacheNames = RedisCacheConfig.DASHBOARDS,
@@ -78,7 +82,7 @@ public class DashboardService {
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long tareasVencidas = entero("""
-                SELECT COUNT(*) FROM tareas WHERE empresa_id = ? AND estado = 'VENCIDA'
+                SELECT COUNT(*) FROM lectura_tareas WHERE empresa_id = ? AND estado = 'VENCIDA'
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long pqrs = entero("""
@@ -186,11 +190,8 @@ public class DashboardService {
                 WHERE q.empresa_id = ? AND q.saldo > 0 AND q.fecha_vencimiento < ?
                   AND (? IS NULL OR c.proyecto_id = ?)
                 """, contexto.empresaId(), fechaCorte, proyecto, proyecto);
-        long promesas = entero("""
-                SELECT COUNT(*) FROM gestiones_cobro g JOIN contratos c ON c.id = g.contrato_id
-                WHERE g.empresa_id = ? AND g.promesa_pago_fecha >= ?
-                  AND (? IS NULL OR c.proyecto_id = ?)
-                """, contexto.empresaId(), fechaCorte, proyecto, proyecto);
+        // Las gestiones de cobro viven en MongoDB (rama 9) con copia del proyecto del contrato.
+        long promesas = gestionCobroRepository.contarPromesasDesde(contexto.empresaId(), fechaCorte, proyecto);
         List<DashboardDtos.Serie> edades = jdbcTemplate.query("""
                 SELECT CASE WHEN DATEDIFF(?, q.fecha_vencimiento) BETWEEN 1 AND 30 THEN '1-30'
                             WHEN DATEDIFF(?, q.fecha_vencimiento) BETWEEN 31 AND 60 THEN '31-60'

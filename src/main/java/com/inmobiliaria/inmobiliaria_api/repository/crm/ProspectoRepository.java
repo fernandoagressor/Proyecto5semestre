@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.crm;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -22,7 +23,7 @@ import org.springframework.stereotype.Repository;
 
 /** Acceso a la colección {@code prospectos} de MongoDB. */
 @Repository
-public class ProspectoRepository {
+public class ProspectoRepository implements IndicesMongo {
 
     private final MongoTemplate mongoTemplate;
 
@@ -78,6 +79,7 @@ public class ProspectoRepository {
     }
 
     /** Crea los índices de la colección; es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(Prospecto.class);
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("creadoEn", Sort.Direction.DESC)
