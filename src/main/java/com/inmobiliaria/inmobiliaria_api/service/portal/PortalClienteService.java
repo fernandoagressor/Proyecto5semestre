@@ -10,6 +10,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.seguridad.Usuario;
 import com.inmobiliaria.inmobiliaria_api.repository.identidad.PersonaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.portal.SolicitudCambioDatosRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.seguridad.UsuarioRepository;
+import com.inmobiliaria.inmobiliaria_api.repository.servicio.CitaServicioRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudPqrsRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.AccesoDenegadoException;
@@ -44,6 +45,7 @@ public class PortalClienteService {
     private final NotificacionService notificacionService;
     private final DocumentoVentaService documentoVentaService;
     private final SolicitudPqrsRepository solicitudRepository;
+    private final CitaServicioRepository citaRepository;
     private final JdbcTemplate jdbcTemplate;
 
     public PortalClienteService(ServicioClienteAlcanceService alcanceService,
@@ -53,6 +55,7 @@ public class PortalClienteService {
                                 NotificacionService notificacionService,
                                 DocumentoVentaService documentoVentaService,
                                 SolicitudPqrsRepository solicitudRepository,
+                                CitaServicioRepository citaRepository,
                                 JdbcTemplate jdbcTemplate) {
         this.alcanceService = alcanceService;
         this.cambioRepository = cambioRepository;
@@ -61,6 +64,7 @@ public class PortalClienteService {
         this.notificacionService = notificacionService;
         this.documentoVentaService = documentoVentaService;
         this.solicitudRepository = solicitudRepository;
+        this.citaRepository = citaRepository;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -69,13 +73,15 @@ public class PortalClienteService {
         Cliente cliente = clientePortal(contexto);
         // Las PQRS viven en MongoDB desde la rama 5; se cuentan aparte.
         long solicitudes = solicitudRepository.contarAbiertasDeCliente(contexto.empresaId(), cliente.getId());
+        // Las citas de servicio viven en MongoDB desde la rama 10.
+        LocalDateTime proximaCita = citaRepository.proximaDeCliente(contexto.empresaId(), cliente.getId(),
+                LocalDateTime.now(BOGOTA)).orElse(null);
         return jdbcTemplate.queryForObject("""
                 SELECT
                   COUNT(DISTINCT CASE WHEN c.estado = 'VIGENTE' THEN c.id END) contratos_vigentes,
                   COUNT(DISTINCT CASE WHEN q.estado IN ('PENDIENTE','PARCIAL','VENCIDA') THEN q.id END) cuotas_pendientes,
                   COALESCE(SUM(CASE WHEN q.estado IN ('PENDIENTE','PARCIAL','VENCIDA') THEN q.saldo + q.interes_mora ELSE 0 END), 0) saldo_pendiente,
-                  (SELECT COUNT(*) FROM documentos d WHERE d.empresa_id = ? AND d.cliente_id = ? AND d.visible_portal = 1 AND d.estado = 'VIGENTE') documentos,
-                  (SELECT MIN(cs.fecha_inicio) FROM citas_servicio cs WHERE cs.empresa_id = ? AND cs.cliente_id = ? AND cs.estado IN ('PROGRAMADA','CONFIRMADA','REPROGRAMADA') AND cs.fecha_inicio > CURRENT_TIMESTAMP(6)) proxima_cita
+                  (SELECT COUNT(*) FROM documentos d WHERE d.empresa_id = ? AND d.cliente_id = ? AND d.visible_portal = 1 AND d.estado = 'VIGENTE') documentos
                 FROM contratos c
                 LEFT JOIN cuotas q ON q.contrato_id = c.id
                 WHERE c.empresa_id = ?
@@ -86,9 +92,8 @@ public class PortalClienteService {
                 """, (rs, rowNum) -> new PortalDtos.Resumen(cliente.getId(), cliente.getCodigoCliente(),
                 rs.getLong("contratos_vigentes"), rs.getLong("cuotas_pendientes"),
                 rs.getBigDecimal("saldo_pendiente"), rs.getLong("documentos"),
-                solicitudes, rs.getTimestamp("proxima_cita") == null ? null
-                : rs.getTimestamp("proxima_cita").toLocalDateTime()),
-                contexto.empresaId(), cliente.getId(), contexto.empresaId(), cliente.getId(),
+                solicitudes, proximaCita),
+                contexto.empresaId(), cliente.getId(),
                 contexto.empresaId(), cliente.getId(), cliente.getId());
     }
 

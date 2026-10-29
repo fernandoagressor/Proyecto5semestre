@@ -1,33 +1,43 @@
 package com.inmobiliaria.inmobiliaria_api.service.servicio;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.servicio.ComunicacionDtos;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.ComunicacionCliente;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.ComunicacionClienteRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
-import org.springframework.data.domain.Page;
+import java.util.ArrayList;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Comunicaciones a clientes. Desde la rama 10 viven en la colección {@code comunicaciones_cliente} de MongoDB. */
 @Service
 public class ComunicacionClienteService {
+    static final String SECUENCIA = "comunicaciones_cliente";
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private final ComunicacionClienteRepository repository;
     private final ServicioClienteAlcanceService alcanceService;
+    private final SecuenciaService secuencias;
 
     public ComunicacionClienteService(ComunicacionClienteRepository repository,
-                                      ServicioClienteAlcanceService alcanceService) {
+                                      ServicioClienteAlcanceService alcanceService,
+                                      SecuenciaService secuencias) {
         this.repository = repository;
         this.alcanceService = alcanceService;
+        this.secuencias = secuencias;
     }
 
     @Transactional(readOnly = true)
@@ -35,11 +45,13 @@ public class ComunicacionClienteService {
                                                             Long clienteId, String estado,
                                                             int pagina, int tamano) {
         exigirEmpresaCompleta(contexto);
-        Specification<ComunicacionCliente> filtro = (root, query, cb) -> cb.equal(root.get("empresaId"), contexto.empresaId());
-        if (clienteId != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("clienteId"), clienteId));
-        if (estado != null && !estado.isBlank()) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("estado"), estado.toUpperCase(Locale.ROOT)));
-        Page<ComunicacionCliente> resultado = repository.findAll(filtro, PageRequest.of(
-                Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100), Sort.by(Sort.Direction.DESC, "creadoEn")));
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(where("empresaId").is(contexto.empresaId()));
+        if (clienteId != null) condiciones.add(where("clienteId").is(clienteId));
+        if (estado != null && !estado.isBlank()) condiciones.add(where("estado").is(estado.toUpperCase(Locale.ROOT)));
+        var resultado = repository.buscar(new Criteria().andOperator(condiciones), PageRequest.of(
+                Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100),
+                Sort.by(Sort.Direction.DESC, "creadoEn").and(Sort.by(Sort.Direction.DESC, "id"))));
         return PaginaResponse.from(resultado, ComunicacionDtos.Response::from);
     }
 
@@ -60,7 +72,8 @@ public class ComunicacionClienteService {
                 masiva ? null : request.clienteId(), contexto.usuarioId(), canal,
                 normalizar(request.asunto()), requerido(request.contenido()), masiva,
                 request.programadaPara());
-        return ComunicacionDtos.Response.from(repository.save(comunicacion));
+        comunicacion.identificar(secuencias.siguiente(SECUENCIA));
+        return ComunicacionDtos.Response.from(repository.insertar(comunicacion));
     }
 
     @Transactional
@@ -68,7 +81,7 @@ public class ComunicacionClienteService {
         exigirEmpresaCompleta(contexto);
         ComunicacionCliente c = obtener(contexto, id);
         c.confirmarEnvio(LocalDateTime.now(BOGOTA));
-        return ComunicacionDtos.Response.from(c);
+        return ComunicacionDtos.Response.from(guardar(c));
     }
 
     @Transactional
@@ -76,7 +89,15 @@ public class ComunicacionClienteService {
         exigirEmpresaCompleta(contexto);
         ComunicacionCliente c = obtener(contexto, id);
         c.marcarFallida();
-        return ComunicacionDtos.Response.from(c);
+        return ComunicacionDtos.Response.from(guardar(c));
+    }
+
+    private ComunicacionCliente guardar(ComunicacionCliente comunicacion) {
+        try {
+            return repository.guardar(comunicacion);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ConflictoException("La comunicación fue modificada por otro usuario");
+        }
     }
 
     private ComunicacionCliente obtener(ContextoUsuario contexto, Long id) {

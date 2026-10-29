@@ -1,49 +1,34 @@
 package com.inmobiliaria.inmobiliaria_api.entity.servicio;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "citas_servicio")
-public class CitaServicio extends EntidadAuditable {
+/** Cita de servicio (visita de entrega, técnica…), guardada en MongoDB (rama 10). La tabla espejo lectura_citas_servicio alimenta el dashboard de servicio. */
+@Document(collection = CitaServicio.COLECCION)
+public class CitaServicio {
+    public static final String COLECCION = "citas_servicio";
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "empresa_id", nullable = false)
     private Long empresaId;
-    @Column(name = "proyecto_id")
     private Long proyectoId;
-    @Column(name = "cliente_id", nullable = false)
     private Long clienteId;
-    @Column(name = "solicitud_id")
     private Long solicitudId;
-    @Column(name = "responsable_id")
     private Long responsableId;
-    @Column(nullable = false, length = 30)
     private String tipo;
-    @Column(name = "fecha_inicio", nullable = false)
     private LocalDateTime fechaInicio;
-    @Column(name = "fecha_fin", nullable = false)
     private LocalDateTime fechaFin;
-    @Column(length = 300)
     private String lugar;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private EstadoCitaServicio estado;
-    @Column(columnDefinition = "TEXT")
     private String resultado;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected CitaServicio() { }
@@ -62,6 +47,8 @@ public class CitaServicio extends EntidadAuditable {
         this.fechaFin = fin;
         this.lugar = lugar;
         this.estado = EstadoCitaServicio.PROGRAMADA;
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
     }
 
     public void reprogramar(LocalDateTime inicio, LocalDateTime fin, String lugar) {
@@ -110,6 +97,19 @@ public class CitaServicio extends EntidadAuditable {
         }
     }
 
+    /** Asigna el identificador de un registro nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("La cita ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
+    }
+
     public Long getId() { return id; }
     public Long getEmpresaId() { return empresaId; }
     public Long getProyectoId() { return proyectoId; }
@@ -123,4 +123,6 @@ public class CitaServicio extends EntidadAuditable {
     public EstadoCitaServicio getEstado() { return estado; }
     public String getResultado() { return resultado; }
     public Long getVersion() { return version; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
 }

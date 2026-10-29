@@ -66,6 +66,16 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   `APP_MIGRACION_SEGUIMIENTO_ENABLED`.
 - `InicializadorIndicesMongo` crea al arrancar los índices de todas las colecciones (únicos, TTL
   y de consulta) aunque su migrador esté apagado (`APP_MONGO_INDICES_ENABLED`).
+- **Servicio al cliente en MongoDB (rama 10).** Colecciones `citas_servicio`,
+  `comunicaciones_cliente`, `categorias_conocimiento` y `articulos_conocimiento`. Reprogramar o
+  cambiar el estado de una cita, confirmar o marcar fallida una comunicación y editar, publicar o
+  archivar un artículo usan control por versión (409). El contenido global (sin empresa) sigue
+  visible para todas las empresas y los nombres de categoría y los slugs siguen siendo únicos.
+- El dashboard de servicio cuenta las citas próximas desde `lectura_citas_servicio` (V29 la siembra)
+  y el resumen del portal busca la próxima cita en MongoDB. V29 suelta la llave artículos →
+  categorías. Migradores con `APP_MIGRACION_SERVICIO_ENABLED`.
+- Las solicitudes de cambio de datos se quedan en MySQL: aprobarlas cambia la persona y el usuario
+  en la misma transacción.
 
 ## [0.2.0] - 2026-10-20
 
