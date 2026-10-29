@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.crm;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.ActividadComercialRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.ActividadComercialResponse;
@@ -12,47 +14,48 @@ import com.inmobiliaria.inmobiliaria_api.entity.crm.CitaComercial;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.EstadoCitaComercial;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.EstadoOportunidad;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Oportunidad;
-import com.inmobiliaria.inmobiliaria_api.repository.crm.ActividadComercialRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.CitaComercialRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
-import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.data.domain.Page;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Actividades y citas comerciales. Desde la rama 8 las actividades viven embebidas en la
+ * oportunidad y las citas en la colección {@code citas_comerciales} de MongoDB (con copia de la
+ * empresa y el proyecto de la oportunidad para filtrar la agenda por alcance).
+ */
 @Service
 public class SeguimientoComercialService {
 
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
 
-    private final ActividadComercialRepository actividadRepository;
     private final CitaComercialRepository citaRepository;
     private final OportunidadService oportunidadService;
     private final CrmAlcanceService crmAlcanceService;
+    private final SecuenciaService secuencias;
 
     public SeguimientoComercialService(
-            ActividadComercialRepository actividadRepository,
             CitaComercialRepository citaRepository,
             OportunidadService oportunidadService,
-            CrmAlcanceService crmAlcanceService
+            CrmAlcanceService crmAlcanceService,
+            SecuenciaService secuencias
     ) {
-        this.actividadRepository = actividadRepository;
         this.citaRepository = citaRepository;
         this.oportunidadService = oportunidadService;
         this.crmAlcanceService = crmAlcanceService;
+        this.secuencias = secuencias;
     }
 
     @Transactional(readOnly = true)
@@ -60,9 +63,7 @@ public class SeguimientoComercialService {
             ContextoUsuario contexto,
             Long oportunidadId
     ) {
-        oportunidadService.obtenerAutorizada(contexto, oportunidadId);
-        return actividadRepository
-                .findByOportunidadIdOrderByFechaActividadDesc(oportunidadId)
+        return oportunidadService.obtenerAutorizada(contexto, oportunidadId).getActividades()
                 .stream()
                 .map(ActividadComercialResponse::from)
                 .toList();
@@ -93,9 +94,8 @@ public class SeguimientoComercialService {
             );
         }
 
-        ActividadComercial actividad = new ActividadComercial(
-                oportunidadId,
-                oportunidad.getAsesorId(),
+        ActividadComercial actividad = oportunidad.agregarActividad(
+                secuencias.siguiente(SecuenciasCrm.ACTIVIDADES),
                 request.tipo(),
                 normalizar(request.resultado()),
                 requerido(request.descripcion()),
@@ -103,11 +103,7 @@ public class SeguimientoComercialService {
                 normalizar(request.proximaAccion()),
                 request.fechaProximaAccion()
         );
-        actividad = actividadRepository.save(actividad);
-        oportunidad.registrarActividad(
-                request.fechaActividad(),
-                request.fechaProximaAccion()
-        );
+        oportunidadService.guardar(oportunidad);
         return ActividadComercialResponse.from(actividad);
     }
 
@@ -142,6 +138,8 @@ public class SeguimientoComercialService {
                 null
         );
         CitaComercial cita = new CitaComercial(
+                oportunidad.getEmpresaId(),
+                oportunidad.getProyectoId(),
                 oportunidadId,
                 oportunidad.getAsesorId(),
                 requerido(request.tipo()).toUpperCase(),
@@ -149,7 +147,8 @@ public class SeguimientoComercialService {
                 request.fechaFin(),
                 normalizar(request.lugar())
         );
-        return CitaComercialResponse.from(citaRepository.save(cita));
+        cita.identificar(secuencias.siguiente(SecuenciasCrm.CITAS));
+        return CitaComercialResponse.from(citaRepository.insertar(cita));
     }
 
     @Transactional
@@ -176,7 +175,7 @@ public class SeguimientoComercialService {
                 request.fechaFin(),
                 normalizar(request.lugar())
         );
-        return CitaComercialResponse.from(cita);
+        return CitaComercialResponse.from(guardar(cita));
     }
 
     @Transactional
@@ -192,7 +191,7 @@ public class SeguimientoComercialService {
                 request.estado(),
                 normalizar(request.resultado())
         );
-        return CitaComercialResponse.from(cita);
+        return CitaComercialResponse.from(guardar(cita));
     }
 
     @Transactional(readOnly = true)
@@ -206,62 +205,29 @@ public class SeguimientoComercialService {
             int tamano
     ) {
         validarRangoAgenda(desde, hasta);
-        Specification<CitaComercial> filtro = filtroAgenda(contexto);
-        filtro = filtro.and((root, query, cb) -> cb.and(
-                cb.lessThan(root.get("fechaInicio"), hasta),
-                cb.greaterThan(root.get("fechaFin"), desde)
-        ));
-        if (estado != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("estado"), estado));
-        }
-        if (asesorId != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("asesorId"), asesorId));
-        }
-        Page<CitaComercial> resultado = citaRepository.findAll(
-                filtro,
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(crmAlcanceService.filtroMongo(contexto));
+        condiciones.add(where("fechaInicio").lt(hasta));
+        condiciones.add(where("fechaFin").gt(desde));
+        if (estado != null) condiciones.add(where("estado").is(estado.name()));
+        if (asesorId != null) condiciones.add(where("asesorId").is(asesorId));
+        var resultado = citaRepository.buscar(
+                new Criteria().andOperator(condiciones),
                 PageRequest.of(
                         Math.max(pagina, 0),
                         Math.min(Math.max(tamano, 1), 100),
-                        Sort.by(Sort.Direction.ASC, "fechaInicio")
+                        Sort.by(Sort.Direction.ASC, "fechaInicio").and(Sort.by(Sort.Direction.ASC, "id"))
                 )
         );
         return PaginaResponse.from(resultado, CitaComercialResponse::from);
     }
 
-    private Specification<CitaComercial> filtroAgenda(
-            ContextoUsuario contexto
-    ) {
-        AlcanceProyectos alcance = crmAlcanceService.obtener(contexto);
-        return (root, query, cb) -> {
-            Subquery<Long> subquery = query.subquery(Long.class);
-            Root<Oportunidad> oportunidad = subquery.from(Oportunidad.class);
-            List<Predicate> condiciones = new ArrayList<>();
-            condiciones.add(cb.equal(
-                    oportunidad.get("empresaId"),
-                    contexto.empresaId()
-            ));
-            if (!alcance.empresaCompleta()) {
-                List<Predicate> permitidos = new ArrayList<>();
-                if (!alcance.proyectos().isEmpty()) {
-                    permitidos.add(oportunidad.get("proyectoId")
-                            .in(alcance.proyectos()));
-                }
-                if (alcance.registrosPropios()) {
-                    permitidos.add(cb.equal(
-                            oportunidad.get("asesorId"),
-                            contexto.usuarioId()
-                    ));
-                }
-                condiciones.add(permitidos.isEmpty()
-                        ? cb.disjunction()
-                        : cb.or(permitidos.toArray(Predicate[]::new)));
-            }
-            subquery.select(oportunidad.get("id"))
-                    .where(condiciones.toArray(Predicate[]::new));
-            return root.get("oportunidadId").in(subquery);
-        };
+    private CitaComercial guardar(CitaComercial cita) {
+        try {
+            return citaRepository.guardar(cita);
+        } catch (OptimisticLockingFailureException ex) {
+            throw new ConflictoException("La cita fue modificada por otro usuario");
+        }
     }
 
     private CitaComercial obtenerCita(Long oportunidadId, Long citaId) {

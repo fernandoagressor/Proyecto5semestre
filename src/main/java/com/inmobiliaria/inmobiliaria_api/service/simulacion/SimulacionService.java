@@ -12,7 +12,6 @@ import com.inmobiliaria.inmobiliaria_api.entity.inventario.Lote;
 import com.inmobiliaria.inmobiliaria_api.entity.simulacion.EstadoSimulacion;
 import com.inmobiliaria.inmobiliaria_api.entity.simulacion.Simulacion;
 import com.inmobiliaria.inmobiliaria_api.entity.simulacion.SimulacionCuota;
-import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadLoteRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.simulacion.SimulacionCuotaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.simulacion.SimulacionRepository;
@@ -47,7 +46,6 @@ public class SimulacionService {
 
     private final SimulacionRepository simulacionRepository;
     private final SimulacionCuotaRepository cuotaRepository;
-    private final OportunidadLoteRepository oportunidadLoteRepository;
     private final LoteRepository loteRepository;
     private final OportunidadService oportunidadService;
     private final CrmAlcanceService crmAlcanceService;
@@ -56,7 +54,6 @@ public class SimulacionService {
     public SimulacionService(
             SimulacionRepository simulacionRepository,
             SimulacionCuotaRepository cuotaRepository,
-            OportunidadLoteRepository oportunidadLoteRepository,
             LoteRepository loteRepository,
             OportunidadService oportunidadService,
             CrmAlcanceService crmAlcanceService,
@@ -64,7 +61,6 @@ public class SimulacionService {
     ) {
         this.simulacionRepository = simulacionRepository;
         this.cuotaRepository = cuotaRepository;
-        this.oportunidadLoteRepository = oportunidadLoteRepository;
         this.loteRepository = loteRepository;
         this.oportunidadService = oportunidadService;
         this.crmAlcanceService = crmAlcanceService;
@@ -130,10 +126,7 @@ public class SimulacionService {
                     "La oportunidad debe estar abierta"
             );
         }
-        if (!oportunidadLoteRepository.existsByOportunidadIdAndLoteId(
-                oportunidad.getId(),
-                request.loteId()
-        )) {
+        if (!oportunidad.tieneLote(request.loteId())) {
             throw new ReglaNegocioException(
                     "El lote debe estar vinculado a la oportunidad"
             );

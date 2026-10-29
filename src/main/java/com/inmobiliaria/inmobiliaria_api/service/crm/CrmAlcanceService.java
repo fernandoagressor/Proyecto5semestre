@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.crm;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
 import com.inmobiliaria.inmobiliaria_api.entity.inventario.Proyecto;
 import com.inmobiliaria.inmobiliaria_api.entity.seguridad.EstadoUsuario;
@@ -9,6 +11,9 @@ import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.AccesoDenegadoException;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectoService;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,5 +110,29 @@ public class CrmAlcanceService {
                     "El asesor de destino no tiene alcance sobre el registro"
             );
         }
+    }
+
+    /**
+     * Filtro de MongoDB con la empresa y el alcance del usuario sobre registros comerciales que
+     * tienen {@code empresaId}, {@code proyectoId} y {@code asesorId}.
+     */
+    @Transactional(readOnly = true)
+    public Criteria filtroMongo(ContextoUsuario contexto) {
+        AlcanceProyectos alcance = obtener(contexto);
+        var empresa = where("empresaId").is(contexto.empresaId());
+        if (alcance.empresaCompleta()) {
+            return empresa;
+        }
+        List<Criteria> permitidos = new ArrayList<>();
+        if (!alcance.proyectos().isEmpty()) {
+            permitidos.add(where("proyectoId").in(alcance.proyectos()));
+        }
+        if (alcance.registrosPropios()) {
+            permitidos.add(where("asesorId").is(contexto.usuarioId()));
+        }
+        var alcanceRegistro = permitidos.isEmpty()
+                ? where("id").in(List.of())
+                : new Criteria().orOperator(permitidos);
+        return new Criteria().andOperator(empresa, alcanceRegistro);
     }
 }
