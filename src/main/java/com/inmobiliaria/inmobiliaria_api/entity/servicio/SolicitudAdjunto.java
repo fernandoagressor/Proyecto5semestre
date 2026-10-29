@@ -1,36 +1,28 @@
 package com.inmobiliaria.inmobiliaria_api.entity.servicio;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "solicitud_adjuntos")
-public class SolicitudAdjunto extends EntidadAuditable {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+/**
+ * Archivo adjunto a una PQRS o a uno de sus mensajes; vive embebido en {@link SolicitudPqrs}.
+ * El archivo en sí sigue en la tabla {@code archivos} de MySQL y aquí solo se guarda su id.
+ */
+public class SolicitudAdjunto {
     private Long id;
-    @Column(name = "solicitud_id", nullable = false)
-    private Long solicitudId;
-    @Column(name = "mensaje_id")
     private Long mensajeId;
-    @Column(name = "archivo_id", nullable = false)
     private Long archivoId;
+    private LocalDateTime creadoEn;
 
     protected SolicitudAdjunto() { }
 
-    public SolicitudAdjunto(Long solicitudId, Long mensajeId, Long archivoId) {
-        this.solicitudId = solicitudId;
+    public SolicitudAdjunto(Long id, Long mensajeId, Long archivoId, LocalDateTime creadoEn) {
+        this.id = id;
         this.mensajeId = mensajeId;
         this.archivoId = archivoId;
+        this.creadoEn = creadoEn;
     }
 
     public Long getId() { return id; }
-    public Long getSolicitudId() { return solicitudId; }
     public Long getMensajeId() { return mensajeId; }
     public Long getArchivoId() { return archivoId; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }

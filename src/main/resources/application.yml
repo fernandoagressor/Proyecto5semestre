@@ -92,8 +92,12 @@ app:
     path: ${APP_STORAGE_PATH:./storage}
   sync:
     # Change Stream de MongoDB -> tablas espejo de lectura en MySQL (rama 4).
-    enabled: ${APP_SYNC_ENABLED:false}
+    enabled: ${APP_SYNC_ENABLED:true}
     espera-reintento: ${APP_SYNC_ESPERA_REINTENTO:PT5S}
+  migracion:
+    # Copia a MongoDB las PQRS que siguen en MySQL; es idempotente (rama 5).
+    pqrs:
+      enabled: ${APP_MIGRACION_PQRS_ENABLED:true}
   security:
     issuer: ${JWT_ISSUER:inmobiliaria-api}
     jwt-secret: ${JWT_SECRET:}
