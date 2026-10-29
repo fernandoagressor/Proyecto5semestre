@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.service.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.repository.cartera.GestionCobroRepository;
 import com.inmobiliaria.inmobiliaria_api.config.RedisCacheConfig;
 import com.inmobiliaria.inmobiliaria_api.dto.gerencia.DashboardDtos;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
@@ -21,10 +22,13 @@ public class DashboardService {
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private final JdbcTemplate jdbcTemplate;
     private final GerenciaAlcanceService alcanceService;
+    private final GestionCobroRepository gestionCobroRepository;
 
-    public DashboardService(JdbcTemplate jdbcTemplate, GerenciaAlcanceService alcanceService) {
+    public DashboardService(JdbcTemplate jdbcTemplate, GerenciaAlcanceService alcanceService,
+                            GestionCobroRepository gestionCobroRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.alcanceService = alcanceService;
+        this.gestionCobroRepository = gestionCobroRepository;
     }
     @Cacheable(
             cacheNames = RedisCacheConfig.DASHBOARDS,
@@ -74,15 +78,15 @@ public class DashboardService {
                 """, rs -> rs.next() ? new Inventario(rs.getLong("cantidad"), rs.getBigDecimal("valor"))
                 : new Inventario(0, BigDecimal.ZERO), contexto.empresaId(), proyecto, proyecto);
         long oportunidades = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long tareasVencidas = entero("""
-                SELECT COUNT(*) FROM tareas WHERE empresa_id = ? AND estado = 'VENCIDA'
+                SELECT COUNT(*) FROM lectura_tareas WHERE empresa_id = ? AND estado = 'VENCIDA'
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long pqrs = entero("""
-                SELECT COUNT(*) FROM solicitudes_pqrs WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_solicitudes_pqrs WHERE empresa_id = ?
                   AND estado IN ('ABIERTA','EN_PROCESO','PENDIENTE_CLIENTE','PENDIENTE_TERCERO','REABIERTA')
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
@@ -108,23 +112,23 @@ public class DashboardService {
         Long asesor = !alcance.empresaCompleta() && proyecto == null && alcance.registrosPropios()
                 ? contexto.usuarioId() : null;
         long nuevas = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ?
                   AND DATE(creado_en) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto, asesor, asesor);
         long ganadas = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ? AND estado = 'GANADA'
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'GANADA'
                   AND DATE(fecha_cierre) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto, asesor, asesor);
         long perdidas = entero("""
-                SELECT COUNT(*) FROM oportunidades WHERE empresa_id = ? AND estado = 'PERDIDA'
+                SELECT COUNT(*) FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'PERDIDA'
                   AND DATE(fecha_cierre) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto, asesor, asesor);
         BigDecimal embudoValor = decimal("""
                 SELECT COALESCE(SUM(valor_estimado * probabilidad_cierre / 100),0)
-                FROM oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
+                FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto, asesor, asesor);
         long reservas = entero("""
@@ -133,7 +137,7 @@ public class DashboardService {
                 """, contexto.empresaId(), proyecto, proyecto, asesor, asesor);
         List<DashboardDtos.Serie> embudo = jdbcTemplate.query("""
                 SELECT etapa_actual categoria, COALESCE(SUM(valor_estimado),0) valor, COUNT(*) cantidad
-                FROM oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
+                FROM lectura_oportunidades WHERE empresa_id = ? AND estado = 'ABIERTA'
                   AND (? IS NULL OR proyecto_id = ?) AND (? IS NULL OR asesor_id = ?)
                 GROUP BY etapa_actual ORDER BY MIN(id)
                 """, (rs, row) -> new DashboardDtos.Serie(rs.getString("categoria"),
@@ -186,11 +190,8 @@ public class DashboardService {
                 WHERE q.empresa_id = ? AND q.saldo > 0 AND q.fecha_vencimiento < ?
                   AND (? IS NULL OR c.proyecto_id = ?)
                 """, contexto.empresaId(), fechaCorte, proyecto, proyecto);
-        long promesas = entero("""
-                SELECT COUNT(*) FROM gestiones_cobro g JOIN contratos c ON c.id = g.contrato_id
-                WHERE g.empresa_id = ? AND g.promesa_pago_fecha >= ?
-                  AND (? IS NULL OR c.proyecto_id = ?)
-                """, contexto.empresaId(), fechaCorte, proyecto, proyecto);
+        // Las gestiones de cobro viven en MongoDB (rama 9) con copia del proyecto del contrato.
+        long promesas = gestionCobroRepository.contarPromesasDesde(contexto.empresaId(), fechaCorte, proyecto);
         List<DashboardDtos.Serie> edades = jdbcTemplate.query("""
                 SELECT CASE WHEN DATEDIFF(?, q.fecha_vencimiento) BETWEEN 1 AND 30 THEN '1-30'
                             WHEN DATEDIFF(?, q.fecha_vencimiento) BETWEEN 31 AND 60 THEN '31-60'
@@ -220,40 +221,39 @@ public class DashboardService {
         PeriodoDashboard periodo = periodo(desde, hasta);
         Long proyecto = alcanceService.proyectoParaConsulta(contexto, proyectoId, false);
         long abiertas = entero("""
-                SELECT COUNT(*) FROM solicitudes_pqrs WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_solicitudes_pqrs WHERE empresa_id = ?
                   AND estado IN ('ABIERTA','EN_PROCESO','PENDIENTE_CLIENTE','PENDIENTE_TERCERO','REABIERTA')
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long vencidas = entero("""
-                SELECT COUNT(*) FROM solicitudes_pqrs WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_solicitudes_pqrs WHERE empresa_id = ?
                   AND fecha_limite < CURRENT_TIMESTAMP(6)
                   AND estado NOT IN ('RESUELTA','CERRADA','CANCELADA')
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         BigDecimal horas = decimal("""
                 SELECT COALESCE(AVG(TIMESTAMPDIFF(MINUTE, creado_en, fecha_primera_respuesta))/60,0)
-                FROM solicitudes_pqrs WHERE empresa_id = ? AND fecha_primera_respuesta IS NOT NULL
+                FROM lectura_solicitudes_pqrs WHERE empresa_id = ? AND fecha_primera_respuesta IS NOT NULL
                   AND DATE(creado_en) BETWEEN ? AND ? AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto);
         BigDecimal satisfaccion = decimal("""
-                SELECT COALESCE(AVG(e.puntuacion),0) FROM encuestas_satisfaccion e
-                LEFT JOIN solicitudes_pqrs s ON s.id = e.solicitud_id
+                SELECT COALESCE(AVG(e.puntuacion),0) FROM lectura_encuestas_satisfaccion e
                 WHERE e.empresa_id = ? AND DATE(e.respondida_en) BETWEEN ? AND ?
-                  AND (? IS NULL OR s.proyecto_id = ?)
+                  AND (? IS NULL OR e.proyecto_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto);
         long citas = entero("""
-                SELECT COUNT(*) FROM citas_servicio WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_citas_servicio WHERE empresa_id = ?
                   AND estado IN ('PROGRAMADA','CONFIRMADA') AND fecha_inicio >= CURRENT_TIMESTAMP(6)
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long tickets = entero("""
-                SELECT COUNT(*) FROM tickets_soporte WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_tickets_soporte WHERE empresa_id = ?
                   AND estado IN ('ABIERTO','EN_PROCESO','EN_ESPERA','REABIERTO')
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         List<DashboardDtos.Serie> tipos = jdbcTemplate.query("""
                 SELECT tipo categoria, CAST(COUNT(*) AS DECIMAL(19,2)) valor, COUNT(*) cantidad
-                FROM solicitudes_pqrs WHERE empresa_id = ? AND DATE(creado_en) BETWEEN ? AND ?
+                FROM lectura_solicitudes_pqrs WHERE empresa_id = ? AND DATE(creado_en) BETWEEN ? AND ?
                   AND (? IS NULL OR proyecto_id = ?)
                 GROUP BY tipo ORDER BY cantidad DESC
                 """, (rs, row) -> new DashboardDtos.Serie(rs.getString("categoria"),

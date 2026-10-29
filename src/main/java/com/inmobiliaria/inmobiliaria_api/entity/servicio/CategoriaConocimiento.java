@@ -1,29 +1,25 @@
 package com.inmobiliaria.inmobiliaria_api.entity.servicio;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "categorias_conocimiento")
-public class CategoriaConocimiento extends EntidadAuditable {
+/** Categoría de la base de conocimiento, guardada en MongoDB (rama 10). Sin empresa es global. */
+@Document(collection = CategoriaConocimiento.COLECCION)
+public class CategoriaConocimiento {
+    public static final String COLECCION = "categorias_conocimiento";
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "empresa_id")
     private Long empresaId;
-    @Column(nullable = false, length = 120)
     private String nombre;
-    @Column(length = 500)
     private String descripcion;
-    @Column(nullable = false)
     private short orden;
-    @Column(nullable = false)
     private boolean activo;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
 
     protected CategoriaConocimiento() { }
 
@@ -33,6 +29,21 @@ public class CategoriaConocimiento extends EntidadAuditable {
         this.descripcion = descripcion;
         this.orden = orden;
         this.activo = true;
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
+    }
+
+    /** Asigna el identificador de un registro nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("La categoría ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
     }
 
     public Long getId() { return id; }
@@ -41,4 +52,6 @@ public class CategoriaConocimiento extends EntidadAuditable {
     public String getDescripcion() { return descripcion; }
     public short getOrden() { return orden; }
     public boolean isActivo() { return activo; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
 }

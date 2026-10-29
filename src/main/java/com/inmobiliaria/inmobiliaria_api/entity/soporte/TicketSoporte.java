@@ -1,25 +1,36 @@
 package com.inmobiliaria.inmobiliaria_api.entity.soporte;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.PrioridadServicio;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "tickets_soporte")
-public class TicketSoporte extends EntidadAuditable {
+/**
+ * Ticket de soporte técnico guardado en MongoDB (rama 6).
+ *
+ * <p>Agregado con la conversación ({@code mensajes}), los {@code adjuntos} y el {@code historial}
+ * embebidos. Ids numéricos desde {@code contadores}; los migrados conservan el id de MySQL.
+ * La concurrencia se controla con {@code version}.</p>
+ *
+ * <p>{@code empresaId}, {@code proyectoId} y {@code estado} son parte del contrato con
+ * {@code ProyectorTicketsSoporte} (tabla espejo {@code lectura_tickets_soporte}).</p>
+ */
+@Document(collection = TicketSoporte.COLECCION)
+public class TicketSoporte {
+
+    public static final String COLECCION = "tickets_soporte";
+
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private static final Map<EstadoTicket, Set<EstadoTicket>> TRANSICIONES = Map.of(
             EstadoTicket.ABIERTO, EnumSet.of(EstadoTicket.EN_PROCESO, EstadoTicket.RESUELTO),
             EstadoTicket.EN_PROCESO, EnumSet.of(EstadoTicket.EN_ESPERA, EstadoTicket.RESUELTO),
@@ -28,40 +39,38 @@ public class TicketSoporte extends EntidadAuditable {
             EstadoTicket.CERRADO, EnumSet.of(EstadoTicket.REABIERTO),
             EstadoTicket.REABIERTO, EnumSet.of(EstadoTicket.EN_PROCESO, EstadoTicket.RESUELTO)
     );
+    private static final Comparator<TicketMensaje> ORDEN_MENSAJES = Comparator
+            .comparing(TicketMensaje::getCreadoEn, Comparator.nullsFirst(Comparator.<LocalDateTime>naturalOrder()))
+            .thenComparing(TicketMensaje::getId, Comparator.nullsFirst(Comparator.<Long>naturalOrder()));
+    private static final Comparator<TicketAdjunto> ORDEN_ADJUNTOS = Comparator
+            .comparing(TicketAdjunto::getCreadoEn, Comparator.nullsFirst(Comparator.<LocalDateTime>naturalOrder()))
+            .thenComparing(TicketAdjunto::getId, Comparator.nullsFirst(Comparator.<Long>naturalOrder()));
+    private static final Comparator<TicketHistorial> ORDEN_HISTORIAL = Comparator
+            .comparing(TicketHistorial::getCreadoEn, Comparator.nullsFirst(Comparator.<LocalDateTime>naturalOrder()))
+            .thenComparing(TicketHistorial::getId, Comparator.nullsFirst(Comparator.<Long>naturalOrder()));
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "empresa_id")
     private Long empresaId;
-    @Column(name = "proyecto_id")
     private Long proyectoId;
-    @Column(nullable = false, length = 50)
     private String codigo;
-    @Column(name = "solicitante_id", nullable = false)
     private Long solicitanteId;
-    @Column(name = "asignado_a")
     private Long asignadoA;
-    @Column(nullable = false, length = 200)
     private String asunto;
-    @Column(nullable = false, length = 60)
     private String categoria;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
     private PrioridadServicio prioridad;
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String descripcion;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private EstadoTicket estado;
-    @Column(name = "fecha_primera_respuesta")
     private LocalDateTime fechaPrimeraRespuesta;
-    @Column(name = "fecha_resolucion")
     private LocalDateTime fechaResolucion;
-    @Column(name = "fecha_cierre")
     private LocalDateTime fechaCierre;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
+    private List<TicketMensaje> mensajes = new ArrayList<>();
+    private List<TicketAdjunto> adjuntos = new ArrayList<>();
+    private List<TicketHistorial> historial = new ArrayList<>();
+
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected TicketSoporte() { }
@@ -78,6 +87,21 @@ public class TicketSoporte extends EntidadAuditable {
         this.prioridad = prioridad;
         this.descripcion = descripcion;
         this.estado = EstadoTicket.ABIERTO;
+        this.creadoEn = ahora();
+        this.actualizadoEn = creadoEn;
+    }
+
+    /** Asigna el identificador de un ticket nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("El ticket ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = ahora();
     }
 
     public Long asignar(Long usuarioId) {
@@ -121,6 +145,49 @@ public class TicketSoporte extends EntidadAuditable {
         return anterior;
     }
 
+    public TicketMensaje agregarMensaje(long mensajeId, Long usuarioId, String texto, boolean interno) {
+        TicketMensaje mensaje = new TicketMensaje(mensajeId, usuarioId, texto, interno, ahora());
+        mensajes.add(mensaje);
+        return mensaje;
+    }
+
+    /** Conversación en orden cronológico; el solicitante no ve las notas internas. */
+    public List<TicketMensaje> mensajes(boolean incluirInternos) {
+        return mensajes.stream()
+                .filter(mensaje -> incluirInternos || !mensaje.isInterno())
+                .sorted(ORDEN_MENSAJES)
+                .toList();
+    }
+
+    public boolean tieneMensaje(Long mensajeId) {
+        return mensajeId != null && mensajes.stream().anyMatch(mensaje -> mensajeId.equals(mensaje.getId()));
+    }
+
+    public boolean tieneArchivo(Long archivoId) {
+        return archivoId != null && adjuntos.stream().anyMatch(adjunto -> archivoId.equals(adjunto.getArchivoId()));
+    }
+
+    public TicketAdjunto adjuntar(long adjuntoId, Long mensajeId, Long archivoId) {
+        Objects.requireNonNull(archivoId, "archivoId");
+        if (mensajeId != null && !tieneMensaje(mensajeId)) {
+            throw new ReglaNegocioException("El mensaje no pertenece al ticket");
+        }
+        if (tieneArchivo(archivoId)) {
+            throw new ReglaNegocioException("El archivo ya está adjunto al ticket");
+        }
+        TicketAdjunto adjunto = new TicketAdjunto(adjuntoId, mensajeId, archivoId, ahora());
+        adjuntos.add(adjunto);
+        return adjunto;
+    }
+
+    public TicketHistorial registrarCambio(long historialId, String campo, String valorAnterior,
+                                           String valorNuevo, Long usuarioId, String motivo) {
+        TicketHistorial cambio = new TicketHistorial(historialId, campo, valorAnterior, valorNuevo,
+                usuarioId, motivo, ahora());
+        historial.add(cambio);
+        return cambio;
+    }
+
     public Long getId() { return id; }
     public Long getEmpresaId() { return empresaId; }
     public Long getProyectoId() { return proyectoId; }
@@ -135,4 +202,19 @@ public class TicketSoporte extends EntidadAuditable {
     public LocalDateTime getFechaPrimeraRespuesta() { return fechaPrimeraRespuesta; }
     public LocalDateTime getFechaResolucion() { return fechaResolucion; }
     public LocalDateTime getFechaCierre() { return fechaCierre; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
+    public Long getVersion() { return version; }
+
+    public List<TicketAdjunto> getAdjuntos() {
+        return adjuntos.stream().sorted(ORDEN_ADJUNTOS).toList();
+    }
+
+    public List<TicketHistorial> getHistorial() {
+        return historial.stream().sorted(ORDEN_HISTORIAL).toList();
+    }
+
+    private static LocalDateTime ahora() {
+        return LocalDateTime.now(BOGOTA);
+    }
 }

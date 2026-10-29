@@ -90,6 +90,41 @@ app:
     ephemeral-store: redis
   storage:
     path: ${APP_STORAGE_PATH:./storage}
+  mongo:
+    indices:
+      # Crea al arrancar los índices de todas las colecciones (únicos, TTL y de consulta).
+      enabled: ${APP_MONGO_INDICES_ENABLED:true}
+  sync:
+    # Change Stream de MongoDB -> tablas espejo de lectura en MySQL (rama 4).
+    enabled: ${APP_SYNC_ENABLED:true}
+    espera-reintento: ${APP_SYNC_ESPERA_REINTENTO:PT5S}
+    # Cada cuánto se borran de Redis los dashboards de las empresas con cambios proyectados (rama 11).
+    invalidacion-dashboards: ${APP_SYNC_INVALIDACION_DASHBOARDS:PT2S}
+    # true: rehace todas las tablas lectura_* desde MongoDB al arrancar. También ocurre solo si no hay
+    # token guardado o si MongoDB perdió el historial del Change Stream (error 286).
+    reconstruir-al-arrancar: ${APP_SYNC_RECONSTRUIR_AL_ARRANCAR:false}
+  migracion:
+    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 a 10).
+    pqrs:
+      enabled: ${APP_MIGRACION_PQRS_ENABLED:true}
+    soporte:
+      enabled: ${APP_MIGRACION_SOPORTE_ENABLED:true}
+    notificaciones:
+      enabled: ${APP_MIGRACION_NOTIFICACIONES_ENABLED:true}
+    auditoria:
+      enabled: ${APP_MIGRACION_AUDITORIA_ENABLED:true}
+    crm:
+      enabled: ${APP_MIGRACION_CRM_ENABLED:true}
+    simulaciones:
+      enabled: ${APP_MIGRACION_SIMULACIONES_ENABLED:true}
+    seguimiento:
+      enabled: ${APP_MIGRACION_SEGUIMIENTO_ENABLED:true}
+    servicio:
+      enabled: ${APP_MIGRACION_SERVICIO_ENABLED:true}
+  crm:
+    pendientes:
+      # Reintento de los cambios de la venta pendientes de aplicar al CRM en MongoDB (rama 8).
+      intervalo: ${APP_CRM_PENDIENTES_INTERVALO:PT30S}
   security:
     issuer: ${JWT_ISSUER:inmobiliaria-api}
     jwt-secret: ${JWT_SECRET:}

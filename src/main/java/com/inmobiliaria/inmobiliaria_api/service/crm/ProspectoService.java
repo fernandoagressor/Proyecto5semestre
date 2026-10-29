@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.crm;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.ProspectoCalificacionRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.ProspectoRequest;
@@ -10,32 +12,39 @@ import com.inmobiliaria.inmobiliaria_api.entity.crm.Prospecto;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.TemperaturaProspecto;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.ProspectoRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
-import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
-import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.springframework.data.domain.Page;
+import java.util.regex.Pattern;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Prospectos comerciales. Desde la rama 8 viven en la colección {@code prospectos} de MongoDB;
+ * el alcance (proyectos y asesores) se sigue validando contra MySQL.
+ */
 @Service
 public class ProspectoService {
 
     private final ProspectoRepository prospectoRepository;
     private final CrmAlcanceService crmAlcanceService;
+    private final SecuenciaService secuencias;
 
     public ProspectoService(
             ProspectoRepository prospectoRepository,
-            CrmAlcanceService crmAlcanceService
+            CrmAlcanceService crmAlcanceService,
+            SecuenciaService secuencias
     ) {
         this.prospectoRepository = prospectoRepository;
         this.crmAlcanceService = crmAlcanceService;
+        this.secuencias = secuencias;
     }
 
     @Transactional(readOnly = true)
@@ -49,39 +58,27 @@ public class ProspectoService {
             int pagina,
             int tamano
     ) {
-        Specification<Prospecto> filtro = filtroAlcance(contexto);
-        if (estado != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("estado"), estado));
-        }
-        if (temperatura != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("temperatura"), temperatura));
-        }
-        if (proyectoId != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("proyectoId"), proyectoId));
-        }
-        if (asesorId != null) {
-            filtro = filtro.and((root, query, cb) ->
-                    cb.equal(root.get("asesorId"), asesorId));
-        }
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(crmAlcanceService.filtroMongo(contexto));
+        if (estado != null) condiciones.add(where("estado").is(estado.name()));
+        if (temperatura != null) condiciones.add(where("temperatura").is(temperatura.name()));
+        if (proyectoId != null) condiciones.add(where("proyectoId").is(proyectoId));
+        if (asesorId != null) condiciones.add(where("asesorId").is(asesorId));
         String busqueda = normalizar(texto);
         if (busqueda != null) {
-            String patron = "%" + busqueda.toLowerCase(Locale.ROOT) + "%";
-            filtro = filtro.and((root, query, cb) -> cb.or(
-                    cb.like(cb.lower(root.get("nombres")), patron),
-                    cb.like(cb.lower(root.get("correo")), patron),
-                    cb.like(root.get("telefono"), "%" + busqueda + "%")
+            String patron = Pattern.quote(busqueda);
+            condiciones.add(new Criteria().orOperator(
+                    where("nombres").regex(patron, "i"),
+                    where("correo").regex(patron, "i"),
+                    where("telefono").regex(patron)
             ));
         }
-
-        Page<Prospecto> resultado = prospectoRepository.findAll(
-                filtro,
+        var resultado = prospectoRepository.buscar(
+                new Criteria().andOperator(condiciones),
                 PageRequest.of(
                         paginaValida(pagina),
                         tamanoValido(tamano),
-                        Sort.by(Sort.Direction.DESC, "creadoEn")
+                        Sort.by(Sort.Direction.DESC, "creadoEn").and(Sort.by(Sort.Direction.DESC, "id"))
                 )
         );
         return PaginaResponse.from(resultado, ProspectoResponse::from);
@@ -129,7 +126,8 @@ public class ProspectoService {
                 request.temperatura(),
                 normalizar(request.observaciones())
         );
-        return ProspectoResponse.from(prospectoRepository.save(prospecto));
+        prospecto.identificar(secuencias.siguiente(SecuenciasCrm.PROSPECTOS));
+        return ProspectoResponse.from(prospectoRepository.insertar(prospecto));
     }
 
     @Transactional
@@ -167,7 +165,7 @@ public class ProspectoService {
                 request.temperatura(),
                 normalizar(request.observaciones())
         );
-        return ProspectoResponse.from(prospecto);
+        return ProspectoResponse.from(guardar(prospecto));
     }
 
     @Transactional
@@ -182,7 +180,7 @@ public class ProspectoService {
                 request.temperatura(),
                 normalizar(request.justificacion())
         );
-        return ProspectoResponse.from(prospecto);
+        return ProspectoResponse.from(guardar(prospecto));
     }
 
     @Transactional
@@ -198,7 +196,7 @@ public class ProspectoService {
                 asesorId
         );
         prospecto.reasignar(asesorId);
-        return ProspectoResponse.from(prospecto);
+        return ProspectoResponse.from(guardar(prospecto));
     }
 
     @Transactional(readOnly = true)
@@ -219,35 +217,17 @@ public class ProspectoService {
         return prospecto;
     }
 
-    private Specification<Prospecto> filtroAlcance(
-            ContextoUsuario contexto
-    ) {
-        AlcanceProyectos alcance = crmAlcanceService.obtener(contexto);
-        return (root, query, cb) -> {
-            Predicate empresa = cb.equal(
-                    root.get("empresaId"),
-                    contexto.empresaId()
-            );
-            if (alcance.empresaCompleta()) {
-                return empresa;
-            }
-            List<Predicate> permitidos = new ArrayList<>();
-            if (!alcance.proyectos().isEmpty()) {
-                permitidos.add(
-                        root.get("proyectoId").in(alcance.proyectos())
-                );
-            }
-            if (alcance.registrosPropios()) {
-                permitidos.add(cb.equal(
-                        root.get("asesorId"),
-                        contexto.usuarioId()
-                ));
-            }
-            Predicate alcanceRegistro = permitidos.isEmpty()
-                    ? cb.disjunction()
-                    : cb.or(permitidos.toArray(Predicate[]::new));
-            return cb.and(empresa, alcanceRegistro);
-        };
+    /** Borra un prospecto recién creado por una operación que luego falló (compensación). */
+    public void eliminarPorCompensacion(Long prospectoId) {
+        prospectoRepository.eliminar(prospectoId);
+    }
+
+    private Prospecto guardar(Prospecto prospecto) {
+        try {
+            return prospectoRepository.guardar(prospecto);
+        } catch (OptimisticLockingFailureException ex) {
+            throw new ConflictoException("El prospecto fue modificado por otro usuario");
+        }
     }
 
     private void validarDuplicado(

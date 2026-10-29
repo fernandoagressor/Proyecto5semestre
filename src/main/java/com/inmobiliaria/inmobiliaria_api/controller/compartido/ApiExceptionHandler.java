@@ -11,7 +11,7 @@ import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -92,7 +92,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler({
             ConflictoException.class,
             DataIntegrityViolationException.class,
-            ObjectOptimisticLockingFailureException.class
+            OptimisticLockingFailureException.class
     })
     ProblemDetail conflicto(RuntimeException exception) {
         String detalle = exception instanceof ConflictoException

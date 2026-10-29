@@ -13,7 +13,7 @@
 
     <groupId>com.inmobiliaria</groupId>
     <artifactId>inmobiliaria-api</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <name>inmobiliaria-api</name>
     <description>API multiempresa para la gestión integral de proyectos inmobiliarios</description>
 

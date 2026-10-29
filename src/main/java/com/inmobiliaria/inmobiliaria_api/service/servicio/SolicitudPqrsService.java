@@ -1,24 +1,21 @@
 package com.inmobiliaria.inmobiliaria_api.service.servicio;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.servicio.SolicitudDtos;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.documento.DocumentoVentaResponse;
 import com.inmobiliaria.inmobiliaria_api.entity.cliente.Cliente;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import com.inmobiliaria.inmobiliaria_api.entity.servicio.EncuestaSatisfaccion;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.EstadoSolicitud;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.PrioridadServicio;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudAdjunto;
-import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudHistorial;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudMensaje;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudPqrs;
 import com.inmobiliaria.inmobiliaria_api.entity.servicio.TipoSolicitud;
-import com.inmobiliaria.inmobiliaria_api.repository.servicio.EncuestaSatisfaccionRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudAdjuntoRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudHistorialRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudMensajeRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudPqrsRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
@@ -27,6 +24,7 @@ import com.inmobiliaria.inmobiliaria_api.service.ventas.documento.DocumentoVenta
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -34,41 +32,42 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * Atención de PQRS. Desde la rama 5 las solicitudes viven en MongoDB (colección
+ * {@code solicitudes_pqrs}) con su conversación, adjuntos, historial y encuesta embebidos.
+ *
+ * <p>Cada operación lee el documento, aplica la regla de negocio y lo guarda con una sola
+ * escritura; si otro agente lo modificó entretanto, la versión no coincide y se responde 409.
+ * Las notificaciones, los clientes y los archivos siguen en MySQL: los métodos de escritura
+ * conservan {@code @Transactional} (JPA) para esas tablas, pero esa transacción no cubre a MongoDB.
+ * Por eso el documento se guarda antes de crear las notificaciones.</p>
+ */
 @Service
 public class SolicitudPqrsService {
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private static final DateTimeFormatter DIA = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final SolicitudPqrsRepository repository;
-    private final SolicitudMensajeRepository mensajeRepository;
-    private final SolicitudHistorialRepository historialRepository;
-    private final SolicitudAdjuntoRepository adjuntoRepository;
-    private final EncuestaSatisfaccionRepository encuestaRepository;
+    private final SecuenciaService secuencias;
     private final ServicioClienteAlcanceService alcanceService;
     private final NotificacionService notificacionService;
     private final DocumentoVentaService documentoVentaService;
     private final JdbcTemplate jdbcTemplate;
 
     public SolicitudPqrsService(SolicitudPqrsRepository repository,
-                                SolicitudMensajeRepository mensajeRepository,
-                                SolicitudHistorialRepository historialRepository,
-                                SolicitudAdjuntoRepository adjuntoRepository,
-                                EncuestaSatisfaccionRepository encuestaRepository,
+                                SecuenciaService secuencias,
                                 ServicioClienteAlcanceService alcanceService,
                                 NotificacionService notificacionService,
                                 DocumentoVentaService documentoVentaService,
                                 JdbcTemplate jdbcTemplate) {
         this.repository = repository;
-        this.mensajeRepository = mensajeRepository;
-        this.historialRepository = historialRepository;
-        this.adjuntoRepository = adjuntoRepository;
-        this.encuestaRepository = encuestaRepository;
+        this.secuencias = secuencias;
         this.alcanceService = alcanceService;
         this.notificacionService = notificacionService;
         this.documentoVentaService = documentoVentaService;
@@ -83,27 +82,29 @@ public class SolicitudPqrsService {
                                                          Long asignadoA,
                                                          int pagina, int tamano) {
         Cliente clienteSesion = alcanceService.clienteAutenticado(contexto).orElse(null);
-        Specification<SolicitudPqrs> filtro = (root, query, cb) -> cb.equal(root.get("empresaId"), contexto.empresaId());
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(where("empresaId").is(contexto.empresaId()));
         if (clienteSesion != null) {
-            filtro = filtro.and((root, query, cb) -> cb.equal(root.get("clienteId"), clienteSesion.getId()));
+            condiciones.add(where("clienteId").is(clienteSesion.getId()));
         } else {
             AlcanceProyectos alcance = alcanceService.alcanceInterno(contexto);
             if (!alcance.empresaCompleta()) {
-                filtro = filtro.and((root, query, cb) -> {
-                    var permitidos = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-                    if (!alcance.proyectos().isEmpty()) permitidos.add(root.get("proyectoId").in(alcance.proyectos()));
-                    if (alcance.registrosPropios()) permitidos.add(cb.equal(root.get("asignadoA"), contexto.usuarioId()));
-                    return permitidos.isEmpty() ? cb.disjunction() : cb.or(permitidos.toArray(jakarta.persistence.criteria.Predicate[]::new));
-                });
+                List<Criteria> permitidos = new ArrayList<>();
+                if (!alcance.proyectos().isEmpty()) permitidos.add(where("proyectoId").in(alcance.proyectos()));
+                if (alcance.registrosPropios()) permitidos.add(where("asignadoA").is(contexto.usuarioId()));
+                condiciones.add(permitidos.isEmpty()
+                        ? where("id").in(List.of())
+                        : new Criteria().orOperator(permitidos));
             }
-            if (clienteId != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("clienteId"), clienteId));
+            if (clienteId != null) condiciones.add(where("clienteId").is(clienteId));
         }
-        if (estado != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("estado"), estado));
-        if (tipo != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("tipo"), tipo));
-        if (asignadoA != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("asignadoA"), asignadoA));
-        Page<SolicitudPqrs> resultado = repository.findAll(filtro, PageRequest.of(
-                Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100),
-                Sort.by(Sort.Direction.DESC, "creadoEn")));
+        if (estado != null) condiciones.add(where("estado").is(estado.name()));
+        if (tipo != null) condiciones.add(where("tipo").is(tipo.name()));
+        if (asignadoA != null) condiciones.add(where("asignadoA").is(asignadoA));
+        Page<SolicitudPqrs> resultado = repository.buscarResumen(
+                new Criteria().andOperator(condiciones),
+                PageRequest.of(Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100),
+                        Sort.by(Sort.Direction.DESC, "creadoEn").and(Sort.by(Sort.Direction.DESC, "id"))));
         return PaginaResponse.from(resultado, SolicitudDtos.Response::from);
     }
 
@@ -117,35 +118,33 @@ public class SolicitudPqrsService {
                 codigo("PQRS", ahora), cliente.getId(), request.contratoId(), request.tipo(),
                 requerido(request.categoria()), requerido(request.asunto()), requerido(request.descripcion()),
                 prioridad, fechaLimite(ahora, prioridad));
+        solicitud.identificar(secuencias.siguiente(SecuenciasPqrs.SOLICITUDES));
+        solicitud.agregarMensaje(secuencias.siguiente(SecuenciasPqrs.MENSAJES), contexto.usuarioId(),
+                solicitud.getDescripcion(), false, "PORTAL");
         try {
-            solicitud = repository.save(solicitud);
+            solicitud = repository.insertar(solicitud);
         } catch (DataIntegrityViolationException ex) {
             throw new ConflictoException("No fue posible asignar un código único a la solicitud");
         }
-        mensajeRepository.save(new SolicitudMensaje(solicitud.getId(), contexto.usuarioId(),
-                solicitud.getDescripcion(), false, "PORTAL"));
         return SolicitudDtos.Response.from(solicitud);
     }
 
     @Transactional(readOnly = true)
     public SolicitudDtos.Response obtener(ContextoUsuario contexto, Long id) {
-        return SolicitudDtos.Response.from(obtenerAutorizada(contexto, id, false));
+        return SolicitudDtos.Response.from(obtenerAutorizada(contexto, id));
     }
 
     @Transactional(readOnly = true)
     public List<SolicitudDtos.MensajeResponse> mensajes(ContextoUsuario contexto, Long id) {
-        obtenerAutorizada(contexto, id, false);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         boolean cliente = alcanceService.clienteAutenticado(contexto).isPresent();
-        List<SolicitudMensaje> mensajes = cliente
-                ? mensajeRepository.findBySolicitudIdAndInternoFalseOrderByCreadoEnAsc(id)
-                : mensajeRepository.findBySolicitudIdOrderByCreadoEnAsc(id);
-        return mensajes.stream().map(SolicitudDtos.MensajeResponse::from).toList();
+        return solicitud.mensajes(!cliente).stream().map(SolicitudDtos.MensajeResponse::from).toList();
     }
 
     @Transactional
     public SolicitudDtos.MensajeResponse responder(ContextoUsuario contexto, Long id,
                                                     SolicitudDtos.MensajeRequest request) {
-        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id, true);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         boolean cliente = alcanceService.clienteAutenticado(contexto).isPresent();
         if (cliente && request.interno()) {
             throw new ReglaNegocioException("El cliente no puede crear notas internas");
@@ -155,12 +154,13 @@ public class SolicitudPqrsService {
             solicitud.registrarRespuesta(fecha);
         } else if (cliente && solicitud.getEstado() == EstadoSolicitud.PENDIENTE_CLIENTE) {
             EstadoSolicitud anterior = solicitud.cambiarEstado(EstadoSolicitud.EN_PROCESO, fecha);
-            historialRepository.save(new SolicitudHistorial(id, "estado", anterior.name(),
-                    solicitud.getEstado().name(), contexto.usuarioId(), "Respuesta del cliente"));
+            solicitud.registrarCambio(secuencias.siguiente(SecuenciasPqrs.HISTORIAL), "estado", anterior.name(),
+                    solicitud.getEstado().name(), contexto.usuarioId(), "Respuesta del cliente");
         }
         String canal = normalizarCanal(request.canal(), request.interno());
-        SolicitudMensaje mensaje = mensajeRepository.save(new SolicitudMensaje(
-                id, contexto.usuarioId(), requerido(request.mensaje()), request.interno(), canal));
+        SolicitudMensaje mensaje = solicitud.agregarMensaje(secuencias.siguiente(SecuenciasPqrs.MENSAJES),
+                contexto.usuarioId(), requerido(request.mensaje()), request.interno(), canal);
+        repository.guardar(solicitud);
         Long destinatario = cliente ? solicitud.getAsignadoA() : usuarioCliente(solicitud.getClienteId());
         if (!request.interno()) {
             notificacionService.crear(contexto.empresaId(), destinatario, "PQRS_RESPUESTA",
@@ -174,10 +174,11 @@ public class SolicitudPqrsService {
     public SolicitudDtos.Response asignar(ContextoUsuario contexto, Long id,
                                           SolicitudDtos.AsignarRequest request) {
         alcanceService.validarUsuarioEmpresa(contexto, request.usuarioId());
-        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id, true);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         Long anterior = solicitud.asignar(request.usuarioId());
-        historialRepository.save(new SolicitudHistorial(id, "asignado_a", texto(anterior),
-                texto(request.usuarioId()), contexto.usuarioId(), normalizar(request.motivo())));
+        solicitud.registrarCambio(secuencias.siguiente(SecuenciasPqrs.HISTORIAL), "asignado_a", texto(anterior),
+                texto(request.usuarioId()), contexto.usuarioId(), normalizar(request.motivo()));
+        solicitud = repository.guardar(solicitud);
         notificacionService.crear(contexto.empresaId(), request.usuarioId(), "PQRS_ASIGNADA",
                 "Solicitud asignada " + solicitud.getCodigo(), solicitud.getAsunto(),
                 "SOLICITUD_PQRS", id, solicitud.getPrioridad() == PrioridadServicio.CRITICA ? "ALTA" : "MEDIA");
@@ -190,10 +191,11 @@ public class SolicitudPqrsService {
         if (request.estado() == EstadoSolicitud.CERRADA) {
             throw new ReglaNegocioException("Use la operación de cierre protegida para cerrar la solicitud");
         }
-        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id, true);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         EstadoSolicitud anterior = solicitud.cambiarEstado(request.estado(), ahora());
-        historialRepository.save(new SolicitudHistorial(id, "estado", anterior.name(),
-                request.estado().name(), contexto.usuarioId(), normalizar(request.motivo())));
+        solicitud.registrarCambio(secuencias.siguiente(SecuenciasPqrs.HISTORIAL), "estado", anterior.name(),
+                request.estado().name(), contexto.usuarioId(), normalizar(request.motivo()));
+        solicitud = repository.guardar(solicitud);
         notificacionService.crear(contexto.empresaId(), usuarioCliente(solicitud.getClienteId()),
                 "PQRS_ESTADO", "Estado actualizado " + solicitud.getCodigo(),
                 "La solicitud cambió a " + request.estado().name(), "SOLICITUD_PQRS", id, "MEDIA");
@@ -202,10 +204,11 @@ public class SolicitudPqrsService {
 
     @Transactional
     public SolicitudDtos.Response cerrar(ContextoUsuario contexto, Long id, String motivo) {
-        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id, true);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         EstadoSolicitud anterior = solicitud.cambiarEstado(EstadoSolicitud.CERRADA, ahora());
-        historialRepository.save(new SolicitudHistorial(id, "estado", anterior.name(),
-                EstadoSolicitud.CERRADA.name(), contexto.usuarioId(), normalizar(motivo)));
+        solicitud.registrarCambio(secuencias.siguiente(SecuenciasPqrs.HISTORIAL), "estado", anterior.name(),
+                EstadoSolicitud.CERRADA.name(), contexto.usuarioId(), normalizar(motivo));
+        solicitud = repository.guardar(solicitud);
         notificacionService.crear(contexto.empresaId(), usuarioCliente(solicitud.getClienteId()),
                 "PQRS_CERRADA", "Solicitud cerrada " + solicitud.getCodigo(),
                 "La atención fue cerrada", "SOLICITUD_PQRS", id, "MEDIA");
@@ -215,7 +218,7 @@ public class SolicitudPqrsService {
     @Transactional
     public SolicitudDtos.AdjuntoResponse adjuntar(ContextoUsuario contexto, Long id,
                                                    SolicitudDtos.AdjuntoRequest request) {
-        obtenerAutorizada(contexto, id, true);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         Integer archivos = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM archivos
                 WHERE id = ? AND empresa_id = ? AND estado = 'ACTIVO'
@@ -223,27 +226,30 @@ public class SolicitudPqrsService {
         if (archivos == null || archivos == 0) {
             throw new ReglaNegocioException("El archivo no existe, no pertenece a la empresa o no está activo");
         }
-        if (request.mensajeId() != null && mensajeRepository.findByIdAndSolicitudId(request.mensajeId(), id).isEmpty()) {
+        if (request.mensajeId() != null && !solicitud.tieneMensaje(request.mensajeId())) {
             throw new ReglaNegocioException("El mensaje no pertenece a la solicitud");
         }
-        if (adjuntoRepository.existsBySolicitudIdAndArchivoId(id, request.archivoId())) {
+        if (solicitud.tieneArchivo(request.archivoId())) {
             throw new ConflictoException("El archivo ya está adjunto a la solicitud");
         }
-        return adjuntoResponse(adjuntoRepository.save(
-                new SolicitudAdjunto(id, request.mensajeId(), request.archivoId())), contexto.empresaId());
+        SolicitudAdjunto adjunto = solicitud.adjuntar(secuencias.siguiente(SecuenciasPqrs.ADJUNTOS),
+                request.mensajeId(), request.archivoId());
+        repository.guardar(solicitud);
+        return adjuntoResponse(adjunto, contexto.empresaId());
     }
 
     @Transactional
     public SolicitudDtos.AdjuntoResponse subirAdjunto(ContextoUsuario contexto, Long id,
                                                        Long mensajeId, MultipartFile archivo) {
-        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id, true);
-        if (mensajeId != null && mensajeRepository.findByIdAndSolicitudId(mensajeId, id).isEmpty()) {
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
+        if (mensajeId != null && !solicitud.tieneMensaje(mensajeId)) {
             throw new ReglaNegocioException("El mensaje no pertenece a la solicitud");
         }
         DocumentoVentaResponse documento = documentoVentaService
                 .guardarAdjuntoSolicitudAutorizada(contexto, solicitud.getProyectoId(), archivo);
-        SolicitudAdjunto adjunto = adjuntoRepository.save(
-                new SolicitudAdjunto(id, mensajeId, documento.id()));
+        SolicitudAdjunto adjunto = solicitud.adjuntar(secuencias.siguiente(SecuenciasPqrs.ADJUNTOS),
+                mensajeId, documento.id());
+        repository.guardar(solicitud);
         return new SolicitudDtos.AdjuntoResponse(adjunto.getId(), adjunto.getMensajeId(),
                 adjunto.getArchivoId(), documento.nombreOriginal(), documento.mimeType(),
                 documento.tamanoBytes(), adjunto.getCreadoEn());
@@ -251,15 +257,15 @@ public class SolicitudPqrsService {
 
     @Transactional(readOnly = true)
     public List<SolicitudDtos.AdjuntoResponse> adjuntos(ContextoUsuario contexto, Long id) {
-        obtenerAutorizada(contexto, id, false);
-        return adjuntoRepository.findBySolicitudIdOrderByCreadoEnAsc(id).stream()
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
+        return solicitud.getAdjuntos().stream()
                 .map(adjunto -> adjuntoResponse(adjunto, contexto.empresaId())).toList();
     }
 
     @Transactional(readOnly = true)
     public DocumentoVentaService.Descarga descargarAdjunto(ContextoUsuario contexto, Long id, Long archivoId) {
-        obtenerAutorizada(contexto, id, false);
-        if (!adjuntoRepository.existsBySolicitudIdAndArchivoId(id, archivoId)) {
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
+        if (!solicitud.tieneArchivo(archivoId)) {
             throw new RecursoNoEncontradoException("El archivo no está adjunto a la solicitud");
         }
         return documentoVentaService.descargarEntidadAutorizada(contexto, archivoId);
@@ -267,32 +273,30 @@ public class SolicitudPqrsService {
 
     @Transactional(readOnly = true)
     public List<SolicitudDtos.HistorialResponse> historial(ContextoUsuario contexto, Long id) {
-        obtenerAutorizada(contexto, id, false);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         if (alcanceService.clienteAutenticado(contexto).isPresent()) {
             throw new ReglaNegocioException("El historial interno no está disponible en el portal del cliente");
         }
-        return historialRepository.findBySolicitudIdOrderByCreadoEnAsc(id).stream()
-                .map(SolicitudDtos.HistorialResponse::from).toList();
+        return solicitud.getHistorial().stream().map(SolicitudDtos.HistorialResponse::from).toList();
     }
 
     @Transactional
     public void responderEncuesta(ContextoUsuario contexto, Long id, SolicitudDtos.EncuestaRequest request) {
-        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id, true);
+        SolicitudPqrs solicitud = obtenerAutorizada(contexto, id);
         Cliente cliente = alcanceService.clienteAutenticado(contexto)
                 .orElseThrow(() -> new ReglaNegocioException("La encuesta debe responderla el cliente"));
-        if (solicitud.getEstado() != EstadoSolicitud.CERRADA && solicitud.getEstado() != EstadoSolicitud.RESUELTA) {
+        if (!solicitud.estaResuelta()) {
             throw new ReglaNegocioException("La atención debe estar resuelta antes de calificarla");
         }
-        if (encuestaRepository.existsBySolicitudIdAndClienteId(id, cliente.getId())) {
+        if (solicitud.estaCalificada()) {
             throw new ConflictoException("La solicitud ya fue calificada");
         }
-        encuestaRepository.save(new EncuestaSatisfaccion(contexto.empresaId(), cliente.getId(), id,
-                request.puntuacion(), normalizar(request.comentario()), ahora()));
+        solicitud.calificar(cliente.getId(), request.puntuacion(), normalizar(request.comentario()), ahora());
+        repository.guardar(solicitud);
     }
 
-    private SolicitudPqrs obtenerAutorizada(ContextoUsuario contexto, Long id, boolean bloqueo) {
-        SolicitudPqrs solicitud = (bloqueo ? repository.findForUpdate(id, contexto.empresaId())
-                : repository.findByIdAndEmpresaId(id, contexto.empresaId()))
+    private SolicitudPqrs obtenerAutorizada(ContextoUsuario contexto, Long id) {
+        SolicitudPqrs solicitud = repository.findByIdAndEmpresaId(id, contexto.empresaId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("La solicitud no existe"));
         alcanceService.validarRelacion(contexto, solicitud.getClienteId(), solicitud.getProyectoId(), solicitud.getContratoId());
         return solicitud;

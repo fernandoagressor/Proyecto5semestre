@@ -16,7 +16,6 @@ import com.inmobiliaria.inmobiliaria_api.entity.cliente.Cliente;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.EstadoOportunidad;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Oportunidad;
-import com.inmobiliaria.inmobiliaria_api.entity.crm.Prospecto;
 import com.inmobiliaria.inmobiliaria_api.entity.identidad.Persona;
 import com.inmobiliaria.inmobiliaria_api.entity.inventario.EstadoLote;
 import com.inmobiliaria.inmobiliaria_api.entity.inventario.Lote;
@@ -35,7 +34,6 @@ import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.RolContratoClien
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.TipoFirmante;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.Reserva;
 import com.inmobiliaria.inmobiliaria_api.repository.cliente.ClienteRepository;
-import com.inmobiliaria.inmobiliaria_api.repository.crm.ProspectoRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.identidad.PersonaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteHistorialEstadoRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository;
@@ -51,6 +49,7 @@ import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoE
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import com.inmobiliaria.inmobiliaria_api.service.crm.CrmAlcanceService;
 import com.inmobiliaria.inmobiliaria_api.service.crm.OportunidadService;
+import com.inmobiliaria.inmobiliaria_api.service.crm.PendientesCrmService;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
 import com.inmobiliaria.inmobiliaria_api.service.ventas.reserva.ReservaService;
 import jakarta.persistence.criteria.Predicate;
@@ -87,7 +86,7 @@ public class ContratoService {
     private final LoteRepository loteRepository;
     private final LoteHistorialEstadoRepository loteHistorialRepository;
     private final OportunidadService oportunidadService;
-    private final ProspectoRepository prospectoRepository;
+    private final PendientesCrmService pendientesCrm;
     private final CrmAlcanceService crmAlcanceService;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -106,7 +105,7 @@ public class ContratoService {
             LoteRepository loteRepository,
             LoteHistorialEstadoRepository loteHistorialRepository,
             OportunidadService oportunidadService,
-            ProspectoRepository prospectoRepository,
+            PendientesCrmService pendientesCrm,
             CrmAlcanceService crmAlcanceService,
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
@@ -124,7 +123,7 @@ public class ContratoService {
         this.loteRepository = loteRepository;
         this.loteHistorialRepository = loteHistorialRepository;
         this.oportunidadService = oportunidadService;
-        this.prospectoRepository = prospectoRepository;
+        this.pendientesCrm = pendientesCrm;
         this.crmAlcanceService = crmAlcanceService;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -615,19 +614,16 @@ public class ContratoService {
                 "Venta activada por firmas completas",
                 contexto.usuarioId()
         ));
-        Oportunidad oportunidad = oportunidadService.ganarPorContrato(
-                contexto,
+        // La oportunidad (GANADA) y el prospecto (CONVERTIDO) viven en MongoDB: el cambio se
+        // encola en esta misma transacción y se aplica al confirmarse (rama 8).
+        pendientesCrm.ventaGanada(
+                contexto.empresaId(),
                 contrato.getOportunidadId(),
+                contrato.getId(),
+                contrato.getClientePrincipalId(),
                 fechaFirma,
-                contrato.getId()
+                contexto.usuarioId()
         );
-        Prospecto prospecto = prospectoRepository.findForUpdate(
-                oportunidad.getProspectoId(),
-                contexto.empresaId()
-        ).orElseThrow(() -> new ReglaNegocioException(
-                "El prospecto de la oportunidad no existe"
-        ));
-        prospecto.convertirPorVenta(contrato.getClientePrincipalId());
         registrarVersion(
                 contrato,
                 null,
@@ -640,16 +636,12 @@ public class ContratoService {
             ContextoUsuario contexto,
             Contrato contrato
     ) {
-        Oportunidad oportunidad = oportunidadService
-                .reabrirPorAnulacionContrato(
-                contexto,
+        pendientesCrm.ventaAnulada(
+                contexto.empresaId(),
                 contrato.getOportunidadId(),
-                contrato.getId()
+                contrato.getId(),
+                contexto.usuarioId()
         );
-        prospectoRepository.findForUpdate(
-                oportunidad.getProspectoId(),
-                contexto.empresaId()
-        ).ifPresent(Prospecto::reabrirPorAnulacionContrato);
     }
 
     private boolean todosFirmados(Long contratoId) {

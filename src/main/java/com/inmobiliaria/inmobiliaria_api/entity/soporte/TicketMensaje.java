@@ -1,40 +1,28 @@
 package com.inmobiliaria.inmobiliaria_api.entity.soporte;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "ticket_mensajes")
-public class TicketMensaje extends EntidadAuditable {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+/** Mensaje de la conversación de un ticket; vive embebido en {@link TicketSoporte}. */
+public class TicketMensaje {
     private Long id;
-    @Column(name = "ticket_id", nullable = false)
-    private Long ticketId;
-    @Column(name = "usuario_id")
     private Long usuarioId;
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String mensaje;
-    @Column(name = "es_respuesta_interna", nullable = false)
     private boolean interno;
+    private LocalDateTime creadoEn;
 
     protected TicketMensaje() { }
 
-    public TicketMensaje(Long ticketId, Long usuarioId, String mensaje, boolean interno) {
-        this.ticketId = ticketId;
+    public TicketMensaje(Long id, Long usuarioId, String mensaje, boolean interno, LocalDateTime creadoEn) {
+        this.id = id;
         this.usuarioId = usuarioId;
         this.mensaje = mensaje;
         this.interno = interno;
+        this.creadoEn = creadoEn;
     }
 
     public Long getId() { return id; }
-    public Long getTicketId() { return ticketId; }
     public Long getUsuarioId() { return usuarioId; }
     public String getMensaje() { return mensaje; }
     public boolean isInterno() { return interno; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }

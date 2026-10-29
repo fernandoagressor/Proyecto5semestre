@@ -1,34 +1,28 @@
 package com.inmobiliaria.inmobiliaria_api.entity.soporte;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "ticket_adjuntos")
-public class TicketAdjunto extends EntidadAuditable {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+/**
+ * Archivo adjunto a un ticket o a uno de sus mensajes; vive embebido en {@link TicketSoporte}.
+ * El archivo sigue en la tabla {@code archivos} de MySQL y aquí solo se guarda su id.
+ */
+public class TicketAdjunto {
     private Long id;
-    @Column(name = "ticket_id", nullable = false)
-    private Long ticketId;
-    @Column(name = "mensaje_id")
     private Long mensajeId;
-    @Column(name = "archivo_id", nullable = false)
     private Long archivoId;
+    private LocalDateTime creadoEn;
 
     protected TicketAdjunto() { }
-    public TicketAdjunto(Long ticketId, Long mensajeId, Long archivoId) {
-        this.ticketId = ticketId;
+
+    public TicketAdjunto(Long id, Long mensajeId, Long archivoId, LocalDateTime creadoEn) {
+        this.id = id;
         this.mensajeId = mensajeId;
         this.archivoId = archivoId;
+        this.creadoEn = creadoEn;
     }
+
     public Long getId() { return id; }
-    public Long getTicketId() { return ticketId; }
     public Long getMensajeId() { return mensajeId; }
     public Long getArchivoId() { return archivoId; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }

@@ -26,6 +26,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.cartera.Refinanciacion;
 import com.inmobiliaria.inmobiliaria_api.entity.cartera.RefinanciacionCuota;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
 import com.inmobiliaria.inmobiliaria_api.entity.simulacion.Periodicidad;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.Contrato;
 import com.inmobiliaria.inmobiliaria_api.repository.cartera.CuotaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.cartera.EstadoCuentaRepository;
@@ -61,12 +62,15 @@ public class CarteraGestionService {
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private static final List<EstadoCuota> ESTADOS_MORA = List.of(EstadoCuota.PENDIENTE, EstadoCuota.PARCIAL, EstadoCuota.VENCIDA);
 
+    static final String SECUENCIA_GESTIONES = "gestiones_cobro";
+    static final String SECUENCIA_ESTADOS_CUENTA = "estados_cuenta";
     private final CuotaRepository cuotaRepository;
     private final PlanPagoRepository planRepository;
     private final GestionCobroRepository gestionRepository;
     private final RefinanciacionRepository refinanciacionRepository;
     private final RefinanciacionCuotaRepository refinanciacionCuotaRepository;
     private final EstadoCuentaRepository estadoCuentaRepository;
+    private final SecuenciaService secuencias;
     private final PazSalvoRepository pazSalvoRepository;
     private final CarteraAlcanceService alcanceService;
     private final AlcanceProyectoService alcanceProyectoService;
@@ -75,13 +79,14 @@ public class CarteraGestionService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    public CarteraGestionService(CuotaRepository cuotaRepository, PlanPagoRepository planRepository, GestionCobroRepository gestionRepository, RefinanciacionRepository refinanciacionRepository, RefinanciacionCuotaRepository refinanciacionCuotaRepository, EstadoCuentaRepository estadoCuentaRepository, PazSalvoRepository pazSalvoRepository, CarteraAlcanceService alcanceService, AlcanceProyectoService alcanceProyectoService, PlanPagoService planPagoService, CuotaCalculadora calculadora, JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public CarteraGestionService(CuotaRepository cuotaRepository, PlanPagoRepository planRepository, GestionCobroRepository gestionRepository, RefinanciacionRepository refinanciacionRepository, RefinanciacionCuotaRepository refinanciacionCuotaRepository, EstadoCuentaRepository estadoCuentaRepository, PazSalvoRepository pazSalvoRepository, CarteraAlcanceService alcanceService, AlcanceProyectoService alcanceProyectoService, PlanPagoService planPagoService, CuotaCalculadora calculadora, JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, SecuenciaService secuencias) {
         this.cuotaRepository = cuotaRepository;
         this.planRepository = planRepository;
         this.gestionRepository = gestionRepository;
         this.refinanciacionRepository = refinanciacionRepository;
         this.refinanciacionCuotaRepository = refinanciacionCuotaRepository;
         this.estadoCuentaRepository = estadoCuentaRepository;
+        this.secuencias = secuencias;
         this.pazSalvoRepository = pazSalvoRepository;
         this.alcanceService = alcanceService;
         this.alcanceProyectoService = alcanceProyectoService;
@@ -188,7 +193,7 @@ public class CarteraGestionService {
 
     @Transactional
     public GestionCobroResponse registrarGestion(ContextoUsuario contexto, GestionCobroRequest request) {
-        alcanceService.contratoParaActualizar(contexto, request.contratoId());
+        Contrato contrato = alcanceService.contratoParaActualizar(contexto, request.contratoId());
         if (request.cuotaId() != null) {
             Cuota cuota = cuotaRepository.findForUpdate(request.cuotaId(), contexto.empresaId()).orElseThrow(() -> new ReglaNegocioException("La cuota no existe"));
             if (!cuota.getContratoId().equals(request.contratoId())) throw new ReglaNegocioException("La cuota no pertenece al contrato");
@@ -204,17 +209,19 @@ public class CarteraGestionService {
         if (request.promesaPagoFecha() != null && request.promesaPagoFecha().isBefore(LocalDate.now(BOGOTA))) {
             throw new ReglaNegocioException("La fecha de la promesa no puede estar en el pasado");
         }
-        GestionCobro gestion = gestionRepository.save(new GestionCobro(
+        GestionCobro gestion = new GestionCobro(
                 contexto.empresaId(), request.contratoId(), request.cuotaId(), contexto.usuarioId(), request.canal(),
                 request.resultado().trim(), normalizar(request.detalle()), request.promesaPagoFecha(), request.promesaPagoValor(), LocalDateTime.now(BOGOTA)
-        ));
-        return GestionCobroResponse.from(gestion);
+        );
+        // MongoDB (rama 9): es lo último que hace el método, así una validación fallida no deja la gestión.
+        gestion.identificar(secuencias.siguiente(SECUENCIA_GESTIONES), contrato.getProyectoId());
+        return GestionCobroResponse.from(gestionRepository.insertar(gestion));
     }
 
     @Transactional(readOnly = true)
     public List<GestionCobroResponse> listarGestiones(ContextoUsuario contexto, Long contratoId) {
         alcanceService.contrato(contexto, contratoId);
-        return gestionRepository.findByContratoIdOrderByFechaGestionDesc(contratoId).stream().map(GestionCobroResponse::from).toList();
+        return gestionRepository.listarPorContrato(contexto.empresaId(), contratoId).stream().map(GestionCobroResponse::from).toList();
     }
 
     @Transactional
@@ -277,9 +284,11 @@ public class CarteraGestionService {
         exigirFechaActual(request.fecha());
         validarArchivo(request.archivoId(), contexto.empresaId());
         Saldos saldos = saldos(request.contratoId());
-        EstadoCuentaGenerado generado = estadoCuentaRepository.save(new EstadoCuentaGenerado(
+        EstadoCuentaGenerado generado = new EstadoCuentaGenerado(
                 contexto.empresaId(), request.contratoId(), request.fecha(), saldos.capital(), saldos.mora(), request.archivoId(), contexto.usuarioId()
-        ));
+        );
+        generado.identificar(secuencias.siguiente(SECUENCIA_ESTADOS_CUENTA));
+        generado = estadoCuentaRepository.insertar(generado);
         return new DocumentoCarteraResponse(generado.getId(), "ESTADO_CUENTA", null, request.contratoId(), request.fecha(), saldos.capital(), saldos.mora(), saldos.total(), request.archivoId());
     }
 

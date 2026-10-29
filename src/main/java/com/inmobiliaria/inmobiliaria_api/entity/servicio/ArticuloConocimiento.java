@@ -1,42 +1,32 @@
 package com.inmobiliaria.inmobiliaria_api.entity.servicio;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "articulos_conocimiento")
-public class ArticuloConocimiento extends EntidadAuditable {
+/** Artículo de la base de conocimiento, guardado en MongoDB (rama 10). Sin empresa es global. */
+@Document(collection = ArticuloConocimiento.COLECCION)
+public class ArticuloConocimiento {
+    public static final String COLECCION = "articulos_conocimiento";
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "empresa_id")
     private Long empresaId;
-    @Column(name = "categoria_id", nullable = false)
     private Long categoriaId;
-    @Column(nullable = false, length = 220)
     private String titulo;
-    @Column(nullable = false, length = 240)
     private String slug;
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String contenido;
-    @Column(name = "visible_clientes", nullable = false)
     private boolean visibleClientes;
-    @Column(nullable = false, length = 20)
     private String estado;
-    @Column(name = "autor_id")
     private Long autorId;
-    @Column(name = "publicado_en")
     private LocalDateTime publicadoEn;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected ArticuloConocimiento() { }
@@ -51,6 +41,8 @@ public class ArticuloConocimiento extends EntidadAuditable {
         this.visibleClientes = visibleClientes;
         this.autorId = autorId;
         this.estado = "BORRADOR";
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
     }
 
     public void actualizar(Long categoriaId, String titulo, String slug, String contenido,
@@ -75,6 +67,19 @@ public class ArticuloConocimiento extends EntidadAuditable {
 
     public void archivar() { estado = "ARCHIVADO"; }
 
+    /** Asigna el identificador de un registro nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("El artículo ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
+    }
+
     public Long getId() { return id; }
     public Long getEmpresaId() { return empresaId; }
     public Long getCategoriaId() { return categoriaId; }
@@ -85,4 +90,7 @@ public class ArticuloConocimiento extends EntidadAuditable {
     public String getEstado() { return estado; }
     public Long getAutorId() { return autorId; }
     public LocalDateTime getPublicadoEn() { return publicadoEn; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
+    public Long getVersion() { return version; }
 }

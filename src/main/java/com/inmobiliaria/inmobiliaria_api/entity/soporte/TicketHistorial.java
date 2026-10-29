@@ -1,49 +1,35 @@
 package com.inmobiliaria.inmobiliaria_api.entity.soporte;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "ticket_historial")
-public class TicketHistorial extends EntidadAuditable {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+/** Cambio de estado o asignación de un ticket; vive embebido en {@link TicketSoporte}. */
+public class TicketHistorial {
     private Long id;
-    @Column(name = "ticket_id", nullable = false)
-    private Long ticketId;
-    @Column(nullable = false, length = 40)
     private String campo;
-    @Column(name = "valor_anterior", length = 500)
     private String valorAnterior;
-    @Column(name = "valor_nuevo", nullable = false, length = 500)
     private String valorNuevo;
-    @Column(name = "usuario_id")
     private Long usuarioId;
-    @Column(length = 500)
     private String motivo;
+    private LocalDateTime creadoEn;
 
     protected TicketHistorial() { }
 
-    public TicketHistorial(Long ticketId, String campo, String valorAnterior,
-                           String valorNuevo, Long usuarioId, String motivo) {
-        this.ticketId = ticketId;
+    public TicketHistorial(Long id, String campo, String valorAnterior, String valorNuevo,
+                           Long usuarioId, String motivo, LocalDateTime creadoEn) {
+        this.id = id;
         this.campo = campo;
         this.valorAnterior = valorAnterior;
         this.valorNuevo = valorNuevo;
         this.usuarioId = usuarioId;
         this.motivo = motivo;
+        this.creadoEn = creadoEn;
     }
 
     public Long getId() { return id; }
-    public Long getTicketId() { return ticketId; }
     public String getCampo() { return campo; }
     public String getValorAnterior() { return valorAnterior; }
     public String getValorNuevo() { return valorNuevo; }
     public Long getUsuarioId() { return usuarioId; }
     public String getMotivo() { return motivo; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }

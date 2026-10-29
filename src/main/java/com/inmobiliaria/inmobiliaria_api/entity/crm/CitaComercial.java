@@ -1,56 +1,57 @@
 package com.inmobiliaria.inmobiliaria_api.entity.crm;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "citas_comerciales")
-public class CitaComercial extends EntidadAuditable {
+/**
+ * Cita comercial de una oportunidad, guardada en MongoDB (rama 8). Guarda copia de la empresa y
+ * el proyecto de la oportunidad para poder filtrar la agenda por alcance sin cruzar colecciones.
+ */
+@Document(collection = CitaComercial.COLECCION)
+public class CitaComercial {
+
+    public static final String COLECCION = "citas_comerciales";
+
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "oportunidad_id", nullable = false)
+    private Long empresaId;
+    private Long proyectoId;
     private Long oportunidadId;
-
-    @Column(name = "asesor_id", nullable = false)
     private Long asesorId;
-
-    @Column(nullable = false, length = 30)
     private String tipo;
-
-    @Column(name = "fecha_inicio", nullable = false)
     private LocalDateTime fechaInicio;
-
-    @Column(name = "fecha_fin", nullable = false)
     private LocalDateTime fechaFin;
-
-    @Column(length = 300)
     private String lugar;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private EstadoCitaComercial estado;
-
-    @Column(columnDefinition = "TEXT")
     private String resultado;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
 
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected CitaComercial() {
+    }
+
+    public CitaComercial(
+            Long empresaId,
+            Long proyectoId,
+            Long oportunidadId,
+            Long asesorId,
+            String tipo,
+            LocalDateTime fechaInicio,
+            LocalDateTime fechaFin,
+            String lugar
+    ) {
+        this(oportunidadId, asesorId, tipo, fechaInicio, fechaFin, lugar);
+        this.empresaId = empresaId;
+        this.proyectoId = proyectoId;
     }
 
     public CitaComercial(
@@ -67,6 +68,8 @@ public class CitaComercial extends EntidadAuditable {
         this.estado = EstadoCitaComercial.PROGRAMADA;
         reprogramar(fechaInicio, fechaFin, lugar);
         this.estado = EstadoCitaComercial.PROGRAMADA;
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
     }
 
     public void reprogramar(
@@ -121,6 +124,35 @@ public class CitaComercial extends EntidadAuditable {
         }
         estado = nuevoEstado;
         this.resultado = resultado;
+    }
+
+    /** Asigna el identificador de una cita nueva. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("La cita ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
+    }
+
+    public Long getEmpresaId() {
+        return empresaId;
+    }
+
+    public Long getProyectoId() {
+        return proyectoId;
+    }
+
+    public LocalDateTime getCreadoEn() {
+        return creadoEn;
+    }
+
+    public LocalDateTime getActualizadoEn() {
+        return actualizadoEn;
     }
 
     public Long getId() {

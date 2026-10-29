@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.servicio;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.servicio.CitaServicioDtos;
 import com.inmobiliaria.inmobiliaria_api.entity.cliente.Cliente;
@@ -10,6 +12,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.servicio.SolicitudPqrs;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.CitaServicioRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.SolicitudPqrsRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.AccesoDenegadoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
@@ -19,33 +22,43 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
-import org.springframework.data.domain.Page;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Citas de servicio. Desde la rama 10 viven en la colección {@code citas_servicio} de MongoDB; el
+ * dashboard las lee de la tabla espejo {@code lectura_citas_servicio}.
+ */
 @Service
 public class CitaServicioService {
+    static final String SECUENCIA = "citas_servicio";
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private final CitaServicioRepository repository;
     private final SolicitudPqrsRepository solicitudRepository;
     private final ServicioClienteAlcanceService alcanceService;
     private final NotificacionService notificacionService;
     private final JdbcTemplate jdbcTemplate;
+    private final SecuenciaService secuencias;
 
     public CitaServicioService(CitaServicioRepository repository,
                                SolicitudPqrsRepository solicitudRepository,
                                ServicioClienteAlcanceService alcanceService,
                                NotificacionService notificacionService,
-                               JdbcTemplate jdbcTemplate) {
+                               JdbcTemplate jdbcTemplate,
+                               SecuenciaService secuencias) {
         this.repository = repository;
         this.solicitudRepository = solicitudRepository;
         this.alcanceService = alcanceService;
         this.notificacionService = notificacionService;
         this.jdbcTemplate = jdbcTemplate;
+        this.secuencias = secuencias;
     }
 
     @Transactional(readOnly = true)
@@ -55,28 +68,27 @@ public class CitaServicioService {
                                                             int pagina, int tamano) {
         validarRango(desde, hasta);
         Cliente cliente = alcanceService.clienteAutenticado(contexto).orElse(null);
-        Specification<CitaServicio> filtro = (root, query, cb) -> cb.and(
-                cb.equal(root.get("empresaId"), contexto.empresaId()),
-                cb.lessThan(root.get("fechaInicio"), hasta),
-                cb.greaterThan(root.get("fechaFin"), desde));
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(where("empresaId").is(contexto.empresaId()));
+        condiciones.add(where("fechaInicio").lt(hasta));
+        condiciones.add(where("fechaFin").gt(desde));
         if (cliente != null) {
-            filtro = filtro.and((root, query, cb) -> cb.equal(root.get("clienteId"), cliente.getId()));
+            condiciones.add(where("clienteId").is(cliente.getId()));
         } else {
             AlcanceProyectos alcance = alcanceService.alcanceInterno(contexto);
             if (!alcance.empresaCompleta()) {
-                filtro = filtro.and((root, query, cb) -> {
-                    var permitidos = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-                    if (!alcance.proyectos().isEmpty()) permitidos.add(root.get("proyectoId").in(alcance.proyectos()));
-                    if (alcance.registrosPropios()) permitidos.add(cb.equal(root.get("responsableId"), contexto.usuarioId()));
-                    return permitidos.isEmpty() ? cb.disjunction() : cb.or(permitidos.toArray(jakarta.persistence.criteria.Predicate[]::new));
-                });
+                List<Criteria> permitidos = new ArrayList<>();
+                if (!alcance.proyectos().isEmpty()) permitidos.add(where("proyectoId").in(alcance.proyectos()));
+                if (alcance.registrosPropios()) permitidos.add(where("responsableId").is(contexto.usuarioId()));
+                condiciones.add(permitidos.isEmpty() ? where("id").in(List.of())
+                        : new Criteria().orOperator(permitidos));
             }
         }
-        if (estado != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("estado"), estado));
-        if (responsableId != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("responsableId"), responsableId));
-        Page<CitaServicio> resultado = repository.findAll(filtro, PageRequest.of(
+        if (estado != null) condiciones.add(where("estado").is(estado.name()));
+        if (responsableId != null) condiciones.add(where("responsableId").is(responsableId));
+        var resultado = repository.buscar(new Criteria().andOperator(condiciones), PageRequest.of(
                 Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100),
-                Sort.by(Sort.Direction.ASC, "fechaInicio")));
+                Sort.by(Sort.Direction.ASC, "fechaInicio").and(Sort.by(Sort.Direction.ASC, "id"))));
         return PaginaResponse.from(resultado, CitaServicioDtos.Response::from);
     }
 
@@ -97,9 +109,11 @@ public class CitaServicioService {
         Long responsable = request.responsableId();
         if (responsable != null) alcanceService.validarUsuarioEmpresa(contexto, responsable);
         validarCruce(responsable, request.fechaInicio(), request.fechaFin(), null);
-        CitaServicio cita = repository.save(new CitaServicio(contexto.empresaId(), request.proyectoId(),
+        CitaServicio cita = new CitaServicio(contexto.empresaId(), request.proyectoId(),
                 cliente.getId(), request.solicitudId(), responsable, requerido(request.tipo()).toUpperCase(Locale.ROOT),
-                request.fechaInicio(), request.fechaFin(), normalizar(request.lugar())));
+                request.fechaInicio(), request.fechaFin(), normalizar(request.lugar()));
+        cita.identificar(secuencias.siguiente(SECUENCIA));
+        cita = repository.insertar(cita);
         notificar(cita, "CITA_CREADA", "Nueva cita de servicio");
         return CitaServicioDtos.Response.from(cita);
     }
@@ -113,6 +127,7 @@ public class CitaServicioService {
         }
         validarCruce(cita.getResponsableId(), request.fechaInicio(), request.fechaFin(), id);
         cita.reprogramar(request.fechaInicio(), request.fechaFin(), normalizar(request.lugar()));
+        cita = guardar(cita);
         notificar(cita, "CITA_REPROGRAMADA", "Cita reprogramada");
         return CitaServicioDtos.Response.from(cita);
     }
@@ -131,6 +146,7 @@ public class CitaServicioService {
             case CANCELADA -> cita.cancelar(request.resultado());
             default -> throw new ReglaNegocioException("Use la operación de reprogramación para cambiar la fecha");
         }
+        cita = guardar(cita);
         notificar(cita, "CITA_ESTADO", "Estado de cita actualizado");
         return CitaServicioDtos.Response.from(cita);
     }
@@ -140,6 +156,14 @@ public class CitaServicioService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("La cita no existe"));
         alcanceService.validarRelacion(contexto, cita.getClienteId(), cita.getProyectoId(), null);
         return cita;
+    }
+
+    private CitaServicio guardar(CitaServicio cita) {
+        try {
+            return repository.guardar(cita);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ConflictoException("La cita fue modificada por otro usuario");
+        }
     }
 
     private void validarCruce(Long responsable, LocalDateTime inicio, LocalDateTime fin, Long excluirId) {
