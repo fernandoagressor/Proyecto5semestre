@@ -4,6 +4,7 @@ import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
 import com.inmobiliaria.inmobiliaria_api.entity.gerencia.ReporteGenerado;
+import java.time.Duration;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -16,9 +17,15 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
-/** Acceso a la colección {@code reportes_generados} de MongoDB. */
+/**
+ * Acceso a la colección {@code reportes_generados} de MongoDB. MongoDB borra cada solicitud
+ * {@link #RETENCION} después de creada (índice TTL); el archivo en MySQL no se toca.
+ */
 @Repository
 public class ReporteGeneradoRepository {
+
+    /** Tiempo que se conserva cada solicitud de reporte. */
+    public static final Duration RETENCION = Duration.ofDays(90);
 
     private final MongoTemplate mongoTemplate;
 
@@ -49,12 +56,14 @@ public class ReporteGeneradoRepository {
                 pagina, total);
     }
 
-    /** Crea los índices de la colección; es idempotente. */
+    /** Crea los índices de la colección (incluido el TTL de {@link #RETENCION}); es idempotente. */
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(ReporteGenerado.class);
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("estado", Sort.Direction.ASC)
                 .on("creadoEn", Sort.Direction.DESC).named("idx_reportes_generados_empresa_estado"));
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("proyectoId", Sort.Direction.ASC)
                 .on("creadoEn", Sort.Direction.DESC).named("idx_reportes_generados_empresa_proyecto"));
+        indices.ensureIndex(new Index().on("creadoEn", Sort.Direction.ASC)
+                .expire(RETENCION).named("ttl_reportes_generados_90_dias"));
     }
 }

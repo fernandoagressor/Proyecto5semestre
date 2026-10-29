@@ -23,6 +23,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * en ella, el evento se escribe <em>después del commit</em>: igual que antes, una operación que
  * hace rollback no deja evento. Los datos y la fecha se toman en el momento de la llamada.</p>
  *
+ * <p>Cada evento guardado pasa por {@link DetectorAnomaliasService}, que puede crear alertas.</p>
+ *
  * <p>Si MongoDB falla al guardar, el evento completo queda en el log con nivel ERROR (para poder
  * recuperarlo) y la operación principal, que ya se confirmó, no se cae.</p>
  */
@@ -34,13 +36,16 @@ public class AuditoriaRegistroService {
     private final EventoAuditoriaRepository repository;
     private final SecuenciaService secuencias;
     private final ObjectMapper objectMapper;
+    private final DetectorAnomaliasService detector;
 
     public AuditoriaRegistroService(EventoAuditoriaRepository repository,
                                     SecuenciaService secuencias,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    DetectorAnomaliasService detector) {
         this.repository = repository;
         this.secuencias = secuencias;
         this.objectMapper = objectMapper;
+        this.detector = detector;
     }
 
     public void registrar(ContextoUsuario contexto, Long proyectoId, String modulo,
@@ -62,14 +67,17 @@ public class AuditoriaRegistroService {
     }
 
     private void guardar(Registro r) {
+        EventoAuditoria evento;
         try {
-            repository.insertar(new EventoAuditoria(secuencias.siguiente(SecuenciasAuditoria.EVENTOS),
+            evento = repository.insertar(new EventoAuditoria(secuencias.siguiente(SecuenciasAuditoria.EVENTOS),
                     r.empresaId(), r.proyectoId(), r.actorId(), r.modulo(), r.accion(), r.entidadTipo(),
                     r.entidadId(), r.descripcion(), r.anterior(), r.nuevo(), null, null,
                     r.correlationId(), r.ocurridoEn()));
         } catch (RuntimeException e) {
             log.error("No se pudo guardar el evento de auditoría {}", r, e);
+            return;
         }
+        detector.evaluarEvento(evento);
     }
 
     private String json(Object valor) {

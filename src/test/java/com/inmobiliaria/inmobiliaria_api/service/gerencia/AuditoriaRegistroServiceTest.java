@@ -25,6 +25,7 @@ class AuditoriaRegistroServiceTest {
 
     private EventoAuditoriaRepository repository;
     private SecuenciaService secuencias;
+    private DetectorAnomaliasService detector;
     private AuditoriaRegistroService service;
     private ContextoUsuario contexto;
 
@@ -33,7 +34,9 @@ class AuditoriaRegistroServiceTest {
         repository = mock(EventoAuditoriaRepository.class);
         secuencias = mock(SecuenciaService.class);
         when(secuencias.siguiente("auditoria_eventos")).thenReturn(77L);
-        service = new AuditoriaRegistroService(repository, secuencias, new ObjectMapper());
+        detector = mock(DetectorAnomaliasService.class);
+        when(repository.insertar(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
+        service = new AuditoriaRegistroService(repository, secuencias, new ObjectMapper(), detector);
         contexto = new ContextoUsuario(34L, 8L);
     }
 
@@ -57,6 +60,7 @@ class AuditoriaRegistroServiceTest {
         assertThat(evento.getValue().getDatosNuevosJson()).isEqualTo("{\"estado\":\"GENERADO\"}");
         assertThat(evento.getValue().getCorrelationId()).hasSize(36);
         assertThat(evento.getValue().getOcurridoEn()).isNotNull();
+        verify(detector).evaluarEvento(evento.getValue());
     }
 
     @Test
@@ -86,6 +90,7 @@ class AuditoriaRegistroServiceTest {
         when(repository.insertar(any())).thenThrow(new IllegalStateException("MongoDB no responde"));
 
         assertThatCode(this::registrar).doesNotThrowAnyException();
+        verify(detector, never()).evaluarEvento(any());
     }
 
     private void registrar() {

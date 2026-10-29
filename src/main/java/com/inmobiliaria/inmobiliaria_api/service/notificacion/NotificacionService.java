@@ -63,6 +63,20 @@ public class NotificacionService {
         }
     }
 
+    /**
+     * Crea la notificación de inmediato, sin esperar a ninguna transacción. Es para código que ya
+     * corre después de un commit (por ejemplo, la detección de anomalías): ahí una sincronización
+     * nueva ya no se ejecutaría.
+     */
+    public void crearInmediata(Long empresaId, Long usuarioId, String tipo, String titulo,
+                               String mensaje, String entidadTipo, Long entidadId, String prioridad) {
+        if (usuarioId == null) {
+            return;
+        }
+        guardar(new Notificacion(empresaId, usuarioId, tipo, titulo, mensaje, entidadTipo, entidadId,
+                prioridad, null));
+    }
+
     public PaginaResponse<NotificacionDtos.Response> listar(ContextoUsuario contexto,
                                                             Boolean leida, int pagina, int tamano) {
         return PaginaResponse.from(repository.buscarVigentes(contexto.usuarioId(), leida, ahora(),

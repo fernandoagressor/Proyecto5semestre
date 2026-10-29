@@ -4,6 +4,7 @@ import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
 import com.inmobiliaria.inmobiliaria_api.entity.gerencia.EventoAuditoria;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +47,12 @@ public class EventoAuditoriaRepository {
         long total = mongoTemplate.count(new Query(filtro), EventoAuditoria.class);
         return new PageImpl<>(mongoTemplate.find(new Query(filtro).with(pagina), EventoAuditoria.class),
                 pagina, total);
+    }
+
+    /** Eventos con esa acción hechos por el actor desde la fecha indicada. */
+    public long contarAcciones(Long actorId, String accion, LocalDateTime desde) {
+        return mongoTemplate.count(query(where("actorId").is(actorId).and("accion").is(accion)
+                .and("ocurridoEn").gte(desde)), EventoAuditoria.class);
     }
 
     /** Crea los índices de la colección; es idempotente. */
