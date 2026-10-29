@@ -42,6 +42,11 @@ public class AlmacenTokenMongo implements AlmacenTokenReanudacion {
                 new UpdateOptions().upsert(true));
     }
 
+    @Override
+    public void borrar(String flujo) {
+        coleccion().deleteOne(eq("_id", flujo));
+    }
+
     private MongoCollection<Document> coleccion() {
         return mongoTemplate.getCollection(COLECCION);
     }

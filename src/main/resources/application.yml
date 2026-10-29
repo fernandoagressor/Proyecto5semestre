@@ -98,6 +98,11 @@ app:
     # Change Stream de MongoDB -> tablas espejo de lectura en MySQL (rama 4).
     enabled: ${APP_SYNC_ENABLED:true}
     espera-reintento: ${APP_SYNC_ESPERA_REINTENTO:PT5S}
+    # Cada cuánto se borran de Redis los dashboards de las empresas con cambios proyectados (rama 11).
+    invalidacion-dashboards: ${APP_SYNC_INVALIDACION_DASHBOARDS:PT2S}
+    # true: rehace todas las tablas lectura_* desde MongoDB al arrancar. También ocurre solo si no hay
+    # token guardado o si MongoDB perdió el historial del Change Stream (error 286).
+    reconstruir-al-arrancar: ${APP_SYNC_RECONSTRUIR_AL_ARRANCAR:false}
   migracion:
     # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 a 10).
     pqrs:

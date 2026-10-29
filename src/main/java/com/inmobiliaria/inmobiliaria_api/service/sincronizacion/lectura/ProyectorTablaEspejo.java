@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,11 @@ public abstract class ProyectorTablaEspejo implements ProyectorLectura {
     @Override
     public String coleccion() {
         return coleccion;
+    }
+
+    @Override
+    public Optional<String> tablaEspejo() {
+        return Optional.of(tabla);
     }
 
     @Override

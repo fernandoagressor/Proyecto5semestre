@@ -97,4 +97,24 @@ class DespachadorCambiosTest {
 
         assertThat(despachador.colecciones()).containsExactlyInAnyOrder("solicitudes", "tickets");
     }
+
+    @Test
+    void avisaALosOyentesSoloLoQueSeProyectoYUnOyenteQueFallaNoDetieneElFlujo() {
+        OyenteProyeccion roto = mock(OyenteProyeccion.class);
+        OyenteProyeccion oyente = mock(OyenteProyeccion.class);
+        CambioDocumento conProyector = cambio("solicitudes", "token-8");
+        CambioDocumento sinProyector = cambio("contadores", "token-9");
+        doThrow(new IllegalStateException("Redis caído")).when(roto).proyectado(conProyector);
+        DespachadorCambios despachador =
+                new DespachadorCambios(List.of(proyectorSolicitudes), tokens, List.of(roto, oyente));
+
+        despachador.procesar(conProyector);
+        despachador.procesar(sinProyector);
+
+        verify(oyente).proyectado(conProyector);
+        verify(oyente, never()).proyectado(sinProyector);
+        verify(tokens).guardar(DespachadorCambios.FLUJO, "token-8");
+        verify(tokens).guardar(DespachadorCambios.FLUJO, "token-9");
+        assertThat(despachador.proyectores()).containsExactly(proyectorSolicitudes);
+    }
 }

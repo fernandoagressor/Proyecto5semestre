@@ -16,6 +16,8 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 public class RedisCacheConfig {
     public static final String DASHBOARDS = "dashboards";
     public static final String TOKEN_VERSION ="token-version";
+    /** Prefijo de las llaves de caché en Redis: {@code nexora:<caché>::<llave>}. */
+    public static final String PREFIJO = "nexora:";
 
     @Bean
     RedisCacheManagerBuilderCustomizer nexoraCore(){
@@ -26,7 +28,7 @@ public class RedisCacheConfig {
     }
     private static RedisCacheConfiguration base(Duration ttl){
         return RedisCacheConfiguration.defaultCacheConfig()
-                .prefixCacheNameWith("nexora:")
+                .prefixCacheNameWith(PREFIJO)
                 .entryTtl(ttl)
                 .disableCachingNullValues();
 

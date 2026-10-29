@@ -76,6 +76,14 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   categorías. Migradores con `APP_MIGRACION_SERVICIO_ENABLED`.
 - Las solicitudes de cambio de datos se quedan en MySQL: aprobarlas cambia la persona y el usuario
   en la misma transacción.
+- **Dashboards al día (rama 11).** Cuando el Change Stream proyecta un cambio, se borran de Redis
+  los dashboards de esa empresa (agrupado cada 2 s, `APP_SYNC_INVALIDACION_DASHBOARDS`, con `SCAN`
+  y sin tocar otras cachés). Antes podían mostrar datos de hasta 5 minutos atrás.
+- **Reconstrucción de tablas espejo.** `ReconstructorEspejos` deja cada `lectura_*` igual a
+  MongoDB (upsert de todo y borrado de huérfanas, sin vaciar la tabla antes). El observador lo usa
+  si MongoDB perdió el historial del Change Stream (error 286), si no hay token guardado o con
+  `APP_SYNC_RECONSTRUIR_AL_ARRANCAR=true`; la reconstrucción corre con el flujo ya abierto para no
+  perder los cambios que ocurran mientras tanto.
 
 ## [0.2.0] - 2026-10-20
 
