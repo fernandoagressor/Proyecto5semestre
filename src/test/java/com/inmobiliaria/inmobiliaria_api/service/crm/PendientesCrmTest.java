@@ -9,8 +9,12 @@ import com.inmobiliaria.inmobiliaria_api.entity.crm.FuenteProspecto;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Oportunidad;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Prospecto;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.TemperaturaProspecto;
+import com.inmobiliaria.inmobiliaria_api.entity.simulacion.EstadoSimulacion;
+import com.inmobiliaria.inmobiliaria_api.entity.simulacion.Periodicidad;
+import com.inmobiliaria.inmobiliaria_api.entity.simulacion.Simulacion;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.ProspectoRepository;
+import com.inmobiliaria.inmobiliaria_api.repository.simulacion.SimulacionRepository;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -81,6 +85,7 @@ class PendientesCrmTest {
     private MongoTemplate mongo;
     private OportunidadRepository oportunidades;
     private ProspectoRepository prospectos;
+    private SimulacionRepository simulaciones;
     private ProcesadorPendientesCrm procesador;
     private PendientesCrmService pendientes;
 
@@ -91,7 +96,8 @@ class PendientesCrmTest {
         SecuenciaService secuencias = new SecuenciaService(mongo);
         oportunidades = new OportunidadRepository(mongo);
         prospectos = new ProspectoRepository(mongo);
-        procesador = new ProcesadorPendientesCrm(jdbc, transactionManager, oportunidades, prospectos, secuencias);
+        simulaciones = new SimulacionRepository(mongo);
+        procesador = new ProcesadorPendientesCrm(jdbc, transactionManager, oportunidades, prospectos, simulaciones, secuencias);
         pendientes = new PendientesCrmService(jdbc, procesador);
         jdbc.update("DELETE FROM crm_pendientes");
     }
@@ -184,6 +190,34 @@ class PendientesCrmTest {
         procesador.procesarPendientes();
 
         assertThat(oportunidad(20L).getHistorialEtapas()).hasSize(cambios);
+    }
+
+    @Test
+    void laReservaAceptaLaSimulacionAlConfirmarseYSoloUnaVez() {
+        Simulacion simulacion = new Simulacion(EMPRESA, 1L, "SIM-1", 20L, 301L, 34L,
+                new BigDecimal("74000000.00"), BigDecimal.ZERO, new BigDecimal("14000000.00"),
+                new BigDecimal("60000000.00"), 12, new BigDecimal("0.120000"), Periodicidad.MENSUAL,
+                FIRMA.plusDays(30));
+        simulacion.identificar(40L);
+        simulacion.enviar(FIRMA);
+        simulaciones.insertar(simulacion);
+        TransactionTemplate reserva = new TransactionTemplate(transactionManager);
+
+        reserva.executeWithoutResult(estado -> {
+            pendientes.simulacionAceptada(EMPRESA, 20L, 40L, 9L);
+            assertThat(simulaciones.findByIdAndEmpresaId(40L, EMPRESA).orElseThrow().getEstado())
+                    .as("antes del commit").isEqualTo(EstadoSimulacion.ENVIADA);
+        });
+
+        Simulacion aceptada = simulaciones.findByIdAndEmpresaId(40L, EMPRESA).orElseThrow();
+        assertThat(aceptada.getEstado()).isEqualTo(EstadoSimulacion.ACEPTADA);
+        assertThat(jdbc.queryForObject("SELECT simulacion_id FROM crm_pendientes", Long.class)).isEqualTo(40L);
+        assertThat(sinProcesar()).isZero();
+
+        jdbc.update("UPDATE crm_pendientes SET procesado_en = NULL");
+        procesador.procesarPendientes();
+        assertThat(simulaciones.findByIdAndEmpresaId(40L, EMPRESA).orElseThrow().getVersion())
+                .as("reaplicar no vuelve a guardar").isEqualTo(aceptada.getVersion());
     }
 
     private void crearOportunidad(long id, long prospectoId) {

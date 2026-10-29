@@ -3,8 +3,10 @@ package com.inmobiliaria.inmobiliaria_api.service.crm;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.EstadoProspecto;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Oportunidad;
 import com.inmobiliaria.inmobiliaria_api.entity.crm.Prospecto;
+import com.inmobiliaria.inmobiliaria_api.entity.simulacion.Simulacion;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.OportunidadRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.crm.ProspectoRepository;
+import com.inmobiliaria.inmobiliaria_api.repository.simulacion.SimulacionRepository;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -51,18 +53,21 @@ public class ProcesadorPendientesCrm {
     private final TransactionTemplate nuevaTransaccion;
     private final OportunidadRepository oportunidades;
     private final ProspectoRepository prospectos;
+    private final SimulacionRepository simulaciones;
     private final SecuenciaService secuencias;
 
     public ProcesadorPendientesCrm(JdbcTemplate jdbcTemplate,
                                    PlatformTransactionManager transactionManager,
                                    OportunidadRepository oportunidades,
                                    ProspectoRepository prospectos,
+                                   SimulacionRepository simulaciones,
                                    SecuenciaService secuencias) {
         this.jdbcTemplate = jdbcTemplate;
         this.nuevaTransaccion = new TransactionTemplate(transactionManager);
         this.nuevaTransaccion.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.oportunidades = oportunidades;
         this.prospectos = prospectos;
+        this.simulaciones = simulaciones;
         this.secuencias = secuencias;
     }
 
@@ -103,6 +108,15 @@ public class ProcesadorPendientesCrm {
     }
 
     private void aplicar(Pendiente p) {
+        if (PendientesCrmService.SIMULACION_ACEPTADA.equals(p.tipo())) {
+            Simulacion simulacion = simulaciones.findByIdAndEmpresaId(p.simulacionId(), p.empresaId())
+                    .orElseThrow(() -> new IllegalStateException("La simulación " + p.simulacionId()
+                            + " no existe en MongoDB"));
+            if (simulacion.aplicarAceptacion()) {
+                simulaciones.guardar(simulacion);
+            }
+            return;
+        }
         Oportunidad oportunidad = oportunidades.findByIdAndEmpresaId(p.oportunidadId(), p.empresaId())
                 .orElseThrow(() -> new IllegalStateException("La oportunidad " + p.oportunidadId() + " no existe en MongoDB"));
         switch (p.tipo()) {
@@ -149,12 +163,12 @@ public class ProcesadorPendientesCrm {
         Object[] conLimite = Arrays.copyOf(parametros, parametros.length + 1);
         conLimite[parametros.length] = LOTE;
         return jdbcTemplate.query("""
-                SELECT id, empresa_id, oportunidad_id, tipo, cliente_id, contrato_id, usuario_id, fecha
+                SELECT id, empresa_id, oportunidad_id, tipo, cliente_id, contrato_id, simulacion_id, usuario_id, fecha
                 FROM crm_pendientes WHERE %s ORDER BY id LIMIT ?
                 """.formatted(condicion), (rs, fila) -> new Pendiente(
                 rs.getLong("id"), rs.getLong("empresa_id"), rs.getLong("oportunidad_id"), rs.getString("tipo"),
                 rs.getObject("cliente_id", Long.class), rs.getObject("contrato_id", Long.class),
-                rs.getObject("usuario_id", Long.class), rs.getObject("fecha", LocalDateTime.class)), conLimite);
+                rs.getObject("simulacion_id", Long.class), rs.getObject("usuario_id", Long.class), rs.getObject("fecha", LocalDateTime.class)), conLimite);
     }
 
     /** Toma el pendiente por un rato; falso si otro proceso ya lo tiene o ya se aplicó. */
@@ -181,5 +195,5 @@ public class ProcesadorPendientesCrm {
     }
 
     private record Pendiente(long id, long empresaId, long oportunidadId, String tipo, Long clienteId,
-                             Long contratoId, Long usuarioId, LocalDateTime fecha) { }
+                             Long contratoId, Long simulacionId, Long usuarioId, LocalDateTime fecha) { }
 }
