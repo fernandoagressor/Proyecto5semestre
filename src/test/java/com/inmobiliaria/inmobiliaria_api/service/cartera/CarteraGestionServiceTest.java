@@ -15,7 +15,9 @@ import com.inmobiliaria.inmobiliaria_api.repository.cartera.PazSalvoRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.cartera.PlanPagoRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.cartera.RefinanciacionCuotaRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.cartera.RefinanciacionRepository;
+import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.Contrato;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectoService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +56,7 @@ class CarteraGestionServiceTest {
     @Mock private CuotaCalculadora calculadora;
     @Mock private JdbcTemplate jdbcTemplate;
     @Mock private ObjectMapper objectMapper;
+    @Mock private SecuenciaService secuencias;
 
     @InjectMocks private CarteraGestionService service;
 
@@ -62,7 +66,11 @@ class CarteraGestionServiceTest {
         Cuota cuota = cuotaConVencimiento(hoy.plusMonths(1));
         cuota.aplicar(new BigDecimal("200000"), ConceptoPago.CAPITAL, hoy);
         when(cuotaRepository.findForUpdate(70L, 1L)).thenReturn(Optional.of(cuota));
-        when(gestionRepository.save(any(GestionCobro.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        Contrato contrato = mock(Contrato.class);
+        when(contrato.getProyectoId()).thenReturn(3L);
+        when(alcanceService.contratoParaActualizar(CONTEXTO, 7L)).thenReturn(contrato);
+        when(secuencias.siguiente("gestiones_cobro")).thenReturn(500L);
+        when(gestionRepository.insertar(any(GestionCobro.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = service.registrarGestion(CONTEXTO, new GestionCobroRequest(
                 7L,
@@ -94,7 +102,7 @@ class CarteraGestionServiceTest {
         );
 
         assertEquals("La cuota no tiene saldo pendiente para gestionar", error.getMessage());
-        verify(gestionRepository, never()).save(any());
+        verify(gestionRepository, never()).insertar(any());
     }
 
     @Test
@@ -117,7 +125,7 @@ class CarteraGestionServiceTest {
         );
 
         assertEquals("La promesa supera el saldo pendiente de la cuota", error.getMessage());
-        verify(gestionRepository, never()).save(any());
+        verify(gestionRepository, never()).insertar(any());
     }
 
     private static Cuota cuotaConVencimiento(LocalDate vencimiento) {

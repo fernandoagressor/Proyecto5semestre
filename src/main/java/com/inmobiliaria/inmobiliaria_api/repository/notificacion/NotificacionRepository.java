@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.notificacion;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -23,7 +24,7 @@ import org.springframework.stereotype.Repository;
 
 /** Acceso a la colección {@code notificaciones} de MongoDB. */
 @Repository
-public class NotificacionRepository {
+public class NotificacionRepository implements IndicesMongo {
 
     private final MongoTemplate mongoTemplate;
 
@@ -75,6 +76,7 @@ public class NotificacionRepository {
      * Crea los índices; es idempotente. El de {@code expiraEn} es TTL: MongoDB borra la
      * notificación cuando vence (las que no tienen vencimiento no se borran).
      */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(Notificacion.class);
         indices.ensureIndex(new Index().on("usuarioId", Sort.Direction.ASC).on("leidaEn", Sort.Direction.ASC)

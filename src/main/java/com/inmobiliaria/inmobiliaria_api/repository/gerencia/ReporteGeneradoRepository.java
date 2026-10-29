@@ -1,5 +1,6 @@
 package com.inmobiliaria.inmobiliaria_api.repository.gerencia;
 
+import com.inmobiliaria.inmobiliaria_api.repository.compartido.IndicesMongo;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
@@ -22,7 +23,7 @@ import org.springframework.stereotype.Repository;
  * {@link #RETENCION} después de creada (índice TTL); el archivo en MySQL no se toca.
  */
 @Repository
-public class ReporteGeneradoRepository {
+public class ReporteGeneradoRepository implements IndicesMongo {
 
     /** Tiempo que se conserva cada solicitud de reporte. */
     public static final Duration RETENCION = Duration.ofDays(90);
@@ -57,6 +58,7 @@ public class ReporteGeneradoRepository {
     }
 
     /** Crea los índices de la colección (incluido el TTL de {@link #RETENCION}); es idempotente. */
+    @Override
     public void asegurarIndices() {
         IndexOperations indices = mongoTemplate.indexOps(ReporteGenerado.class);
         indices.ensureIndex(new Index().on("empresaId", Sort.Direction.ASC).on("estado", Sort.Direction.ASC)

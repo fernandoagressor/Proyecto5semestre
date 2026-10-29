@@ -1,36 +1,37 @@
 package com.inmobiliaria.inmobiliaria_api.entity.cartera;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
-@Entity
-@Table(name = "estados_cuenta_generados")
-public class EstadoCuentaGenerado extends EntidadAuditable {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+/**
+ * Estado de cuenta emitido con corte histórico, guardado en MongoDB (rama 9). Es inmutable y hay
+ * uno solo por contrato y fecha de corte (índice único).
+ */
+@Document(collection = EstadoCuentaGenerado.COLECCION)
+public class EstadoCuentaGenerado {
+    public static final String COLECCION = "estados_cuenta";
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+
+    @Id
     private Long id;
-    @Column(name = "empresa_id", nullable = false)
     private Long empresaId;
-    @Column(name = "contrato_id", nullable = false)
     private Long contratoId;
-    @Column(name = "fecha_corte", nullable = false)
     private LocalDate fechaCorte;
-    @Column(name = "saldo_capital", nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal saldoCapital;
-    @Column(name = "saldo_mora", nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal saldoMora;
-    @Column(name = "saldo_total", nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal saldoTotal;
-    @Column(name = "archivo_id", nullable = false)
     private Long archivoId;
-    @Column(name = "generado_por")
     private Long generadoPor;
+    private LocalDateTime creadoEn;
 
     protected EstadoCuentaGenerado() {
     }
@@ -44,13 +45,25 @@ public class EstadoCuentaGenerado extends EntidadAuditable {
         this.saldoTotal = saldoCapital.add(saldoMora);
         this.archivoId = archivoId;
         this.generadoPor = generadoPor;
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+    }
+
+    /** Asigna el identificador de un estado de cuenta nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("El estado de cuenta ya tiene identificador " + id);
+        }
+        id = nuevoId;
     }
 
     public Long getId() { return id; }
+    public Long getEmpresaId() { return empresaId; }
     public Long getContratoId() { return contratoId; }
     public LocalDate getFechaCorte() { return fechaCorte; }
     public BigDecimal getSaldoCapital() { return saldoCapital; }
     public BigDecimal getSaldoMora() { return saldoMora; }
     public BigDecimal getSaldoTotal() { return saldoTotal; }
     public Long getArchivoId() { return archivoId; }
+    public Long getGeneradoPor() { return generadoPor; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }
