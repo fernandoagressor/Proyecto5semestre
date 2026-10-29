@@ -1,41 +1,26 @@
 package com.inmobiliaria.inmobiliaria_api.entity.seguridad;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "intentos_acceso")
-public class IntentoAcceso extends EntidadAuditable {
+/**
+ * Intento de inicio de sesión (exitoso, fallido o bloqueado), guardado en MongoDB (rama 7).
+ * El límite de intentos por IP sigue en Redis; aquí queda el historial.
+ */
+@Document(collection = IntentoAcceso.COLECCION)
+public class IntentoAcceso {
+
+    public static final String COLECCION = "intentos_acceso";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "usuario_id")
     private Long usuarioId;
-
-    @Column(nullable = false, length = 180)
     private String identificador;
-
-    @Column(nullable = false, length = 20)
     private String resultado;
-
-    @Column(length = 200)
     private String motivo;
-
-    @Column(name = "ip_origen", length = 64)
     private String ipOrigen;
-
-    @Column(name = "agente_usuario", length = 500)
     private String agenteUsuario;
-
-    @Column(name = "fecha_intento", nullable = false)
     private LocalDateTime fechaIntento;
 
     protected IntentoAcceso() {
@@ -58,4 +43,21 @@ public class IntentoAcceso extends EntidadAuditable {
         this.agenteUsuario = agenteUsuario;
         this.fechaIntento = fechaIntento;
     }
+
+    /** Asigna el identificador antes de insertar. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("El intento ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    public Long getId() { return id; }
+    public Long getUsuarioId() { return usuarioId; }
+    public String getIdentificador() { return identificador; }
+    public String getResultado() { return resultado; }
+    public String getMotivo() { return motivo; }
+    public String getIpOrigen() { return ipOrigen; }
+    public String getAgenteUsuario() { return agenteUsuario; }
+    public LocalDateTime getFechaIntento() { return fechaIntento; }
 }
