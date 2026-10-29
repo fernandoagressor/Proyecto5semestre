@@ -29,6 +29,27 @@ jobs:
       - name: Compilar y ejecutar todas las pruebas
         run: mvn -B -ntp verify
 
+      - name: Anotar en el PR las pruebas que fallan
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          def escapar(texto):
+              return texto.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+          for reporte in sorted(glob.glob('target/surefire-reports/TEST-*.xml')):
+              for caso in ET.parse(reporte).getroot().iter('testcase'):
+                  for tipo in ('failure', 'error'):
+                      falla = caso.find(tipo)
+                      if falla is None:
+                          continue
+                      titulo = f"{caso.get('classname')}.{caso.get('name')}"
+                      detalle = (falla.get('message') or '') + '\n' + (falla.text or '')[:2000]
+                      print(f"::error title={escapar(titulo)}::{escapar(detalle)}")
+          PY
+
       - name: Guardar reportes de pruebas si algo falla
         if: failure()
         uses: actions/upload-artifact@v4
