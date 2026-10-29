@@ -5,85 +5,70 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.3.0] - 2026-10-29
+
+Persistencia híbrida: los módulos de seguimiento y relación con el cliente pasan de MySQL a
+MongoDB; MySQL conserva identidad y seguridad, clientes, proyectos e inventario, ventas, cartera
+y pagos, gerencia financiera y las solicitudes de cambio de datos.
+
+### Agregado
+- **Colecciones de MongoDB** con ids numéricos de `contadores` y control de concurrencia por
+  versión (dos usuarios guardando lo mismo → 409):
+  - PQRS (`solicitudes_pqrs`, con mensajes, adjuntos, historial y encuesta embebidos).
+  - Soporte y notificaciones (`tickets_soporte`, `notificaciones` con sus envíos).
+  - Auditoría (`auditoria_eventos`, `alertas_anomalia`, `exportaciones_auditoria`,
+    `reportes_generados`, `intentos_acceso`). La bitácora es inmutable.
+  - CRM (`prospectos`, `oportunidades` con lotes de interés, historial, actividades y
+    presentaciones; `citas_comerciales`) y `simulaciones` con su cronograma.
+  - Seguimiento (`tareas` con su historial, `gestiones_cobro`, `estados_cuenta`).
+  - Servicio al cliente (`citas_servicio`, `comunicaciones_cliente`, `categorias_conocimiento`,
+    `articulos_conocimiento`).
+- **Migradores al arrancar** (`MigradorTablaMongo`): copian a MongoDB lo que sigue solo en MySQL,
+  son idempotentes, suben las secuencias por encima de los ids de MySQL y se pueden apagar por
+  módulo (`APP_MIGRACION_<MODULO>_ENABLED`).
+- **Sincronización MongoDB → MySQL por Change Stream** hacia tablas espejo `lectura_*`, que leen
+  los dashboards. Activa por defecto (`APP_SYNC_ENABLED`).
+- **Cola `crm_pendientes`**: la reserva, la firma y la anulación del contrato (MySQL) registran en
+  su misma transacción el cambio que le toca al CRM y a la simulación en MongoDB; se aplica al
+  confirmarse y se reintenta cada 30 s si falla (`APP_CRM_PENDIENTES_INTERVALO`).
+- **Alertas de anomalía automáticas**: cuenta bloqueada, inicio de sesión desde IP nueva, 3 o más
+  exportaciones de auditoría en 24 h y superadministración entre 22:00 y 06:00. Se notifican a
+  quienes tienen `AUDITORIA_ALERTAS_GESTIONAR`.
+- **Retención de 90 días** (índices TTL) para intentos de acceso y solicitudes de reportes.
+- **Índices de MongoDB al arrancar** para todas las colecciones (`APP_MONGO_INDICES_ENABLED`).
+- **Dashboards al día**: al proyectar un cambio se borran de Redis los dashboards de esa empresa
+  (cada 2 s, `APP_SYNC_INVALIDACION_DASHBOARDS`).
+- **Reconstrucción de tablas espejo** desde MongoDB si se pierde el historial del Change Stream
+  (error 286), si no hay token o con `APP_SYNC_RECONSTRUIR_AL_ARRANCAR=true`.
+
 ### Cambiado
-- **PQRS en MongoDB (rama 5).** Las solicitudes viven en la colección `solicitudes_pqrs`, con
-  mensajes, adjuntos, historial y encuesta embebidos. Ids numéricos de `contadores` y control de
-  concurrencia por versión (dos agentes guardando la misma solicitud → 409).
-- Al arrancar, `MigradorSolicitudesPqrs` copia las PQRS de MySQL que aún no estén en MongoDB
-  (idempotente; `APP_MIGRACION_PQRS_ENABLED=false` lo apaga) y sube las secuencias.
-- El dashboard de servicio y el resumen gerencial leen PQRS y encuestas de las tablas espejo
-  `lectura_*`; el resumen del portal cuenta las PQRS en MongoDB.
-- La sincronización por Change Stream queda activa por defecto (`APP_SYNC_ENABLED=true`).
-- V24: `citas_servicio.solicitud_id` ya no tiene llave foránea y las tablas espejo se siembran
-  con el histórico de MySQL. Las tablas PQRS de MySQL quedan sin escrituras hasta la rama 8.
-- **Tickets de soporte en MongoDB (rama 6).** Colección `tickets_soporte` con mensajes, adjuntos
-  e historial embebidos; ids de `contadores` y control por versión (409 en conflicto).
-- **Notificaciones en MongoDB (rama 6).** Colección `notificaciones` con los envíos embebidos.
-  Se escriben después del commit de la transacción que las origina (si hay rollback no se crean)
-  y un fallo al guardarlas no tumba la operación principal. Marcar como leída es atómico.
-- Los migradores comparten la base `MigradorTablaMongo`; se agregan `MigradorTicketsSoporte`
-  (`APP_MIGRACION_SOPORTE_ENABLED`) y `MigradorNotificaciones` (`APP_MIGRACION_NOTIFICACIONES_ENABLED`).
-- El dashboard de servicio cuenta los tickets desde `lectura_tickets_soporte`; V25 la siembra.
-- **Auditoría en MongoDB (rama 7).** Colecciones `auditoria_eventos`, `alertas_anomalia`,
-  `exportaciones_auditoria`, `reportes_generados` e `intentos_acceso`. La bitácora es inmutable
-  (su repositorio solo inserta y consulta) y los eventos se escriben después del commit; si
-  MongoDB falla, el evento completo queda en el log como ERROR. Los JSON de evidencia se guardan
-  como texto exacto. Asignar/cerrar alertas y completar reportes usan control por versión (409).
-  Migradores con `APP_MIGRACION_AUDITORIA_ENABLED`.
-- Retención de 90 días: MongoDB borra solos los intentos de acceso y las solicitudes de reportes
-  (índices TTL).
-- **Alertas de anomalía automáticas.** `DetectorAnomaliasService` crea alertas por cuenta bloqueada,
-  inicio de sesión desde una IP nueva, 3 o más exportaciones de auditoría en 24 horas y acciones de
-  superadministración entre las 22:00 y las 06:00. No repite una alerta abierta del mismo tipo y
-  usuario, y notifica a quienes tienen `AUDITORIA_ALERTAS_GESTIONAR`.
-- **CRM en MongoDB (rama 8a).** Colecciones `prospectos`, `oportunidades` (con lotes de interés,
-  historial de etapas, actividades y presentaciones embebidos) y `citas_comerciales`. Montos como
-  Decimal128; control por versión (409).
-- **Cola `crm_pendientes` (V26).** La reserva, la firma y la anulación del contrato escriben en
-  MySQL, dentro de su transacción, el cambio que le toca al CRM (cliente de la reserva, venta
-  ganada, venta anulada). Se aplica en MongoDB al confirmarse y, si falla, se reintenta cada 30 s
-  (`APP_CRM_PENDIENTES_INTERVALO`). La firma manda: gana la oportunidad aunque se hubiera cerrado.
-- El flujo cliente-lote borra el prospecto y la oportunidad creados en MongoDB si su transacción
-  hace rollback.
-- V26 suelta las llaves de reservas, contratos y simulaciones hacia oportunidades y siembra
-  `lectura_oportunidades`; el dashboard comercial lee la tabla espejo. Migradores con
-  `APP_MIGRACION_CRM_ENABLED`.
-- **Simulaciones en MongoDB (rama 8b).** Colección `simulaciones` con el cronograma de cuotas
-  embebido y montos como Decimal128; enviar y cancelar usan control por versión (409). Cada
-  simulación guarda copia del asesor de la oportunidad, así el listado respeta el alcance de
-  "registros propios" sin cruzar colecciones (antes esa consulta fallaba tras la rama 8a).
-- La reserva valida la simulación y la marca ACEPTADA al confirmarse, por la cola `crm_pendientes`
-  (nuevo tipo `SIMULACION_ACEPTADA` y columna `simulacion_id`, V27). V27 también suelta la llave
-  de reservas hacia simulaciones. `MigradorSimulaciones` copia el histórico con sus cuotas
-  (`APP_MIGRACION_SIMULACIONES_ENABLED`).
-- **Seguimiento en MongoDB (rama 9).** Colecciones `tareas` (con el historial embebido),
-  `gestiones_cobro` y `estados_cuenta`. Cambiar el estado o reasignar una tarea usa control por
-  versión (409); el vencimiento automático salta la tarea que cambió entretanto y la retoma en la
-  siguiente corrida. Las gestiones de cobro guardan el proyecto del contrato y los estados de
-  cuenta siguen siendo únicos por contrato y fecha de corte.
-- El dashboard gerencial cuenta las tareas vencidas desde `lectura_tareas` (V28 la siembra) y el
-  de cartera cuenta las promesas de pago en MongoDB. Migradores con
-  `APP_MIGRACION_SEGUIMIENTO_ENABLED`.
-- `InicializadorIndicesMongo` crea al arrancar los índices de todas las colecciones (únicos, TTL
-  y de consulta) aunque su migrador esté apagado (`APP_MONGO_INDICES_ENABLED`).
-- **Servicio al cliente en MongoDB (rama 10).** Colecciones `citas_servicio`,
-  `comunicaciones_cliente`, `categorias_conocimiento` y `articulos_conocimiento`. Reprogramar o
-  cambiar el estado de una cita, confirmar o marcar fallida una comunicación y editar, publicar o
-  archivar un artículo usan control por versión (409). El contenido global (sin empresa) sigue
-  visible para todas las empresas y los nombres de categoría y los slugs siguen siendo únicos.
-- El dashboard de servicio cuenta las citas próximas desde `lectura_citas_servicio` (V29 la siembra)
-  y el resumen del portal busca la próxima cita en MongoDB. V29 suelta la llave artículos →
-  categorías. Migradores con `APP_MIGRACION_SERVICIO_ENABLED`.
+- Las notificaciones y los eventos de auditoría se escriben después del commit de la operación
+  que los origina: si hay rollback no se crean, y si MongoDB falla la operación no se cae (el
+  evento queda en el log).
+- Los dashboards de servicio, comercial y gerencial leen PQRS, encuestas, tickets, citas, tareas y
+  oportunidades de las tablas espejo; el de cartera cuenta las promesas de pago en MongoDB.
+- El portal del cliente cuenta sus PQRS y busca su próxima cita en MongoDB.
+- La reserva ya no bloquea la simulación en MySQL: la valida y la marca aceptada por la cola.
 - Las solicitudes de cambio de datos se quedan en MySQL: aprobarlas cambia la persona y el usuario
   en la misma transacción.
-- **Dashboards al día (rama 11).** Cuando el Change Stream proyecta un cambio, se borran de Redis
-  los dashboards de esa empresa (agrupado cada 2 s, `APP_SYNC_INVALIDACION_DASHBOARDS`, con `SCAN`
-  y sin tocar otras cachés). Antes podían mostrar datos de hasta 5 minutos atrás.
-- **Reconstrucción de tablas espejo.** `ReconstructorEspejos` deja cada `lectura_*` igual a
-  MongoDB (upsert de todo y borrado de huérfanas, sin vaciar la tabla antes). El observador lo usa
-  si MongoDB perdió el historial del Change Stream (error 286), si no hay token guardado o con
-  `APP_SYNC_RECONSTRUIR_AL_ARRANCAR=true`; la reconstrucción corre con el flujo ya abierto para no
-  perder los cambios que ocurran mientras tanto.
+
+### Corregido
+- El listado de simulaciones fallaba para usuarios con alcance de "registros propios" después de
+  mover las oportunidades a MongoDB.
+- Los índices únicos y TTL de una colección no se creaban si su migrador estaba apagado.
+- Los dashboards podían mostrar datos de hasta 5 minutos atrás tras un cambio en MongoDB.
+
+### Notas para actualizar
+- Flyway aplica V24–V29: sueltan las llaves foráneas hacia tablas que ahora viven en MongoDB,
+  crean `crm_pendientes` y siembran las tablas espejo con el histórico.
+- MongoDB debe correr como replica set (`rs0`); el primer arranque copia los datos de MySQL a
+  MongoDB. Las tablas originales de MySQL se conservan sin escrituras como respaldo hasta una
+  versión posterior.
+- Variables nuevas, todas con valor por defecto: `APP_MIGRACION_*_ENABLED`, `APP_MONGO_INDICES_ENABLED`,
+  `APP_CRM_PENDIENTES_INTERVALO`, `APP_SYNC_INVALIDACION_DASHBOARDS`,
+  `APP_SYNC_RECONSTRUIR_AL_ARRANCAR`.
+- Revisar después del arranque: `SELECT * FROM crm_pendientes WHERE procesado_en IS NULL` debe
+  quedar vacío.
 
 ## [0.2.0] - 2026-10-20
 
