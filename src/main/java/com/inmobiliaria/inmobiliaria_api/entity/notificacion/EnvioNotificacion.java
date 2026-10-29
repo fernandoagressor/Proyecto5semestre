@@ -1,56 +1,35 @@
 package com.inmobiliaria.inmobiliaria_api.entity.notificacion;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "envios_notificacion")
-public class EnvioNotificacion extends EntidadAuditable {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+/**
+ * Intento de entrega de una notificación por un canal externo; vive embebido en
+ * {@link Notificacion}. {@code plantillaId} apunta a {@code plantillas_notificacion} en MySQL.
+ */
+public class EnvioNotificacion {
     private Long id;
-    @Column(name = "notificacion_id")
-    private Long notificacionId;
-    @Column(name = "plantilla_id")
     private Long plantillaId;
-    @Column(nullable = false, length = 20)
     private String canal;
-    @Column(nullable = false, length = 200)
     private String destinatario;
-    @Column(nullable = false, length = 20)
     private String estado;
-    @Column(length = 100)
     private String proveedor;
-    @Column(name = "referencia_externa", length = 180)
     private String referenciaExterna;
-    @Column(nullable = false)
-    private short intentos;
-    @Column(name = "ultimo_error", length = 700)
+    private int intentos;
     private String ultimoError;
-    @Column(name = "enviado_en")
     private LocalDateTime enviadoEn;
-    @Column(name = "entregado_en")
     private LocalDateTime entregadoEn;
-    @Version
-    @Column(nullable = false)
-    private Long version;
+    private LocalDateTime creadoEn;
 
     protected EnvioNotificacion() { }
 
-    public EnvioNotificacion(Long notificacionId, Long plantillaId, String canal, String destinatario) {
-        this.notificacionId = notificacionId;
+    public EnvioNotificacion(Long id, Long plantillaId, String canal, String destinatario, LocalDateTime creadoEn) {
+        this.id = id;
         this.plantillaId = plantillaId;
         this.canal = canal;
         this.destinatario = destinatario;
         this.estado = "PENDIENTE";
+        this.creadoEn = creadoEn;
     }
 
     public void registrarEnvio(String proveedor, String referencia, LocalDateTime fecha) {
@@ -80,15 +59,15 @@ public class EnvioNotificacion extends EntidadAuditable {
     }
 
     public Long getId() { return id; }
-    public Long getNotificacionId() { return notificacionId; }
     public Long getPlantillaId() { return plantillaId; }
     public String getCanal() { return canal; }
     public String getDestinatario() { return destinatario; }
     public String getEstado() { return estado; }
     public String getProveedor() { return proveedor; }
     public String getReferenciaExterna() { return referenciaExterna; }
-    public short getIntentos() { return intentos; }
+    public int getIntentos() { return intentos; }
     public String getUltimoError() { return ultimoError; }
     public LocalDateTime getEnviadoEn() { return enviadoEn; }
     public LocalDateTime getEntregadoEn() { return entregadoEn; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
 }

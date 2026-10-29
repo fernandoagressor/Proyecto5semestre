@@ -246,7 +246,7 @@ public class DashboardService {
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
         long tickets = entero("""
-                SELECT COUNT(*) FROM tickets_soporte WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_tickets_soporte WHERE empresa_id = ?
                   AND estado IN ('ABIERTO','EN_PROCESO','EN_ESPERA','REABIERTO')
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);

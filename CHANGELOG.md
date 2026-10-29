@@ -16,6 +16,14 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - La sincronización por Change Stream queda activa por defecto (`APP_SYNC_ENABLED=true`).
 - V24: `citas_servicio.solicitud_id` ya no tiene llave foránea y las tablas espejo se siembran
   con el histórico de MySQL. Las tablas PQRS de MySQL quedan sin escrituras hasta la rama 8.
+- **Tickets de soporte en MongoDB (rama 6).** Colección `tickets_soporte` con mensajes, adjuntos
+  e historial embebidos; ids de `contadores` y control por versión (409 en conflicto).
+- **Notificaciones en MongoDB (rama 6).** Colección `notificaciones` con los envíos embebidos.
+  Se escriben después del commit de la transacción que las origina (si hay rollback no se crean)
+  y un fallo al guardarlas no tumba la operación principal. Marcar como leída es atómico.
+- Los migradores comparten la base `MigradorTablaMongo`; se agregan `MigradorTicketsSoporte`
+  (`APP_MIGRACION_SOPORTE_ENABLED`) y `MigradorNotificaciones` (`APP_MIGRACION_NOTIFICACIONES_ENABLED`).
+- El dashboard de servicio cuenta los tickets desde `lectura_tickets_soporte`; V25 la siembra.
 
 ## [0.2.0] - 2026-10-20
 
