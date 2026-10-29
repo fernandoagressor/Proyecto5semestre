@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.servicio;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.servicio.ConocimientoDtos;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
@@ -8,6 +10,7 @@ import com.inmobiliaria.inmobiliaria_api.entity.servicio.CategoriaConocimiento;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.ArticuloConocimientoRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.servicio.CategoriaConocimientoRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.AccesoDenegadoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
@@ -16,27 +19,39 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Base de conocimiento. Desde la rama 10 categorías y artículos viven en MongoDB
+ * ({@code categorias_conocimiento} y {@code articulos_conocimiento}); lo que no tiene empresa es
+ * global y lo ven todas.
+ */
 @Service
 public class BaseConocimientoService {
+    static final String SECUENCIA_CATEGORIAS = "categorias_conocimiento";
+    static final String SECUENCIA_ARTICULOS = "articulos_conocimiento";
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private final CategoriaConocimientoRepository categoriaRepository;
     private final ArticuloConocimientoRepository articuloRepository;
     private final ServicioClienteAlcanceService alcanceService;
+    private final SecuenciaService secuencias;
 
     public BaseConocimientoService(CategoriaConocimientoRepository categoriaRepository,
                                    ArticuloConocimientoRepository articuloRepository,
-                                   ServicioClienteAlcanceService alcanceService) {
+                                   ServicioClienteAlcanceService alcanceService,
+                                   SecuenciaService secuencias) {
         this.categoriaRepository = categoriaRepository;
         this.articuloRepository = articuloRepository;
         this.alcanceService = alcanceService;
+        this.secuencias = secuencias;
     }
 
     @Transactional(readOnly = true)
@@ -50,18 +65,17 @@ public class BaseConocimientoService {
                                                                     Long categoriaId, String texto,
                                                                     int pagina, int tamano) {
         boolean cliente = alcanceService.clienteAutenticado(contexto).isPresent();
-        Specification<ArticuloConocimiento> filtro = (root, query, cb) -> cb.or(
-                cb.isNull(root.get("empresaId")), cb.equal(root.get("empresaId"), contexto.empresaId()));
-        if (cliente) filtro = filtro.and((root, query, cb) -> cb.and(
-                cb.isTrue(root.get("visibleClientes")), cb.equal(root.get("estado"), "PUBLICADO")));
-        if (categoriaId != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("categoriaId"), categoriaId));
+        List<Criteria> condiciones = new ArrayList<>();
+        condiciones.add(ArticuloConocimientoRepository.disponiblePara(contexto.empresaId()));
+        if (cliente) condiciones.add(where("visibleClientes").is(true).and("estado").is("PUBLICADO"));
+        if (categoriaId != null) condiciones.add(where("categoriaId").is(categoriaId));
         if (texto != null && !texto.isBlank()) {
-            String patron = "%" + texto.trim().toLowerCase(Locale.ROOT) + "%";
-            filtro = filtro.and((root, query, cb) -> cb.like(cb.lower(root.get("titulo")), patron));
+            // Igual que el LIKE '%texto%' anterior: sin distinguir mayúsculas y sin interpretar el texto como regex.
+            condiciones.add(where("titulo").regex(Pattern.quote(texto.trim()), "i"));
         }
-        Page<ArticuloConocimiento> resultado = articuloRepository.findAll(filtro, PageRequest.of(
+        var resultado = articuloRepository.buscar(new Criteria().andOperator(condiciones), PageRequest.of(
                 Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100),
-                Sort.by(Sort.Direction.DESC, "publicadoEn")));
+                Sort.by(Sort.Direction.DESC, "publicadoEn").and(Sort.by(Sort.Direction.DESC, "id"))));
         return PaginaResponse.from(resultado, ConocimientoDtos.ArticuloResponse::from);
     }
 
@@ -81,7 +95,8 @@ public class BaseConocimientoService {
                                                               ConocimientoDtos.CategoriaRequest request) {
         CategoriaConocimiento c = new CategoriaConocimiento(contexto.empresaId(), requerido(request.nombre()),
                 normalizar(request.descripcion()), request.orden());
-        try { return ConocimientoDtos.CategoriaResponse.from(categoriaRepository.save(c)); }
+        c.identificar(secuencias.siguiente(SECUENCIA_CATEGORIAS));
+        try { return ConocimientoDtos.CategoriaResponse.from(categoriaRepository.insertar(c)); }
         catch (DataIntegrityViolationException ex) { throw new ConflictoException("Ya existe una categoría con ese nombre"); }
     }
 
@@ -92,7 +107,8 @@ public class BaseConocimientoService {
         ArticuloConocimiento a = new ArticuloConocimiento(contexto.empresaId(), request.categoriaId(),
                 requerido(request.titulo()), slug(request.slug(), request.titulo()),
                 requerido(request.contenido()), request.visibleClientes(), contexto.usuarioId());
-        try { return ConocimientoDtos.ArticuloResponse.from(articuloRepository.save(a)); }
+        a.identificar(secuencias.siguiente(SECUENCIA_ARTICULOS));
+        try { return ConocimientoDtos.ArticuloResponse.from(articuloRepository.insertar(a)); }
         catch (DataIntegrityViolationException ex) { throw new ConflictoException("Ya existe un artículo con ese identificador"); }
     }
 
@@ -103,21 +119,31 @@ public class BaseConocimientoService {
         ArticuloConocimiento a = articuloEmpresa(contexto, id);
         a.actualizar(request.categoriaId(), requerido(request.titulo()), slug(request.slug(), request.titulo()),
                 requerido(request.contenido()), request.visibleClientes());
-        return ConocimientoDtos.ArticuloResponse.from(a);
+        return ConocimientoDtos.ArticuloResponse.from(guardar(a));
     }
 
     @Transactional
     public ConocimientoDtos.ArticuloResponse publicar(ContextoUsuario contexto, Long id) {
         ArticuloConocimiento a = articuloEmpresa(contexto, id);
         a.publicar(LocalDateTime.now(BOGOTA));
-        return ConocimientoDtos.ArticuloResponse.from(a);
+        return ConocimientoDtos.ArticuloResponse.from(guardar(a));
     }
 
     @Transactional
     public ConocimientoDtos.ArticuloResponse archivar(ContextoUsuario contexto, Long id) {
         ArticuloConocimiento a = articuloEmpresa(contexto, id);
         a.archivar();
-        return ConocimientoDtos.ArticuloResponse.from(a);
+        return ConocimientoDtos.ArticuloResponse.from(guardar(a));
+    }
+
+    private ArticuloConocimiento guardar(ArticuloConocimiento articulo) {
+        try {
+            return articuloRepository.guardar(articulo);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ConflictoException("El artículo fue modificado por otro usuario");
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictoException("Ya existe un artículo con ese identificador");
+        }
     }
 
     private ArticuloConocimiento articuloEmpresa(ContextoUsuario contexto, Long id) {

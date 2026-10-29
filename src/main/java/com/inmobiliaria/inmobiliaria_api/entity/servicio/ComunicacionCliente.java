@@ -1,44 +1,33 @@
 package com.inmobiliaria.inmobiliaria_api.entity.servicio;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "comunicaciones_cliente")
-public class ComunicacionCliente extends EntidadAuditable {
+/** Comunicación individual o masiva a clientes, guardada en MongoDB (rama 10). */
+@Document(collection = ComunicacionCliente.COLECCION)
+public class ComunicacionCliente {
+    public static final String COLECCION = "comunicaciones_cliente";
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "empresa_id", nullable = false)
     private Long empresaId;
-    @Column(name = "cliente_id")
     private Long clienteId;
-    @Column(name = "enviado_por")
     private Long enviadoPor;
-    @Column(nullable = false, length = 20)
     private String canal;
-    @Column(length = 200)
     private String asunto;
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String contenido;
-    @Column(name = "es_masiva", nullable = false)
     private boolean masiva;
-    @Column(nullable = false, length = 20)
     private String estado;
-    @Column(name = "programada_para")
     private LocalDateTime programadaPara;
-    @Column(name = "enviada_en")
     private LocalDateTime enviadaEn;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected ComunicacionCliente() { }
@@ -61,6 +50,8 @@ public class ComunicacionCliente extends EntidadAuditable {
         this.masiva = masiva;
         this.programadaPara = programadaPara;
         this.estado = programadaPara == null ? "BORRADOR" : "PROGRAMADA";
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
     }
 
     public void programar(LocalDateTime fecha) {
@@ -86,6 +77,19 @@ public class ComunicacionCliente extends EntidadAuditable {
         estado = "FALLIDA";
     }
 
+    /** Asigna el identificador de un registro nuevo. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("La comunicación ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
+    }
+
     public Long getId() { return id; }
     public Long getEmpresaId() { return empresaId; }
     public Long getClienteId() { return clienteId; }
@@ -97,4 +101,7 @@ public class ComunicacionCliente extends EntidadAuditable {
     public String getEstado() { return estado; }
     public LocalDateTime getProgramadaPara() { return programadaPara; }
     public LocalDateTime getEnviadaEn() { return enviadaEn; }
+    public LocalDateTime getCreadoEn() { return creadoEn; }
+    public LocalDateTime getActualizadoEn() { return actualizadoEn; }
+    public Long getVersion() { return version; }
 }

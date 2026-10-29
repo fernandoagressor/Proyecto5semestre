@@ -242,7 +242,7 @@ public class DashboardService {
                   AND (? IS NULL OR e.proyecto_id = ?)
                 """, contexto.empresaId(), periodo.desde(), periodo.hasta(), proyecto, proyecto);
         long citas = entero("""
-                SELECT COUNT(*) FROM citas_servicio WHERE empresa_id = ?
+                SELECT COUNT(*) FROM lectura_citas_servicio WHERE empresa_id = ?
                   AND estado IN ('PROGRAMADA','CONFIRMADA') AND fecha_inicio >= CURRENT_TIMESTAMP(6)
                   AND (? IS NULL OR proyecto_id = ?)
                 """, contexto.empresaId(), proyecto, proyecto);
