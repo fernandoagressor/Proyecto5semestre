@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.inOrder;
 import org.mockito.InOrder;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 
@@ -88,5 +89,12 @@ class DespachadorCambiosTest {
                 List.of(proyectorSolicitudes, otroDeSolicitudes), tokens))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Hay más de un proyector para la colección solicitudes");
+    }
+
+    @Test
+    void exponeLasColeccionesQueTienenProyector() {
+        DespachadorCambios despachador = despachadorCon(proyectorSolicitudes, proyectorTickets);
+
+        assertThat(despachador.colecciones()).containsExactlyInAnyOrder("solicitudes", "tickets");
     }
 }

@@ -2,6 +2,7 @@ package com.inmobiliaria.inmobiliaria_api.service.sincronizacion;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,5 +49,11 @@ public class DespachadorCambios {
         tokens.guardar(FLUJO, cambio.tokenReanudacion());
     }
 
-
+    /**
+     * Colecciones que tienen proyector. El observador filtra el Change Stream con esta lista
+     * para no recibir sus propias escrituras (por ejemplo, {@code sync_tokens}).
+     */
+    public Set<String> colecciones() {
+        return Set.copyOf(proyectoresPorColeccion.keySet());
+    }
 }
