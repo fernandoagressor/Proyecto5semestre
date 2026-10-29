@@ -116,12 +116,16 @@ class AuditoriaMongoTest {
     }
 
     @Test
-    void laEvidenciaDeLaBitacoraConservaElJsonExacto() {
+    void laEvidenciaDeLaBitacoraConservaElJsonTalComoEstabaEnMySql() {
         migrar();
 
         EventoAuditoria evento = eventos.findByIdAndEmpresaId(1L, 8L).orElseThrow();
         assertThat(evento.getModulo()).isEqualTo("VENTAS");
-        assertThat(evento.getDatosNuevosJson()).contains("74000000.00").contains("VIGENTE");
+        // Se copia el texto tal como lo guarda MySQL (que ya normaliza el JSON: 74000000.00 → 74000000.0).
+        assertThat(evento.getDatosNuevosJson())
+                .isEqualTo(jdbc.queryForObject(
+                        "SELECT CAST(datos_nuevos_json AS CHAR) FROM auditoria_eventos WHERE id = 1", String.class))
+                .contains("VIGENTE");
         assertThat(evento.getDatosAnterioresJson()).contains("BORRADOR");
         assertThat(evento.getCorrelationId()).isEqualTo("0f8c2a8e-5a0b-4f7e-9c3d-1a2b3c4d5e6f");
         assertThat(evento.getOcurridoEn()).isEqualTo(LocalDateTime.parse("2026-10-20T10:00:00"));
