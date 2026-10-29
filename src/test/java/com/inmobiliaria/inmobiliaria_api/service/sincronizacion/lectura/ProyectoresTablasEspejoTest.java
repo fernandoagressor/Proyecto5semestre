@@ -79,8 +79,8 @@ class ProyectoresTablasEspejoTest {
                 .containsEntry("estado", "EN_PROCESO")
                 .containsEntry("tipo", "QUEJA");
         assertThat(((Number) fila.get("empresa_id")).longValue()).isEqualTo(8L);
-        assertThat(((Timestamp) fila.get("creado_en")).toInstant()).isEqualTo(CREADA);
-        assertThat(((Timestamp) fila.get("fecha_limite")).toInstant()).isEqualTo(LIMITE);
+        assertThat(fecha("lectura_solicitudes_pqrs", "creado_en", 312L)).isEqualTo(CREADA);
+        assertThat(fecha("lectura_solicitudes_pqrs", "fecha_limite", 312L)).isEqualTo(LIMITE);
         assertThat(fila.get("fecha_primera_respuesta")).isNull();
     }
 
@@ -197,6 +197,13 @@ class ProyectoresTablasEspejoTest {
 
     private static CambioDocumento cambio(String coleccion, TipoCambio tipo, Long id, Document datos) {
         return new CambioDocumento(coleccion, tipo, id, datos, "{\"_data\":\"token\"}");
+    }
+
+    /** Lee la fecha como Timestamp: queryForMap la devolvería como LocalDateTime, sin zona. */
+    private Instant fecha(String tabla, String columna, long id) {
+        Timestamp valor = jdbc.queryForObject(
+                "SELECT " + columna + " FROM " + tabla + " WHERE id = ?", Timestamp.class, id);
+        return valor == null ? null : valor.toInstant();
     }
 
     private int contar(String tabla) {
