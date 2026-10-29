@@ -5,7 +5,11 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
-## [0.3.0] - 2026-10-29
+## [0.3.1] - 2026-10-29
+
+> Publicada con el tag `v0.3.1`: el tag `v0.3.0` quedó retirado porque el repositorio usa releases
+> inmutables y un primer intento se publicó sobre el commit equivocado. No hay cambios respecto de
+> lo que se preparó como 0.3.0; el `pom.xml` del commit etiquetado dice `0.3.0`.
 
 Persistencia híbrida: los módulos de seguimiento y relación con el cliente pasan de MySQL a
 MongoDB; MySQL conserva identidad y seguridad, clientes, proyectos e inventario, ventas, cartera
