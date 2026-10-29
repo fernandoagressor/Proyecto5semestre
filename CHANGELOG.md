@@ -24,6 +24,18 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - Los migradores comparten la base `MigradorTablaMongo`; se agregan `MigradorTicketsSoporte`
   (`APP_MIGRACION_SOPORTE_ENABLED`) y `MigradorNotificaciones` (`APP_MIGRACION_NOTIFICACIONES_ENABLED`).
 - El dashboard de servicio cuenta los tickets desde `lectura_tickets_soporte`; V25 la siembra.
+- **Auditoría en MongoDB (rama 7).** Colecciones `auditoria_eventos`, `alertas_anomalia`,
+  `exportaciones_auditoria`, `reportes_generados` e `intentos_acceso`. La bitácora es inmutable
+  (su repositorio solo inserta y consulta) y los eventos se escriben después del commit; si
+  MongoDB falla, el evento completo queda en el log como ERROR. Los JSON de evidencia se guardan
+  como texto exacto. Asignar/cerrar alertas y completar reportes usan control por versión (409).
+  Migradores con `APP_MIGRACION_AUDITORIA_ENABLED`.
+- Retención de 90 días: MongoDB borra solos los intentos de acceso y las solicitudes de reportes
+  (índices TTL).
+- **Alertas de anomalía automáticas.** `DetectorAnomaliasService` crea alertas por cuenta bloqueada,
+  inicio de sesión desde una IP nueva, 3 o más exportaciones de auditoría en 24 horas y acciones de
+  superadministración entre las 22:00 y las 06:00. No repite una alerta abierta del mismo tipo y
+  usuario, y notifica a quienes tienen `AUDITORIA_ALERTAS_GESTIONAR`.
 
 ## [0.2.0] - 2026-10-20
 

@@ -95,13 +95,15 @@ app:
     enabled: ${APP_SYNC_ENABLED:true}
     espera-reintento: ${APP_SYNC_ESPERA_REINTENTO:PT5S}
   migracion:
-    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 y 6).
+    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5, 6 y 7).
     pqrs:
       enabled: ${APP_MIGRACION_PQRS_ENABLED:true}
     soporte:
       enabled: ${APP_MIGRACION_SOPORTE_ENABLED:true}
     notificaciones:
       enabled: ${APP_MIGRACION_NOTIFICACIONES_ENABLED:true}
+    auditoria:
+      enabled: ${APP_MIGRACION_AUDITORIA_ENABLED:true}
   security:
     issuer: ${JWT_ISSUER:inmobiliaria-api}
     jwt-secret: ${JWT_SECRET:}
