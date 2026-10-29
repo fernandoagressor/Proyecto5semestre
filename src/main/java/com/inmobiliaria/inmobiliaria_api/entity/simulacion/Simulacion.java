@@ -1,76 +1,63 @@
 package com.inmobiliaria.inmobiliaria_api.entity.simulacion;
 
-import com.inmobiliaria.inmobiliaria_api.entity.compartido.EntidadAuditable;
 import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
-@Entity
-@Table(name = "simulaciones")
-public class Simulacion extends EntidadAuditable {
+/**
+ * Simulación de financiación de un lote, guardada en MongoDB (rama 8b).
+ *
+ * <p>El cronograma ({@code cuotas}) vive embebido: se genera una vez y se lee completo. Guarda
+ * copia del asesor de la oportunidad para filtrar por alcance sin cruzar colecciones. Los montos
+ * se guardan como Decimal128.</p>
+ *
+ * <p>La aceptación la provoca la reserva (MySQL): llega por la cola {@code crm_pendientes} y se
+ * aplica con {@link #aplicarAceptacion()}, que es idempotente.</p>
+ */
+@Document(collection = Simulacion.COLECCION)
+public class Simulacion {
+
+    public static final String COLECCION = "simulaciones";
+
+    private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "empresa_id", nullable = false)
     private Long empresaId;
-
-    @Column(name = "proyecto_id", nullable = false)
     private Long proyectoId;
-
-    @Column(nullable = false, length = 50)
     private String codigo;
-
-    @Column(name = "oportunidad_id", nullable = false)
     private Long oportunidadId;
-
-    @Column(name = "lote_id", nullable = false)
+    private Long asesorId;
     private Long loteId;
-
-    @Column(name = "creado_por", nullable = false)
     private Long creadoPor;
-
-    @Column(name = "valor_lote", nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal valorLote;
-
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal descuento;
-
-    @Column(name = "cuota_inicial", nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal cuotaInicial;
-
-    @Column(name = "saldo_financiar", nullable = false, precision = 19, scale = 2)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal saldoFinanciar;
-
-    @Column(name = "numero_cuotas", nullable = false)
     private int numeroCuotas;
-
-    @Column(name = "tasa_efectiva_anual", nullable = false, precision = 9, scale = 6)
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal tasaEfectivaAnual;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private Periodicidad periodicidad;
-
-    @Column(name = "vigente_hasta", nullable = false)
     private LocalDateTime vigenteHasta;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private EstadoSimulacion estado;
+    private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
+    private List<SimulacionCuota> cuotas = new ArrayList<>();
 
     @Version
-    @Column(nullable = false)
     private Long version;
 
     protected Simulacion() {
@@ -107,6 +94,8 @@ public class Simulacion extends EntidadAuditable {
         this.periodicidad = periodicidad;
         this.vigenteHasta = vigenteHasta;
         this.estado = EstadoSimulacion.BORRADOR;
+        this.creadoEn = LocalDateTime.now(BOGOTA);
+        this.actualizadoEn = creadoEn;
     }
 
     public void enviar(LocalDateTime ahora) {
@@ -134,6 +123,12 @@ public class Simulacion extends EntidadAuditable {
     }
 
     public void aceptar(LocalDateTime ahora) {
+        validarAceptacion(ahora);
+        estado = EstadoSimulacion.ACEPTADA;
+    }
+
+    /** Valida, sin modificar, que la simulación pueda aceptarse en una reserva. */
+    public void validarAceptacion(LocalDateTime ahora) {
         if (estado != EstadoSimulacion.ENVIADA) {
             throw new ReglaNegocioException(
                     "Solo una simulación enviada puede aceptarse"
@@ -144,7 +139,46 @@ public class Simulacion extends EntidadAuditable {
                     "La simulación está vencida"
             );
         }
+    }
+
+    /**
+     * Marca la simulación aceptada por una reserva ya confirmada. La reserva manda: se aplica
+     * aunque la simulación haya vencido o se haya cancelado entretanto.
+     *
+     * @return si hubo cambios
+     */
+    public boolean aplicarAceptacion() {
+        if (estado == EstadoSimulacion.ACEPTADA) {
+            return false;
+        }
         estado = EstadoSimulacion.ACEPTADA;
+        return true;
+    }
+
+    /** Asigna el identificador de una simulación nueva. Solo puede hacerse una vez. */
+    public void identificar(long nuevoId) {
+        if (id != null) {
+            throw new IllegalStateException("La simulación ya tiene identificador " + id);
+        }
+        id = nuevoId;
+    }
+
+    /** Copia del asesor de la oportunidad, para filtrar por alcance. */
+    public void asignarAsesor(Long asesor) {
+        this.asesorId = asesor;
+    }
+
+    /** Guarda el cronograma generado; solo se asigna una vez. */
+    public void asignarCronograma(List<SimulacionCuota> cronograma) {
+        if (!cuotas.isEmpty()) {
+            throw new IllegalStateException("La simulación ya tiene cronograma");
+        }
+        cuotas = new ArrayList<>(cronograma);
+    }
+
+    /** Marca la fecha de la última modificación; lo llama el repositorio antes de guardar. */
+    public void tocar() {
+        actualizadoEn = LocalDateTime.now(BOGOTA);
     }
 
     public Long getId() {
@@ -213,5 +247,22 @@ public class Simulacion extends EntidadAuditable {
 
     public Long getVersion() {
         return version;
+    }
+
+    public Long getAsesorId() {
+        return asesorId;
+    }
+
+    public LocalDateTime getCreadoEn() {
+        return creadoEn;
+    }
+
+    public LocalDateTime getActualizadoEn() {
+        return actualizadoEn;
+    }
+
+    /** Cronograma en orden de cuota. */
+    public List<SimulacionCuota> getCuotas() {
+        return cuotas.stream().sorted(Comparator.comparingInt(SimulacionCuota::getNumero)).toList();
     }
 }

@@ -48,6 +48,14 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - V26 suelta las llaves de reservas, contratos y simulaciones hacia oportunidades y siembra
   `lectura_oportunidades`; el dashboard comercial lee la tabla espejo. Migradores con
   `APP_MIGRACION_CRM_ENABLED`.
+- **Simulaciones en MongoDB (rama 8b).** Colección `simulaciones` con el cronograma de cuotas
+  embebido y montos como Decimal128; enviar y cancelar usan control por versión (409). Cada
+  simulación guarda copia del asesor de la oportunidad, así el listado respeta el alcance de
+  "registros propios" sin cruzar colecciones (antes esa consulta fallaba tras la rama 8a).
+- La reserva valida la simulación y la marca ACEPTADA al confirmarse, por la cola `crm_pendientes`
+  (nuevo tipo `SIMULACION_ACEPTADA` y columna `simulacion_id`, V27). V27 también suelta la llave
+  de reservas hacia simulaciones. `MigradorSimulaciones` copia el histórico con sus cuotas
+  (`APP_MIGRACION_SIMULACIONES_ENABLED`).
 
 ## [0.2.0] - 2026-10-20
 

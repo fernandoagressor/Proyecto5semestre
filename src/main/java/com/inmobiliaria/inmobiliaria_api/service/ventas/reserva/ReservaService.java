@@ -216,6 +216,14 @@ public class ReservaService {
                 cliente.getId(),
                 contexto.usuarioId()
         );
+        if (simulacion != null) {
+            pendientesCrm.simulacionAceptada(
+                    contexto.empresaId(),
+                    oportunidad.getId(),
+                    simulacion.getId(),
+                    contexto.usuarioId()
+            );
+        }
 
         EstadoLote estadoAnterior = lote.reservar();
         loteHistorialRepository.save(new LoteHistorialEstado(
@@ -415,7 +423,7 @@ public class ReservaService {
         if (simulacionId == null) {
             return null;
         }
-        Simulacion simulacion = simulacionRepository.findForUpdate(
+        Simulacion simulacion = simulacionRepository.findByIdAndEmpresaId(
                 simulacionId,
                 contexto.empresaId()
         ).orElseThrow(() -> new ReglaNegocioException(
@@ -430,7 +438,10 @@ public class ReservaService {
                     "La simulación no corresponde a la oportunidad y al lote"
             );
         }
-        simulacion.aceptar(fecha);
+        // La simulación vive en MongoDB: aquí solo se valida. Se marca ACEPTADA desde la cola
+        // crm_pendientes cuando esta transacción se confirma. El bloqueo del lote serializa las
+        // reservas que podrían usar la misma simulación.
+        simulacion.validarAceptacion(fecha);
         return simulacion;
     }
 

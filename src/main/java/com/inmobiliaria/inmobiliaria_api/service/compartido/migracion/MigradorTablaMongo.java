@@ -5,6 +5,7 @@ import com.inmobiliaria.inmobiliaria_api.service.compartido.SecuenciaService;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -140,6 +141,11 @@ public abstract class MigradorTablaMongo implements ApplicationRunner {
 
     protected Object fecha(ResultSet rs, String columna) throws SQLException {
         return documentos.valorMongo(rs.getObject(columna, LocalDateTime.class));
+    }
+
+    /** Columna DATE, convertida igual que un {@code LocalDate} de Spring Data. */
+    protected Object dia(ResultSet rs, String columna) throws SQLException {
+        return documentos.valorMongo(rs.getObject(columna, LocalDate.class));
     }
 
     /**

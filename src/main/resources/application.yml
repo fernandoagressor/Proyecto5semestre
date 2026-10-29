@@ -95,7 +95,7 @@ app:
     enabled: ${APP_SYNC_ENABLED:true}
     espera-reintento: ${APP_SYNC_ESPERA_REINTENTO:PT5S}
   migracion:
-    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 a 8).
+    # Copian a MongoDB lo que sigue en MySQL al arrancar; son idempotentes (ramas 5 a 8b).
     pqrs:
       enabled: ${APP_MIGRACION_PQRS_ENABLED:true}
     soporte:
@@ -106,6 +106,8 @@ app:
       enabled: ${APP_MIGRACION_AUDITORIA_ENABLED:true}
     crm:
       enabled: ${APP_MIGRACION_CRM_ENABLED:true}
+    simulaciones:
+      enabled: ${APP_MIGRACION_SIMULACIONES_ENABLED:true}
   crm:
     pendientes:
       # Reintento de los cambios de la venta pendientes de aplicar al CRM en MongoDB (rama 8).
