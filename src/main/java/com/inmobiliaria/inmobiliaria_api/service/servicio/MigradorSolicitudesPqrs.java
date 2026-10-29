@@ -46,6 +46,11 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(MigradorSolicitudesPqrs.class);
     static final int LOTE = 500;
+    /**
+     * Spring Data guarda la propiedad {@code id} de los objetos embebidos como {@code _id}
+     * (igual que en la raíz); el migrador escribe lo mismo para que se lean igual.
+     */
+    private static final String ID_EMBEBIDO = "_id";
 
     private final JdbcTemplate jdbcTemplate;
     private final SolicitudPqrsRepository repository;
@@ -158,7 +163,7 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
                 SELECT id, solicitud_id, usuario_id, mensaje, es_interno, canal, creado_en
                 FROM solicitud_mensajes WHERE solicitud_id IN (%s) ORDER BY creado_en, id
                 """, solicitudes, rs -> {
-            Document m = new Document("id", rs.getLong("id"));
+            Document m = new Document(ID_EMBEBIDO, rs.getLong("id"));
             poner(m, "usuarioId", largo(rs, "usuario_id"));
             poner(m, "mensaje", rs.getString("mensaje"));
             m.put("interno", rs.getBoolean("es_interno"));
@@ -173,7 +178,7 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
                 SELECT id, solicitud_id, mensaje_id, archivo_id, creado_en
                 FROM solicitud_adjuntos WHERE solicitud_id IN (%s) ORDER BY creado_en, id
                 """, solicitudes, rs -> {
-            Document a = new Document("id", rs.getLong("id"));
+            Document a = new Document(ID_EMBEBIDO, rs.getLong("id"));
             poner(a, "mensajeId", largo(rs, "mensaje_id"));
             poner(a, "archivoId", largo(rs, "archivo_id"));
             poner(a, "creadoEn", fecha(rs, "creado_en"));
@@ -186,7 +191,7 @@ public class MigradorSolicitudesPqrs implements ApplicationRunner {
                 SELECT id, solicitud_id, campo, valor_anterior, valor_nuevo, usuario_id, motivo, creado_en
                 FROM solicitud_historial WHERE solicitud_id IN (%s) ORDER BY creado_en, id
                 """, solicitudes, rs -> {
-            Document h = new Document("id", rs.getLong("id"));
+            Document h = new Document(ID_EMBEBIDO, rs.getLong("id"));
             poner(h, "campo", rs.getString("campo"));
             poner(h, "valorAnterior", rs.getString("valor_anterior"));
             poner(h, "valorNuevo", rs.getString("valor_nuevo"));
