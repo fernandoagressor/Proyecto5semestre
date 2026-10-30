@@ -67,6 +67,8 @@ services:
     restart: unless-stopped
     command:
       - --path.rootfs=/host
+      # Métricas de deploy/respaldar.sh y deploy/probar-restauracion.sh.
+      - --collector.textfile.directory=/host/var/lib/nexora/metricas
     pid: host
     volumes:
       - /:/host:ro,rslave
