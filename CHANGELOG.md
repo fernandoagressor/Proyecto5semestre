@@ -15,8 +15,15 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   con pools ajustados (MySQL 30, MongoDB 100), hilos de Tomcat y compresión.
 - Guía de despliegue en AWS (`docs/DESPLIEGUE_AWS.md`) y plantilla de variables del servidor
   (`deploy/produccion.env.example`).
-- El CI también levanta `compose.prod.yaml` con HTTPS y le pasa la prueba de humo, y comprueba que
-  solo Caddy publique puertos y que `/actuator` esté cerrado.
+- **Monitoreo** (`compose.monitoring.yaml`): Prometheus (15 días) y Grafana con el tablero
+  "NEXORA – Producción y pruebas de carga", más exportadores de la máquina, los contenedores,
+  MySQL, MongoDB y Redis. Solo en `127.0.0.1` del servidor, por túnel SSH.
+- Métricas de la API en `/actuator/prometheus` (solo red interna), con histogramas de latencia
+  por endpoint, y métricas propias: `nexora_sync_retraso` (de la escritura en MongoDB a la tabla
+  espejo) y `nexora_crm_pendientes` / `nexora_crm_pendientes_agotados`.
+- El CI también levanta `compose.prod.yaml` con HTTPS y monitoreo y le pasa la prueba de humo;
+  comprueba que solo Caddy publique puertos, que `/actuator` esté cerrado, que Prometheus tenga
+  todos sus objetivos arriba y que Grafana traiga el tablero.
 
 ### Cambiado
 - nginx solo expone `/actuator/health`, toma la IP real del cliente detrás de Caddy, acepta

@@ -55,6 +55,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    mbeanregistry:
+      enabled: true
   forward-headers-strategy: framework
   error:
     include-message: never
@@ -64,7 +67,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: nexora-api
+    distribution:
+      # Histogramas para calcular p95/p99 en Prometheus (pruebas de estrés).
+      percentiles-histogram:
+        http.server.requests: true
+        nexora.sync.retraso: true
+      slo:
+        http.server.requests: 100ms,300ms,800ms,1500ms
   endpoint:
     health:
       probes:

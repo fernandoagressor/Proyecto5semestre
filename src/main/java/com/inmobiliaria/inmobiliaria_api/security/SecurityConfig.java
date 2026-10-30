@@ -51,6 +51,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/health/**",
+                                // Solo lo lee Prometheus dentro de la red de Docker: nginx lo bloquea afuera
+                                // y la API no publica su puerto en producción.
+                                "/actuator/prometheus",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh"
                         ).permitAll()
