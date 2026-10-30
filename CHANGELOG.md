@@ -46,6 +46,12 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   servidor.
 
 ### Corregido
+- El primer arranque de MySQL en una base nueva se caía y el contenedor se reiniciaba
+  (`MYSQL_ONETIME_PASSWORD: unbound variable`): `01-create-migrator-user.sh` no era ejecutable, la
+  imagen lo cargaba con `source` y su `set -eu` afectaba al resto del arranque. Hizo fallar el
+  primer despliegue en AWS. El CI ahora comprueba que ningún contenedor se reinicie.
+- `respaldar.sh` fallaba sobre una base recién creada, sin las tablas de Flyway, y con eso
+  bloqueaba el primer despliegue.
 - Crear o reasignar tareas, asignar metas y asignar alertas de auditoría respondían 500: la
   validación del usuario filtraba por una columna `activo` que no existe en `usuarios`.
 - MongoDB 8.0 en `compose.yaml` arranca en kernels Linux 6.19+ (SERVER-121912).

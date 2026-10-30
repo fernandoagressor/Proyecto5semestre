@@ -61,9 +61,10 @@ fi
 for f in "$parcial"/mysql.sql.gz "$parcial"/documentos.tar.gz; do gzip -t "$f" || error "$(basename "$f") quedó dañado"; done
 
 bd="$(docker compose exec -T mysql printenv MYSQL_DATABASE | tr -d '\r')"
-flyway="$(mysql_root -N -s -e "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1" "$bd")"
+# En una base recién creada (antes del primer arranque de la API) aún no existen las tablas.
+flyway="$(mysql_root -N -s -e "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1" "$bd" 2>/dev/null || echo ninguna)"
 tablas="$(mysql_root -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$bd'")"
-usuarios="$(mysql_root -N -s -e "SELECT COUNT(*) FROM usuarios" "$bd")"
+usuarios="$(mysql_root -N -s -e "SELECT COUNT(*) FROM usuarios" "$bd" 2>/dev/null || echo 0)"
 mongo_bd="$(docker compose exec -T mongodb printenv MONGO_APP_DATABASE | tr -d '\r')"
 colecciones="$(mongo_root 'db.getCollectionNames().length')"
 archivos="$(tar -tzf "$parcial/documentos.tar.gz" | grep -vc '/$' || true)"
