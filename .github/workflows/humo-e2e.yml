@@ -208,10 +208,19 @@ jobs:
           espejo=0
           for _ in $(seq 60); do
             espejo="$(mq 'SELECT COUNT(*) FROM lectura_tareas')"
-            [ "$espejo" = "$tareas" ] && [ "$(mg 'db.sync_tokens.countDocuments()')" -ge 1 ] && break; sleep 2
+            [ "$espejo" = "$tareas" ] && break; sleep 2
           done
           [ "$espejo" = "$tareas" ] || mal "lectura_tareas tiene $espejo filas y MongoDB $tareas tareas"
-          [ "$(mg 'db.sync_tokens.countDocuments()')" -ge 1 ] || mal "El Change Stream no volvió a arrancar"
+          # El Change Stream sigue vivo: un cambio nuevo en MongoDB llega al espejo.
+          tarea="$(mg 'String(db.tareas.findOne({}, {_id: 1})._id)')"
+          mg "db.tareas.updateOne({_id: $tarea}, {\$set: {estado: 'COMPLETADA'}}).modifiedCount"
+          proyectado=""
+          for _ in $(seq 60); do
+            proyectado="$(mq "SELECT estado FROM lectura_tareas WHERE id = $tarea")"
+            [ "$proyectado" = COMPLETADA ] && break; sleep 2
+          done
+          [ "$proyectado" = COMPLETADA ] || mal "Después de restaurar, el cambio de la tarea $tarea no llegó a lectura_tareas"
+          [ "$(mg 'db.sync_tokens.countDocuments()')" -ge 1 ] || mal "El Change Stream no guardó su posición"
           codigo="$(curl -sk -o /dev/null -w '%{http_code}' -X POST https://localhost/api/v1/auth/login \
             -H 'Content-Type: application/json' -d '{"identificador":"SUPERADMIN","password":"HumoAdminNueva2026!"}')"
           [ "$codigo" = 200 ] || mal "Después de restaurar el inicio de sesión respondió $codigo"
