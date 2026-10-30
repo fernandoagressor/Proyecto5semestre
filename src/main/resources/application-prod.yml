@@ -1,0 +1,43 @@
+# Perfil de producción y staging (SPRING_PROFILES_ACTIVE=docker,prod en compose.prod.yaml).
+# Ajustado a 100 usuarios concurrentes en una m7i.xlarge; las pruebas de estrés confirman o
+# corrigen estos valores.
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:30}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: 10000
+      max-lifetime: 1800000
+      leak-detection-threshold: 30000
+  jpa:
+    open-in-view: false
+
+server:
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+      min-spare: 20
+    accept-count: 200
+    connection-timeout: 20s
+  compression:
+    enabled: true
+    mime-types: application/json,text/plain
+    min-response-size: 2KB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.mongodb.driver: WARN

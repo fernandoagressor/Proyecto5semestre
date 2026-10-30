@@ -9,6 +9,20 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - Prueba de humo de punta a punta en el CI (`Prueba de humo E2E`): levanta el stack completo con
   `docker compose` y recorre frontend, sesión, dashboards, MySQL, MongoDB, sincronización y
   auditoría con `scripts/prueba-humo.sh`, que también sirve contra staging.
+- **Configuración de producción** (`compose.prod.yaml`): ninguna contraseña por defecto (compose
+  se niega a arrancar si falta una), bases y API sin puertos públicos, Caddy como única entrada
+  con HTTPS automático y HSTS, límites de memoria por servicio y rotación de logs. Perfil `prod`
+  con pools ajustados (MySQL 30, MongoDB 100), hilos de Tomcat y compresión.
+- Guía de despliegue en AWS (`docs/DESPLIEGUE_AWS.md`) y plantilla de variables del servidor
+  (`deploy/produccion.env.example`).
+- El CI también levanta `compose.prod.yaml` con HTTPS y le pasa la prueba de humo, y comprueba que
+  solo Caddy publique puertos y que `/actuator` esté cerrado.
+
+### Cambiado
+- nginx solo expone `/actuator/health`, toma la IP real del cliente detrás de Caddy, acepta
+  subidas de hasta 16 MB (igual que la API) y agrega cabeceras de seguridad y gzip.
+- `.env` sale del repositorio: las contraseñas que estuvieron publicadas no se usan en ningún
+  servidor.
 
 ### Corregido
 - Crear o reasignar tareas, asignar metas y asignar alertas de auditoría respondían 500: la

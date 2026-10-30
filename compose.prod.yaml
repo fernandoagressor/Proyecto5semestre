@@ -1,0 +1,226 @@
+# NEXORA CORE en producción o staging: una máquina con Docker Compose.
+#
+#   docker compose -f compose.prod.yaml --env-file .env up -d
+#
+# Diferencias con compose.yaml (desarrollo):
+# - Ninguna contraseña por defecto: si falta una variable, compose se niega a arrancar.
+# - Las bases, la API y el frontend no publican puertos; solo Caddy expone 80 y 443 y saca el
+#   certificado HTTPS para DOMINIO.
+# - Límites de memoria por servicio (pensados para una m7i.xlarge de 16 GiB), rotación de logs y
+#   perfil "prod" en la API.
+# - Las imágenes se toman de GHCR (NEXORA_VERSION); `--build` las construye desde el código si
+#   todavía no se publicaron.
+#
+# Guía completa: docs/DESPLIEGUE_AWS.md. Plantilla de variables: deploy/produccion.env.example.
+
+name: nexora
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  mysql:
+    image: mysql:8.4.11
+    command:
+      - --log-bin-trust-function-creators=1
+      - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-2G}
+      - --max-connections=${MYSQL_MAX_CONNECTIONS:-200}
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-inmobiliaria_db}
+      MYSQL_USER: ${DB_USER:-inmobiliaria}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Defina DB_ROOT_PASSWORD}
+      MYSQL_MIGRATOR_USER: ${MYSQL_MIGRATOR_USER:-nexora_migrator}
+      MYSQL_MIGRATOR_PASSWORD: ${MYSQL_MIGRATOR_PASSWORD:?Defina MYSQL_MIGRATOR_PASSWORD}
+      TZ: America/Bogota
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${MYSQL_MEMORIA:-3g}
+    logging: *logging
+
+  mongodb:
+    image: mongo:8.0.32
+    restart: unless-stopped
+    entrypoint:
+      - bash
+      - -c
+      - |
+        head -c 756 /dev/urandom | base64 > /etc/mongo-keyfile
+        chmod 400 /etc/mongo-keyfile
+        chown mongodb:mongodb /etc/mongo-keyfile
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /etc/mongo-keyfile \
+          --wiredTigerCacheSizeGB "$${MONGO_CACHE_GB}"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-nexora_root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Defina MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-nexora}
+      MONGO_APP_DATABASE: ${MONGO_DATABASE:-nexora}
+      MONGO_APP_USER: ${MONGO_APP_USER:-nexora_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Defina MONGO_APP_PASSWORD}
+      MONGO_MIGRATOR_USER: ${MONGO_MIGRATOR_USER:-nexora_migrator}
+      MONGO_MIGRATOR_PASSWORD: ${MONGO_MIGRATOR_PASSWORD:?Defina MONGO_MIGRATOR_PASSWORD}
+      MONGO_CACHE_GB: ${MONGO_CACHE_GB:-1.5}
+      TZ: America/Bogota
+      # MongoDB 8.0 no arranca en kernels Linux 6.19+ sin esto (SERVER-121912).
+      GLIBC_TUNABLES: glibc.pthread.rseq=1
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet
+          --username "$${MONGO_INITDB_ROOT_USERNAME}"
+          --password "$${MONGO_INITDB_ROOT_PASSWORD}"
+          --authenticationDatabase admin
+          --eval "try { rs.status(); } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}); }
+          quit(db.hello().isWritablePrimary ? 0 : 1);"
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${MONGO_MEMORIA:-3g}
+    logging: *logging
+
+  redis:
+    image: redis:8.2.10-alpine3.22
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Defina REDIS_PASSWORD}
+      TZ: America/Bogota
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD" --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    logging: *logging
+
+  api:
+    image: ${IMAGEN_API:-ghcr.io/fernandoagressor/nexora-api}:${NEXORA_VERSION:-latest}
+    build:
+      context: .
+    restart: unless-stopped
+    stop_grace_period: 35s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,prod
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-inmobiliaria_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota
+      DB_USER: ${DB_USER:-inmobiliaria}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-30}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-10}
+      MONGODB_URI: mongodb://${MONGO_APP_USER:-nexora_app}:${MONGO_APP_PASSWORD}@mongodb:27017/${MONGO_DATABASE:-nexora}?authSource=${MONGO_DATABASE:-nexora}&replicaSet=rs0&maxPoolSize=${MONGO_POOL_MAX:-100}&minPoolSize=10
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CACHE_KEY_PREFIX: "nexora:"
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET (32 bytes o más)}
+      APP_ALLOWED_ORIGINS: https://${DOMINIO:?Defina DOMINIO}
+      APP_STORAGE_PATH: /app/storage
+      BOOTSTRAP_ADMIN_ENABLED: ${BOOTSTRAP_ADMIN_ENABLED:-false}
+      BOOTSTRAP_EMPRESA_CODIGO: ${BOOTSTRAP_EMPRESA_CODIGO:-}
+      BOOTSTRAP_EMPRESA_NOMBRE: ${BOOTSTRAP_EMPRESA_NOMBRE:-}
+      BOOTSTRAP_EMPRESA_NIT: ${BOOTSTRAP_EMPRESA_NIT:-}
+      BOOTSTRAP_ADMIN_DOCUMENTO: ${BOOTSTRAP_ADMIN_DOCUMENTO:-}
+      BOOTSTRAP_ADMIN_NOMBRES: ${BOOTSTRAP_ADMIN_NOMBRES:-}
+      BOOTSTRAP_ADMIN_APELLIDOS: ${BOOTSTRAP_ADMIN_APELLIDOS:-}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    volumes:
+      - documentos:/app/storage
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q -O - http://localhost:8080/actuator/health/readiness
+          | grep -q '"status":"UP"'
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MEMORIA:-4g}
+    logging: *logging
+
+  frontend:
+    image: ${IMAGEN_FRONTEND:-ghcr.io/fernandoagressor/nexora-frontend}:${NEXORA_VERSION:-latest}
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging: *logging
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+    environment:
+      DOMINIO: ${DOMINIO:?Defina DOMINIO}
+      ACME_EMAIL: ${ACME_EMAIL:?Defina ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging: *logging
+
+volumes:
+  mysql_data:
+  mongodb_data:
+  redis_data:
+  documentos:
+  caddy_data:
+  caddy_config:
