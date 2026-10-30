@@ -20,6 +20,9 @@ ADMIN_USUARIO="${ADMIN_USUARIO:-SUPERADMIN}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:?Falta ADMIN_PASSWORD}"
 ADMIN_PASSWORD_NUEVA="${ADMIN_PASSWORD_NUEVA:-$ADMIN_PASSWORD}"
 COMPOSE="${COMPOSE:-0}"
+# CURL_INSECURE=1 acepta certificados no públicos (Caddy con DOMINIO=localhost en el CI).
+CURL_EXTRA=()
+[[ "${CURL_INSECURE:-0}" == 1 ]] && CURL_EXTRA=(--insecure)
 SELLO="$(date +%s)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -43,7 +46,7 @@ falla() {
 # api MÉTODO RUTA [JSON] → deja el código en $STATUS y el cuerpo en $TMP/cuerpo
 api() {
   local metodo="$1" ruta="$2" datos="${3:-}"
-  local args=(-s -o "$TMP/cuerpo" -w '%{http_code}' -X "$metodo" "$BASE_URL$ruta"
+  local args=(-s "${CURL_EXTRA[@]}" -o "$TMP/cuerpo" -w '%{http_code}' -X "$metodo" "$BASE_URL$ruta"
               -H 'Accept: application/json')
   [[ -n "$TOKEN" ]] && args+=(-H "Authorization: Bearer $TOKEN")
   [[ -n "$datos" ]] && args+=(-H 'Content-Type: application/json' --data "$datos")
@@ -75,14 +78,14 @@ mongo_q() {
 echo "Prueba de humo contra $BASE_URL"
 
 echo "1. Frontend y salud"
-codigo="$(curl -s -o "$TMP/index" -w '%{http_code}' "$BASE_URL/")"
+codigo="$(curl -s "${CURL_EXTRA[@]}" -o "$TMP/index" -w '%{http_code}' "$BASE_URL/")"
 if [[ "$codigo" == 200 ]] && grep -q '<app-root' "$TMP/index"; then paso "El frontend responde con la aplicación Angular"
 else falla "El frontend respondió $codigo sin <app-root>"; fi
 
-codigo="$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/healthz")"
+codigo="$(curl -s "${CURL_EXTRA[@]}" -o /dev/null -w '%{http_code}' "$BASE_URL/healthz")"
 [[ "$codigo" == 200 ]] && paso "nginx /healthz" || falla "nginx /healthz respondió $codigo"
 
-codigo="$(curl -s -o "$TMP/salud" -w '%{http_code}' "$BASE_URL/actuator/health/readiness")"
+codigo="$(curl -s "${CURL_EXTRA[@]}" -o "$TMP/salud" -w '%{http_code}' "$BASE_URL/actuator/health/readiness")"
 if [[ "$codigo" == 200 ]] && grep -q '"UP"' "$TMP/salud"; then paso "Readiness UP (MySQL, MongoDB y Redis)"
 elif [[ "$codigo" == 404 || "$codigo" == 403 ]]; then paso "Actuator cerrado al público ($codigo)"
 else falla "Readiness respondió $codigo: $(cat "$TMP/salud")"; fi

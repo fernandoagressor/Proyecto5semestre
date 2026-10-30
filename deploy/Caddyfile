@@ -1,0 +1,20 @@
+# Caddy: única puerta de entrada pública. Saca y renueva solo el certificado HTTPS de DOMINIO
+# (Let's Encrypt) y pasa todo al frontend (nginx), que a su vez envía /api a la API.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Caddy reemplaza X-Forwarded-For con la IP real del cliente (no confía en la que llegue de
+	# afuera), así el límite de intentos de login por IP no se puede engañar.
+	reverse_proxy frontend:80
+}
