@@ -29,6 +29,15 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - El CI también levanta `compose.prod.yaml` con HTTPS y monitoreo y le pasa la prueba de humo;
   comprueba que solo Caddy publique puertos, que `/actuator` esté cerrado, que Prometheus tenga
   todos sus objetivos arriba y que Grafana traiga el tablero.
+- **Respaldos**: `deploy/respaldar.sh` respalda cada día MySQL (transacción consistente),
+  MongoDB y los documentos subidos, con manifiesto y sha256, y los sube a S3 (el servidor no puede
+  borrarlos). `deploy/probar-restauracion.sh` comprueba cada semana, en bases temporales, que el
+  último respaldo se pueda restaurar. `deploy/restaurar.sh` restaura un respaldo y reconstruye las
+  tablas espejo. `deploy/instalar-respaldos.sh` deja programado todo; Grafana muestra cuánto hace
+  del último respaldo y de la última prueba.
+- `deploy/desplegar.sh` saca un respaldo antes de cada despliegue.
+- El CI respalda el stack de producción, lo daña a propósito, lo restaura y comprueba MySQL,
+  MongoDB, documentos, tablas espejo e inicio de sesión.
 
 ### Cambiado
 - nginx solo expone `/actuator/health`, toma la IP real del cliente detrás de Caddy, acepta

@@ -70,6 +70,7 @@ sudo apt-get update && sudo apt-get upgrade -y
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker ubuntu
 sudo apt-get install -y jq git
+sudo snap install aws-cli --classic   # para subir los respaldos a S3 (sección 11)
 exit   # vuelva a entrar para que el grupo docker aplique
 ```
 
@@ -129,9 +130,12 @@ artículo con la marca `HUMO`/`humo`; en staging no estorban.
 | Desplegar una versión | Desde GitHub, workflow **Desplegar** (sección 10); a mano: `git checkout <tag o commit> && bash deploy/desplegar.sh <versión>` |
 | Reiniciar la API | `docker compose restart api` |
 | Volver a una versión anterior | Desplegar la versión anterior ya publicada en GHCR (`sha-<commit>` o `X.Y.Z`); hasta la 0.3.1 no hay imágenes publicadas |
+| Respaldar ahora | `bash deploy/respaldar.sh` |
+| Ver los últimos respaldos | `journalctl -t nexora-respaldo -n 30` y `ls /var/lib/nexora/respaldos` |
 
-`deploy/desplegar.sh` vuelve solo a la versión anterior si la nueva no queda sana en 10 minutos.
-Las migraciones de Flyway que la versión nueva alcanzó a aplicar no se deshacen.
+`deploy/desplegar.sh` saca un respaldo antes de desplegar y vuelve solo a la versión anterior si
+la nueva no queda sana en 10 minutos. Las migraciones de Flyway que la versión nueva alcanzó a
+aplicar no se deshacen: para eso está el respaldo previo (sección 11).
 
 ## 9. Monitoreo (Grafana)
 
@@ -199,6 +203,73 @@ SSH.
 `sha-<commit>` o `0.4.0`). Staging corre además la prueba de humo completa; producción solo
 comprueba la salud por HTTPS, para no crear datos de prueba.
 
+## 11. Respaldos
+
+Cada día a las 03:15 (hora de Colombia) `deploy/respaldar.sh` respalda MySQL, MongoDB y los
+documentos subidos, los sube a S3 y conserva 3 días en el servidor. Cada domingo
+`deploy/probar-restauracion.sh` carga el último respaldo en un MySQL y un MongoDB temporales y
+comprueba que esté completo, sin tocar los datos reales. Redis no se respalda (solo es caché).
+
+**Una sola vez (consola de AWS, región us-east-1):**
+
+1. **S3 → Create bucket**: nombre `nexora-respaldos-<entorno>-<algo único>` (p. ej.
+   `nexora-respaldos-staging-altamar`). Deje **Block all public access** marcado y el cifrado por
+   defecto (SSE-S3).
+2. En el bucket: **Management → Create lifecycle rule**, prefijo `respaldos/`, **Expire current
+   versions of objects** a los 30 días (90 en producción si el equipo lo prefiere).
+3. **IAM → Policies → Create policy → JSON** (cambie `<BUCKET>`), nombre `nexora-respaldos`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       { "Effect": "Allow", "Action": ["s3:PutObject", "s3:GetObject"],
+         "Resource": "arn:aws:s3:::<BUCKET>/respaldos/*" },
+       { "Effect": "Allow", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::<BUCKET>",
+         "Condition": { "StringLike": { "s3:prefix": ["respaldos/*"] } } }
+     ]
+   }
+   ```
+
+   El servidor puede subir y bajar respaldos pero **no borrarlos**: si alguien entra al servidor
+   no puede eliminar las copias de S3. Las borra solo la regla del paso 2.
+4. **IAM → Roles → Create role** → *AWS service* → *EC2* → política `nexora-respaldos`, nombre
+   `nexora-ec2`. Luego en **EC2 → la instancia → Actions → Security → Modify IAM role** →
+   `nexora-ec2`. Así el servidor no guarda llaves de AWS.
+5. En el servidor:
+
+   ```bash
+   cd /opt/nexora
+   echo 'RESPALDO_S3_BUCKET=<BUCKET>' >> .env    # o edítelo con nano si ya existe la línea
+   bash deploy/instalar-respaldos.sh           # carpetas, prueba de acceso a S3 y cron
+   bash deploy/respaldar.sh && bash deploy/probar-restauracion.sh
+   ```
+
+   Debe terminar con "Prueba de restauración superada". En Grafana, la fila **Respaldos** muestra
+   cuánto hace del último respaldo y de la última prueba (rojo si pasan más de 26 horas u 8 días).
+
+**Restaurar** (reemplaza todos los datos del servidor; antes saca un respaldo local de lo que hay):
+
+```bash
+cd /opt/nexora
+aws s3 ls s3://<BUCKET>/respaldos/                 # elegir el respaldo
+bash deploy/restaurar.sh s3://<BUCKET>/respaldos/nexora-AAAAMMDD-HHMMSS --confirmar
+BASE_URL=https://<DOMINIO> ADMIN_USUARIO=SUPERADMIN ADMIN_PASSWORD='<contraseña>' COMPOSE=1 \
+  bash scripts/prueba-humo.sh
+```
+
+- La versión desplegada debe ser la del respaldo o una posterior (`version=` en
+  `MANIFIESTO.txt`). Para volver atrás una versión con migraciones: desplegar la versión
+  anterior **y** restaurar el respaldo que `desplegar.sh` sacó justo antes.
+- En un servidor nuevo (desastre): preparar el servidor (secciones 3 a 6) con las **mismas
+  contraseñas** del `.env` anterior, `bash deploy/instalar-respaldos.sh` y restaurar con
+  `--sin-respaldo-previo`.
+- Las tablas espejo `lectura_*` se reconstruyen solas desde MongoDB al arrancar la API y la caché
+  de Redis queda vacía.
+
+Opcional y barato como segunda capa: **EC2 → Lifecycle Manager → Create policy** con snapshots
+diarios del disco de la instancia, 7 días de retención.
+
 ## Seguridad: qué queda expuesto
 
 - Solo los puertos 80 y 443 (Caddy) y 22 desde la IP del equipo. MySQL, MongoDB, Redis, la API y
@@ -208,4 +279,6 @@ comprueba la salud por HTTPS, para no crear datos de prueba.
 - Grafana y Prometheus solo en `127.0.0.1`, por túnel SSH.
 - HTTPS con HSTS. La IP real de cada cliente llega a la API desde Caddy, así el límite de 20
   intentos de inicio de sesión fallidos por IP no se puede engañar.
-- `.env` con permisos `600` solo en el servidor; nunca en el repositorio.
+- `.env` con permisos `600` solo en el servidor; nunca en el repositorio. Los respaldos no lo
+  incluyen: las contraseñas viven en el gestor de contraseñas del equipo.
+- Respaldos en un bucket privado y cifrado; el servidor no puede borrarlos (sección 11).

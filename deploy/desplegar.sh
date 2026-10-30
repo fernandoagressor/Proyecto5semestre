@@ -4,7 +4,7 @@
 #
 #   cd /opt/nexora && bash deploy/desplegar.sh <versión>     # p. ej. 0.4.0 o sha-<commit>
 #
-# Fija NEXORA_VERSION en .env, baja las imágenes de GHCR y reinicia solo lo que cambió. Si la
+# Saca un respaldo (deploy/respaldar.sh), fija NEXORA_VERSION en .env, baja las imágenes de GHCR y reinicia solo lo que cambió. Si la
 # versión nueva no queda sana en 10 minutos, vuelve a la anterior y termina con error.
 # Ojo: las migraciones Flyway que la versión nueva alcanzó a aplicar no se deshacen.
 
@@ -27,6 +27,19 @@ fijar_version() {
 
 anterior="$(grep '^NEXORA_VERSION=' .env | cut -d= -f2- || true)"
 echo "Desplegando NEXORA $VERSION (antes: ${anterior:-ninguna})"
+
+# Respaldo antes de desplegar: las migraciones de Flyway de la versión nueva no se deshacen.
+# RESPALDO_ANTES_DE_DESPLEGAR=false en .env lo omite.
+source deploy/respaldos-comun.sh
+if [[ "$(leer_env RESPALDO_ANTES_DE_DESPLEGAR)" == false ]]; then
+  echo "Respaldo previo omitido (RESPALDO_ANTES_DE_DESPLEGAR=false)"
+elif [[ -z "$(docker compose ps --status running -q mysql 2>/dev/null)" ]]; then
+  echo "Sin bases corriendo: no hay nada que respaldar"
+elif [[ ! -d "$RESPALDO_DIR" ]]; then
+  echo "AVISO: respaldos sin instalar ($RESPALDO_DIR no existe): bash deploy/instalar-respaldos.sh" >&2
+else
+  bash deploy/respaldar.sh || { echo "Falló el respaldo previo: no se despliega" >&2; exit 1; }
+fi
 fijar_version "$VERSION"
 
 docker compose pull --quiet api frontend

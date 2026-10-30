@@ -4,7 +4,7 @@ name: Prueba de humo E2E
 # y recorre la aplicación de punta a punta con scripts/prueba-humo.sh. Dos variantes:
 # - desarrollo: compose.yaml, como en el computador del equipo;
 # - producción: compose.prod.yaml con Caddy y HTTPS (DOMINIO=localhost), la misma configuración
-#   que corre en AWS.
+#   que corre en AWS, más el monitoreo y un ciclo completo de respaldo y restauración.
 on:
   pull_request:
     branches: [develop, main]
@@ -68,7 +68,7 @@ jobs:
   humo-produccion:
     name: Humo E2E (compose.prod con HTTPS y monitoreo)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       COMPOSE_FILE: compose.prod.yaml:compose.monitoring.yaml
     steps:
@@ -107,6 +107,9 @@ jobs:
             echo "::error::compose.prod.yaml arrancaría sin contraseñas"; exit 1
           fi
           echo "compose.prod.yaml exige las contraseñas"
+
+      - name: Respaldos instalados como en el servidor (carpetas y cron, sin S3)
+        run: bash deploy/instalar-respaldos.sh
 
       - name: Construir y levantar el stack de producción
         run: docker compose up -d --build --wait --wait-timeout 900
@@ -156,6 +159,73 @@ jobs:
           done
           curl -skI https://localhost/ | grep -i '^strict-transport-security' || { echo "::error::Falta HSTS"; exit 1; }
           echo "Solo Caddy publica puertos; actuator cerrado; HSTS activo"
+
+      - name: Respaldo, prueba de restauración y restauración
+        run: |
+          set -euo pipefail
+          mq() { docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -s "$MYSQL_DATABASE" -e "$0"' "$1"; }
+          mg() { docker compose exec -T mongodb sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin "$MONGO_APP_DATABASE" --eval "$0"' "$1" | tail -1; }
+          mal() { echo "::error title=Respaldos::$*"; exit 1; }
+
+          echo "::group::Respaldo"
+          bash deploy/respaldar.sh
+          r="$(find /var/lib/nexora/respaldos -mindepth 1 -maxdepth 1 -type d -name 'nexora-*' | sort | tail -1)"
+          cat "$r/MANIFIESTO.txt"; ls -la "$r"
+          grep -qx 'flyway=29' "$r/MANIFIESTO.txt" || mal "El manifiesto no dice flyway=29"
+          echo "::endgroup::"
+
+          echo "::group::Prueba de restauración (temporales, sin tocar los datos)"
+          bash deploy/probar-restauracion.sh
+          echo "::endgroup::"
+
+          for m in nexora_respaldo_ultimo_exito_timestamp_seconds nexora_respaldo_prueba_ultimo_exito_timestamp_seconds; do
+            n=0
+            for _ in $(seq 30); do
+              n="$(curl -s --get http://127.0.0.1:9090/api/v1/query --data-urlencode "query=count($m)" | jq -r '.data.result[0].value[1] // "0"')"
+              [ "$n" = 1 ] && break; sleep 2
+            done
+            [ "$n" = 1 ] || mal "Prometheus no tiene $m"
+            echo "Prometheus tiene $m"
+          done
+
+          echo "::group::Daño a propósito después del respaldo"
+          empresa="$(mq "SELECT nombre FROM empresas WHERE codigo = 'EYC-ALTAMAR'")"
+          tareas="$(mg 'db.tareas.countDocuments()')"
+          [ "$tareas" -ge 1 ] || mal "No hay tareas para probar la restauración"
+          mq "UPDATE empresas SET nombre = 'EMPRESA DANADA' WHERE codigo = 'EYC-ALTAMAR'"
+          mg 'db.tareas.deleteMany({}).deletedCount'
+          docker compose exec -T api sh -c 'echo basura > /app/storage/despues-del-respaldo.txt'
+          echo "Empresa '$empresa' renombrada, $tareas tareas borradas, un archivo nuevo"
+          echo "::endgroup::"
+
+          echo "::group::Restauración"
+          bash deploy/restaurar.sh "$r" --confirmar
+          echo "::endgroup::"
+
+          [ "$(mq "SELECT nombre FROM empresas WHERE codigo = 'EYC-ALTAMAR'")" = "$empresa" ] || mal "MySQL no volvió al respaldo"
+          [ "$(mg 'db.tareas.countDocuments()')" = "$tareas" ] || mal "MongoDB no volvió al respaldo"
+          ! docker compose exec -T api test -e /app/storage/despues-del-respaldo.txt || mal "Los documentos no volvieron al respaldo"
+          espejo=0
+          for _ in $(seq 60); do
+            espejo="$(mq 'SELECT COUNT(*) FROM lectura_tareas')"
+            [ "$espejo" = "$tareas" ] && break; sleep 2
+          done
+          [ "$espejo" = "$tareas" ] || mal "lectura_tareas tiene $espejo filas y MongoDB $tareas tareas"
+          # El Change Stream sigue vivo: un cambio nuevo en MongoDB llega al espejo.
+          tarea="$(mg 'String(db.tareas.findOne({}, {_id: 1})._id)')"
+          mg "db.tareas.updateOne({_id: $tarea}, {\$set: {estado: 'COMPLETADA'}}).modifiedCount"
+          proyectado=""
+          for _ in $(seq 60); do
+            proyectado="$(mq "SELECT estado FROM lectura_tareas WHERE id = $tarea")"
+            [ "$proyectado" = COMPLETADA ] && break; sleep 2
+          done
+          [ "$proyectado" = COMPLETADA ] || mal "Después de restaurar, el cambio de la tarea $tarea no llegó a lectura_tareas"
+          [ "$(mg 'db.sync_tokens.countDocuments()')" -ge 1 ] || mal "El Change Stream no guardó su posición"
+          codigo="$(curl -sk -o /dev/null -w '%{http_code}' -X POST https://localhost/api/v1/auth/login \
+            -H 'Content-Type: application/json' -d '{"identificador":"SUPERADMIN","password":"HumoAdminNueva2026!"}')"
+          [ "$codigo" = 200 ] || mal "Después de restaurar el inicio de sesión respondió $codigo"
+          ls /var/lib/nexora/respaldos
+          echo "Restauración completa: MySQL, MongoDB, documentos, espejos y sesión como en el respaldo"
 
       - name: Estado y registros
         if: always()
