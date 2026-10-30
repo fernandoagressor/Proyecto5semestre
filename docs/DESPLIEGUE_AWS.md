@@ -75,8 +75,8 @@ exit   # vuelva a entrar para que el grupo docker aplique
 
 ## 6. Primer despliegue
 
-Mientras el CI no publique las imágenes en GHCR (bloque P3), el servidor las construye desde el
-código:
+El servidor necesita una copia del repositorio (los archivos de compose, Caddy, el monitoreo y los
+scripts) y el `.env`; las imágenes las baja ya construidas de GitHub Container Registry.
 
 ```bash
 ssh -i nexora.pem ubuntu@<ELASTIC_IP>
@@ -88,15 +88,15 @@ chmod 600 .env
 nano .env    # DOMINIO, ACME_EMAIL, las contraseñas del paso 2 y BOOTSTRAP_ADMIN_ENABLED=true
 ```
 
-La aplicación (`compose.prod.yaml`) y el monitoreo (`compose.monitoring.yaml`) se levantan juntos.
-Para no repetir los dos archivos en cada comando, déjelos en la sesión:
+La plantilla ya trae `COMPOSE_FILE=compose.prod.yaml:compose.monitoring.yaml`: la aplicación y el
+monitoreo se levantan juntos con un simple `docker compose`.
 
 ```bash
-echo 'export COMPOSE_FILE=compose.prod.yaml:compose.monitoring.yaml' >> ~/.bashrc
-source ~/.bashrc
-docker compose up -d --build --wait --wait-timeout 900
-docker compose ps
+bash deploy/desplegar.sh develop        # baja las imágenes de develop y levanta todo
 ```
+
+Si las imágenes todavía no están publicadas o el paquete de GHCR es privado (sección 10), se pueden
+construir en el servidor: `docker compose up -d --build --wait --wait-timeout 900`.
 
 Todos los servicios deben quedar `healthy` (Caddy, `running`). Abra `https://<DOMINIO>`, inicie
 sesión con el administrador del `.env` y cambie la contraseña cuando la aplicación lo pida.
@@ -126,11 +126,12 @@ artículo con la marca `HUMO`/`humo`; en staging no estorban.
 | --- | --- |
 | Ver el estado | `docker compose ps` |
 | Ver logs de la API | `docker compose logs -f --tail 200 api` |
-| Actualizar a lo último de `develop` | `git pull && docker compose up -d --build --wait` |
+| Desplegar una versión | Desde GitHub, workflow **Desplegar** (sección 10); a mano: `git checkout <tag o commit> && bash deploy/desplegar.sh <versión>` |
 | Reiniciar la API | `docker compose restart api` |
-| Volver a una versión anterior | `git checkout <commit o tag> && docker compose up -d --build --wait` |
+| Volver a una versión anterior | Desplegar la versión anterior ya publicada en GHCR (`sha-<commit>` o `X.Y.Z`); hasta la 0.3.1 no hay imágenes publicadas |
 
-(Con `COMPOSE_FILE` exportado como en el paso 6; si no, agregue `-f compose.prod.yaml -f compose.monitoring.yaml`.)
+`deploy/desplegar.sh` vuelve solo a la versión anterior si la nueva no queda sana en 10 minutos.
+Las migraciones de Flyway que la versión nueva alcanzó a aplicar no se deshacen.
 
 ## 9. Monitoreo (Grafana)
 
@@ -155,6 +156,48 @@ docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
   CREATE USER IF NOT EXISTS '\''exporter'\''@'\''%'\'' IDENTIFIED BY '\''$MYSQL_EXPORTER_PASSWORD'\'' WITH MAX_USER_CONNECTIONS 3;
   GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO '\''exporter'\''@'\''%'\'';"'
 ```
+
+## 10. Despliegue desde GitHub
+
+Cada merge a `develop` publica las imágenes `ghcr.io/fernandoagressor/nexora-api` y
+`nexora-frontend` con las etiquetas `develop` y `sha-<commit>`; cada tag `vX.Y.Z` publica `X.Y.Z` y
+`latest` (workflow **Publicar imágenes**). El workflow **Desplegar** las instala en el servidor por
+SSH.
+
+**Una sola vez:**
+
+1. **Paquetes públicos.** Después de la primera publicación, en GitHub entre a su perfil →
+   **Packages** → `nexora-api` → **Package settings** → **Change visibility** → **Public**; lo
+   mismo con `nexora-frontend`. El código ya es público; así el servidor baja las imágenes sin
+   credenciales.
+2. **Llave de despliegue** (en su computador):
+
+   ```bash
+   ssh-keygen -t ed25519 -f nexora-despliegue -N "" -C "github-actions"
+   ssh-copy-id -i nexora-despliegue.pub -o IdentityFile=nexora.pem ubuntu@<ELASTIC_IP>
+   ssh-keyscan -H <ELASTIC_IP>      # copie la salida para SSH_KNOWN_HOSTS
+   ```
+
+3. **Entornos en GitHub** (Settings → Environments → New environment): `staging` y `produccion`,
+   cada uno con:
+
+   | Tipo | Nombre | Valor |
+   | --- | --- | --- |
+   | Secret | `SSH_HOST` | Elastic IP del servidor de ese entorno |
+   | Secret | `SSH_USER` | `ubuntu` |
+   | Secret | `SSH_KEY` | Contenido de `nexora-despliegue` (la llave privada) |
+   | Secret | `SSH_KNOWN_HOSTS` | Salida de `ssh-keyscan -H <ELASTIC_IP>` |
+   | Secret | `ADMIN_USUARIO` / `ADMIN_PASSWORD` | Administrador para la prueba de humo de staging |
+   | Variable | `DOMINIO` | `staging.nexora.com.co` (o el de producción) |
+
+   En `produccion` active **Required reviewers** con Fernando: nadie despliega a producción sin
+   aprobarlo.
+4. Para que cada merge a `develop` se despliegue solo en staging: Settings → Secrets and variables
+   → Actions → **Variables** → `STAGING_AUTODEPLOY` = `true`.
+
+**Desplegar a mano:** Actions → **Desplegar** → Run workflow → entorno y versión (`develop`,
+`sha-<commit>` o `0.4.0`). Staging corre además la prueba de humo completa; producción solo
+comprueba la salud por HTTPS, para no crear datos de prueba.
 
 ## Seguridad: qué queda expuesto
 

@@ -21,6 +21,11 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - Métricas de la API en `/actuator/prometheus` (solo red interna), con histogramas de latencia
   por endpoint, y métricas propias: `nexora_sync_retraso` (de la escritura en MongoDB a la tabla
   espejo) y `nexora_crm_pendientes` / `nexora_crm_pendientes_agotados`.
+- **CI/CD**: el workflow "Publicar imágenes" publica la API y el frontend en GHCR con cada merge a
+  `develop` (`develop`, `sha-<commit>`) y con cada tag (`X.Y.Z`, `latest`); "Desplegar" las
+  instala por SSH en staging o producción con `deploy/desplegar.sh`, que vuelve a la versión
+  anterior si la nueva no queda sana. Staging se despliega solo con `STAGING_AUTODEPLOY=true` y
+  corre la prueba de humo; producción exige aprobación.
 - El CI también levanta `compose.prod.yaml` con HTTPS y monitoreo y le pasa la prueba de humo;
   comprueba que solo Caddy publique puertos, que `/actuator` esté cerrado, que Prometheus tenga
   todos sus objetivos arriba y que Grafana traiga el tablero.

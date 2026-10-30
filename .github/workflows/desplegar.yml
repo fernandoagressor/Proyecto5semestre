@@ -1,0 +1,114 @@
+name: Desplegar
+
+# Despliega una versión ya publicada en GHCR al servidor de staging o de producción por SSH
+# (deploy/desplegar.sh) y comprueba que quede sana. Staging además corre la prueba de humo
+# completa. Volver atrás = desplegar una versión anterior.
+#
+# Cada entorno de GitHub (Settings → Environments: "staging", "produccion") necesita:
+#   secrets: SSH_HOST, SSH_USER, SSH_KEY, SSH_KNOWN_HOSTS, ADMIN_USUARIO, ADMIN_PASSWORD
+#   variable: DOMINIO
+# Guía: docs/DESPLIEGUE_AWS.md, sección 10.
+on:
+  workflow_dispatch:
+    inputs:
+      entorno:
+        description: Entorno
+        type: choice
+        options: [staging, produccion]
+        required: true
+      version:
+        description: "Versión de las imágenes: 0.4.0, latest o sha-<commit completo>"
+        type: string
+        required: true
+      ref:
+        description: "Commit o tag de git con los compose (vacío = el que corresponde a la versión)"
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      entorno:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      ref:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desplegar-${{ inputs.entorno }}
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: Desplegar ${{ inputs.version }} a ${{ inputs.entorno }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: ${{ inputs.entorno }}
+      url: https://${{ vars.DOMINIO }}
+    env:
+      VERSION: ${{ inputs.version }}
+      REF_PEDIDA: ${{ inputs.ref }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      DOMINIO: ${{ vars.DOMINIO }}
+    steps:
+      - name: Versión y commit
+        id: ref
+        run: |
+          [[ "$VERSION" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "::error::Versión inválida: $VERSION"; exit 1; }
+          ref="$REF_PEDIDA"
+          if [[ -z "$ref" ]]; then
+            if [[ "$VERSION" == sha-* ]]; then ref="${VERSION#sha-}"
+            elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then ref="v$VERSION"
+            else ref="origin/develop"; fi
+          fi
+          [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::Ref inválida: $ref"; exit 1; }
+          echo "git=$ref" >> "$GITHUB_OUTPUT"
+          echo "Versión $VERSION, compose de $ref"
+
+      - name: Llave SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          [[ -n "$SSH_HOST" && -n "$SSH_USER" && -n "$SSH_KEY" && -n "$SSH_KNOWN_HOSTS" ]] \
+            || { echo "::error::Faltan secretos SSH del entorno ${{ inputs.entorno }} (ver docs/DESPLIEGUE_AWS.md)"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Desplegar en el servidor
+        env:
+          REF_GIT: ${{ steps.ref.outputs.git }}
+        run: |
+          ssh -i ~/.ssh/despliegue -o BatchMode=yes "$SSH_USER@$SSH_HOST" \
+            "set -e; cd /opt/nexora; git fetch --quiet --tags origin; git checkout --quiet --detach '$REF_GIT'; bash deploy/desplegar.sh '$VERSION'"
+
+      - name: Salud por HTTPS
+        run: |
+          for i in $(seq 30); do
+            if curl -sf "https://$DOMINIO/actuator/health/readiness" | grep -q '"UP"'; then
+              echo "https://$DOMINIO responde y está listo"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::https://$DOMINIO no quedó listo"; exit 1
+
+      - uses: actions/checkout@v4
+        if: inputs.entorno == 'staging'
+        with:
+          ref: ${{ steps.ref.outputs.git == 'origin/develop' && 'develop' || steps.ref.outputs.git }}
+
+      - name: Prueba de humo (solo staging)
+        if: inputs.entorno == 'staging'
+        env:
+          BASE_URL: https://${{ vars.DOMINIO }}
+          ADMIN_USUARIO: ${{ secrets.ADMIN_USUARIO }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: bash scripts/prueba-humo.sh
