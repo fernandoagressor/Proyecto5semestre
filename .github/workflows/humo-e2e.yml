@@ -1,0 +1,63 @@
+name: Prueba de humo E2E
+
+# Levanta el stack completo con docker compose (MySQL, MongoDB rs0, Redis, API y frontend)
+# y recorre la aplicación de punta a punta con scripts/prueba-humo.sh.
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  humo:
+    name: Humo E2E (docker compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Variables de prueba (no son las del servidor)
+        run: |
+          cat > .env <<'VARS'
+          DB_PASSWORD=HumoMysql2026x
+          DB_ROOT_PASSWORD=HumoRoot2026x
+          MYSQL_MIGRATOR_PASSWORD=HumoMigrator2026x
+          MONGO_ROOT_PASSWORD=HumoMongoRoot2026x
+          MONGO_APP_PASSWORD=HumoMongoApp2026x
+          MONGO_MIGRATOR_PASSWORD=HumoMongoMigrator2026x
+          REDIS_PASSWORD=HumoRedis2026x
+          JWT_SECRET=humo-jwt-secret-de-prueba-con-mas-de-32-caracteres
+          BOOTSTRAP_ADMIN_PASSWORD=HumoAdmin2026!
+          VARS
+
+      - name: Construir y levantar el stack
+        run: docker compose up -d --build --wait --wait-timeout 900
+
+      - name: Prueba de humo
+        env:
+          BASE_URL: http://localhost:4200
+          ADMIN_USUARIO: SUPERADMIN
+          ADMIN_PASSWORD: HumoAdmin2026!
+          ADMIN_PASSWORD_NUEVA: HumoAdminNueva2026!
+          COMPOSE: "1"
+        run: bash scripts/prueba-humo.sh
+
+      - name: Estado y registros
+        if: always()
+        run: |
+          docker compose ps
+          echo "::group::API"
+          docker compose logs --no-color api | tail -400
+          echo "::endgroup::"
+          echo "::group::Líneas WARN y ERROR de la API"
+          docker compose logs --no-color api | grep -E ' (WARN|ERROR) ' | tail -100 || true
+          echo "::endgroup::"
+          echo "::group::MongoDB"
+          docker compose logs --no-color mongodb | tail -60
+          echo "::endgroup::"
+
+      - name: Bajar el stack
+        if: always()
+        run: docker compose down -v
