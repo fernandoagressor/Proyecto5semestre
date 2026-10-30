@@ -32,7 +32,13 @@ verde() { printf '\033[32m%s\033[0m\n' "$*"; }
 rojo() { printf '\033[31m%s\033[0m\n' "$*"; }
 
 paso() { ok=$((ok + 1)); verde "  ✔ $*"; }
-falla() { fallos=$((fallos + 1)); rojo "  ✘ $*"; }
+falla() {
+  fallos=$((fallos + 1)); rojo "  ✘ $*"
+  # En GitHub Actions cada falla queda también como anotación del PR (se lee sin bajar el log).
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    local msg="${*//$'\n'/ }"; echo "::error title=Prueba de humo::${msg:0:900}"
+  fi
+}
 
 # api MÉTODO RUTA [JSON] → deja el código en $STATUS y el cuerpo en $TMP/cuerpo
 api() {
@@ -189,8 +195,13 @@ if [[ "$COMPOSE" == 1 ]]; then
   version="$(mysql_q "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1")"
   [[ "$version" == 29 ]] && paso "Flyway en V29" || falla "Flyway quedó en V$version"
   errores="$(docker compose logs --no-color api 2>/dev/null | grep -c ' ERROR ' || true)"
-  [[ "$errores" == 0 ]] && paso "Sin líneas ERROR en el log de la API" \
-    || falla "$errores líneas ERROR en el log de la API (ver el paso de registros)"
+  if [[ "$errores" == 0 ]]; then paso "Sin líneas ERROR en el log de la API"
+  else
+    falla "$errores líneas ERROR en el log de la API"
+    docker compose logs --no-color api 2>/dev/null | grep ' ERROR ' | head -5 | while IFS= read -r linea; do
+      [[ "${GITHUB_ACTIONS:-}" == true ]] && echo "::warning title=ERROR en la API::${linea:0:900}"
+    done
+  fi
 fi
 
 echo
