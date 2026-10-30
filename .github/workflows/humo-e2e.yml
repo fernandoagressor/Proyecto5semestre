@@ -66,11 +66,11 @@ jobs:
         run: docker compose down -v
 
   humo-produccion:
-    name: Humo E2E (compose.prod con HTTPS)
+    name: Humo E2E (compose.prod con HTTPS y monitoreo)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      COMPOSE_FILE: compose.prod.yaml
+      COMPOSE_FILE: compose.prod.yaml:compose.monitoring.yaml
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +97,8 @@ jobs:
           BOOTSTRAP_ADMIN_USERNAME=SUPERADMIN
           BOOTSTRAP_ADMIN_EMAIL=admin@ejemplo.com
           BOOTSTRAP_ADMIN_PASSWORD=HumoAdmin2026!
+          MYSQL_EXPORTER_PASSWORD=HumoExporter2026x
+          GRAFANA_ADMIN_PASSWORD=HumoGrafana2026x
           VARS
 
       - name: Sin contraseñas por defecto (compose se niega a arrancar)
@@ -118,6 +120,30 @@ jobs:
           ADMIN_PASSWORD_NUEVA: HumoAdminNueva2026!
           COMPOSE: "1"
         run: bash scripts/prueba-humo.sh
+
+      - name: Monitoreo (Prometheus y Grafana)
+        run: |
+          set -e
+          for i in $(seq 60); do
+            abajo="$(curl -s http://127.0.0.1:9090/api/v1/targets | jq -r '.data.activeTargets[] | select(.health != "up") | "\(.labels.job): \(.lastError)"')"
+            [ -z "$abajo" ] && break
+            sleep 2
+          done
+          [ -z "$abajo" ] || { echo "::error::Objetivos de Prometheus caídos: $abajo"; exit 1; }
+          echo "Todos los objetivos de Prometheus arriba"
+          sleep 15
+          for q in 'nexora_sync_retraso_seconds_count' 'nexora_crm_pendientes' 'hikaricp_connections_max' \
+                   'mongodb_driver_pool_size' 'tomcat_threads_config_max_threads' 'http_server_requests_seconds_bucket' \
+                   'mysql_up == 1' 'mongodb_up == 1' 'redis_up == 1' 'node_cpu_seconds_total' \
+                   'container_cpu_usage_seconds_total{name=~"nexora-.+"}'; do
+            n="$(curl -s --get http://127.0.0.1:9090/api/v1/query --data-urlencode "query=count($q)" | jq -r '.data.result[0].value[1] // "0"')"
+            [ "$n" != 0 ] || { echo "::error::Prometheus no tiene datos de $q"; exit 1; }
+            echo "  $q: $n series"
+          done
+          curl -sf -u admin:HumoGrafana2026x http://127.0.0.1:3000/api/health
+          curl -sf -u admin:HumoGrafana2026x 'http://127.0.0.1:3000/api/search?query=NEXORA' | jq -e 'length >= 1' > /dev/null \
+            || { echo "::error::Grafana no tiene el tablero de NEXORA"; exit 1; }
+          echo "Grafana arriba con el tablero de NEXORA"
 
       - name: Puertos y endpoints cerrados
         run: |

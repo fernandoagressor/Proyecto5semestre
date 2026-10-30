@@ -22,7 +22,8 @@ El archivo `.env` con las contraseñas de desarrollo estuvo publicado en el repo
 
 ```bash
 for v in DB_PASSWORD DB_ROOT_PASSWORD MYSQL_MIGRATOR_PASSWORD MONGO_ROOT_PASSWORD \
-         MONGO_APP_PASSWORD MONGO_MIGRATOR_PASSWORD REDIS_PASSWORD; do
+         MONGO_APP_PASSWORD MONGO_MIGRATOR_PASSWORD REDIS_PASSWORD \
+         MYSQL_EXPORTER_PASSWORD GRAFANA_ADMIN_PASSWORD; do
   echo "$v=$(openssl rand -base64 36 | tr -d '/+=' | cut -c1-32)"
 done
 echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '/+=')"
@@ -87,9 +88,14 @@ chmod 600 .env
 nano .env    # DOMINIO, ACME_EMAIL, las contraseñas del paso 2 y BOOTSTRAP_ADMIN_ENABLED=true
 ```
 
+La aplicación (`compose.prod.yaml`) y el monitoreo (`compose.monitoring.yaml`) se levantan juntos.
+Para no repetir los dos archivos en cada comando, déjelos en la sesión:
+
 ```bash
-docker compose -f compose.prod.yaml up -d --build --wait --wait-timeout 900
-docker compose -f compose.prod.yaml ps
+echo 'export COMPOSE_FILE=compose.prod.yaml:compose.monitoring.yaml' >> ~/.bashrc
+source ~/.bashrc
+docker compose up -d --build --wait --wait-timeout 900
+docker compose ps
 ```
 
 Todos los servicios deben quedar `healthy` (Caddy, `running`). Abra `https://<DOMINIO>`, inicie
@@ -99,7 +105,7 @@ Luego **apague la creación del administrador inicial**:
 
 ```bash
 sed -i 's/^BOOTSTRAP_ADMIN_ENABLED=.*/BOOTSTRAP_ADMIN_ENABLED=false/' .env
-docker compose -f compose.prod.yaml up -d
+docker compose up -d
 ```
 
 ## 7. Prueba de humo en el servidor
@@ -107,7 +113,7 @@ docker compose -f compose.prod.yaml up -d
 ```bash
 cd /opt/nexora
 BASE_URL=https://<DOMINIO> ADMIN_USUARIO=SUPERADMIN \
-ADMIN_PASSWORD='<contraseña actual>' COMPOSE=1 COMPOSE_FILE=compose.prod.yaml \
+ADMIN_PASSWORD='<contraseña actual>' COMPOSE=1 \
 bash scripts/prueba-humo.sh
 ```
 
@@ -118,19 +124,45 @@ artículo con la marca `HUMO`/`humo`; en staging no estorban.
 
 | Para | Comando (en `/opt/nexora`) |
 | --- | --- |
-| Ver el estado | `docker compose -f compose.prod.yaml ps` |
-| Ver logs de la API | `docker compose -f compose.prod.yaml logs -f --tail 200 api` |
-| Actualizar a lo último de `develop` | `git pull && docker compose -f compose.prod.yaml up -d --build --wait` |
-| Reiniciar la API | `docker compose -f compose.prod.yaml restart api` |
-| Volver a una versión anterior | `git checkout <commit o tag> && docker compose -f compose.prod.yaml up -d --build --wait` |
+| Ver el estado | `docker compose ps` |
+| Ver logs de la API | `docker compose logs -f --tail 200 api` |
+| Actualizar a lo último de `develop` | `git pull && docker compose up -d --build --wait` |
+| Reiniciar la API | `docker compose restart api` |
+| Volver a una versión anterior | `git checkout <commit o tag> && docker compose up -d --build --wait` |
 
-Para no escribir `-f compose.prod.yaml` cada vez: `echo 'export COMPOSE_FILE=compose.prod.yaml' >> ~/.bashrc`.
+(Con `COMPOSE_FILE` exportado como en el paso 6; si no, agregue `-f compose.prod.yaml -f compose.monitoring.yaml`.)
+
+## 9. Monitoreo (Grafana)
+
+Prometheus y Grafana no son públicos: escuchan solo en `127.0.0.1` del servidor. Se abren desde
+su computador con un túnel SSH:
+
+```bash
+ssh -i nexora.pem -L 3000:127.0.0.1:3000 -L 9090:127.0.0.1:9090 ubuntu@<ELASTIC_IP>
+```
+
+Con el túnel abierto, entre a `http://localhost:3000` (usuario `admin`, contraseña
+`GRAFANA_ADMIN_PASSWORD`). El tablero **NEXORA – Producción y pruebas de carga** abre solo y
+muestra arriba los criterios de las pruebas de estrés: solicitudes por segundo, p95 de la API,
+errores 5xx, CPU, atraso de las tablas espejo y cola `crm_pendientes`. Debajo están el detalle por
+endpoint, los pools de MySQL y MongoDB, Redis, la JVM y la CPU y memoria de cada contenedor.
+
+Prometheus guarda 15 días. Si MySQL ya existía antes de agregar el monitoreo, el usuario del
+exportador no se creó solo; créelo una vez:
+
+```bash
+docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+  CREATE USER IF NOT EXISTS '\''exporter'\''@'\''%'\'' IDENTIFIED BY '\''$MYSQL_EXPORTER_PASSWORD'\'' WITH MAX_USER_CONNECTIONS 3;
+  GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO '\''exporter'\''@'\''%'\'';"'
+```
 
 ## Seguridad: qué queda expuesto
 
 - Solo los puertos 80 y 443 (Caddy) y 22 desde la IP del equipo. MySQL, MongoDB, Redis, la API y
   el frontend no publican puertos: solo se hablan dentro de la red de Docker.
-- De `/actuator` solo responde `/actuator/health`; el resto devuelve 404.
+- De `/actuator` solo responde `/actuator/health`; el resto devuelve 404. Las métricas
+  (`/actuator/prometheus`) las lee Prometheus dentro de la red de Docker.
+- Grafana y Prometheus solo en `127.0.0.1`, por túnel SSH.
 - HTTPS con HSTS. La IP real de cada cliente llega a la API desde Caddy, así el límite de 20
   intentos de inicio de sesión fallidos por IP no se puede engañar.
 - `.env` con permisos `600` solo en el servidor; nunca en el repositorio.
