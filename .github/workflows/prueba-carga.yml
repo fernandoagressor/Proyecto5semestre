@@ -74,7 +74,12 @@ jobs:
           VARS
 
       - name: Levantar el stack de producción
-        run: docker compose up -d --build --wait --wait-timeout 900
+        run: |
+          docker compose up -d --build --wait --wait-timeout 900 || {
+            docker compose ps -a --format '{{.Service}}: {{.Status}}' \
+              | while IFS= read -r l; do echo "::error title=Servicio::$l"; done
+            exit 1
+          }
 
       - name: Prueba de humo (deja la contraseña definitiva del administrador)
         env:

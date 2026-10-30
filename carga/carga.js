@@ -108,7 +108,14 @@ function ok(r, que) {
 function iniciar() {
   const u = USUARIOS[(exec.vu.idInTest - 1) % USUARIOS.length];
   const sesion = new Sesion(u.usuario, CLAVE);
-  const cuerpo = sesion.iniciar();
+  let cuerpo;
+  try {
+    cuerpo = sesion.iniciar();
+  } catch (e) {
+    // Sin credenciales válidas no tiene sentido seguir: reintentar solo dispara el límite de
+    // intentos fallidos por IP (429).
+    exec.test.abort(`${e.message}. ¿Corrió carga/semilla.js con el mismo VOLUMEN y CARGA_PASSWORD?`);
+  }
   const proyectos = lista(json(sesion.pedir('GET', '/api/v1/proyectos?tamano=50', null, 'GET /proyectos')))
     .map((p) => p.id);
   yo = { sesion, rol: u.rol, id: cuerpo.usuario.id, proyectos };

@@ -49,7 +49,7 @@ function admin() {
 
 function exigir(r, esperado, que) {
   if (r.status < 200 || r.status > 299) fail(`${que}: HTTP ${r.status} ${String(r.body).slice(0, 300)}`);
-  return r.json();
+  return json(r); // algunas respuestas (cambiar contraseña) no tienen cuerpo
 }
 
 export function setup() {
