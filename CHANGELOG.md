@@ -36,6 +36,12 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   tablas espejo. `deploy/instalar-respaldos.sh` deja programado todo; Grafana muestra cuánto hace
   del último respaldo y de la última prueba.
 - `deploy/desplegar.sh` saca un respaldo antes de cada despliegue.
+- **Pruebas de carga con k6** (`carga/`, guía en `docs/PRUEBAS_DE_CARGA.md`): `semilla.js` genera
+  datos de volumen por la API (10 proyectos, 2.000 lotes, 100 usuarios de prueba por rol, clientes,
+  prospectos, oportunidades, reservas, tareas y PQRS); `carga.js` simula asesores, servicio al
+  cliente, cartera y gerencia con escenarios humo, carga (100 usuarios), estrés (hasta 300), pico y
+  resistencia (1 h), con los criterios p95 < 800 ms en lecturas, < 1,5 s en escrituras y errores
+  < 1 %. El workflow "Prueba de carga" los corre contra staging y los valida en cada PR.
 - El CI respalda el stack de producción, lo daña a propósito, lo restaura y comprueba MySQL,
   MongoDB, documentos, tablas espejo e inicio de sesión.
 
