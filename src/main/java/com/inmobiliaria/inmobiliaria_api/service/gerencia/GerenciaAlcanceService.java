@@ -68,7 +68,7 @@ public class GerenciaAlcanceService {
     public void verificarUsuarioEmpresa(ContextoUsuario contexto, Long usuarioId) {
         Integer total = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM usuarios
-                WHERE id = ? AND empresa_id = ? AND activo = 1
+                WHERE id = ? AND empresa_id = ? AND estado = 'ACTIVO'
                 """, Integer.class, usuarioId, contexto.empresaId());
         if (total == null || total == 0) {
             throw new ReglaNegocioException("El usuario no existe, está inactivo o pertenece a otra empresa");
