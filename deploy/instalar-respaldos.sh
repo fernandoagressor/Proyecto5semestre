@@ -34,9 +34,9 @@ fi
 
 command -v crontab > /dev/null || error "Falta cron: sudo apt-get install -y cron"
 marca="# nexora-respaldos"
-nuevas="PATH=/snap/bin:/usr/local/bin:/usr/bin:/bin $marca
-15 8 * * * cd $raiz && bash deploy/respaldar.sh 2>&1 | logger -t nexora-respaldo $marca
-45 9 * * 0 cd $raiz && bash deploy/probar-restauracion.sh 2>&1 | logger -t nexora-restauracion $marca"
+ruta="PATH=/snap/bin:/usr/local/bin:/usr/bin:/bin"   # la AWS CLI de snap no está en el PATH de cron
+nuevas="15 8 * * * cd $raiz && $ruta bash deploy/respaldar.sh 2>&1 | logger -t nexora-respaldo $marca
+45 9 * * 0 cd $raiz && $ruta bash deploy/probar-restauracion.sh 2>&1 | logger -t nexora-restauracion $marca"
 { crontab -l 2>/dev/null | grep -v "$marca" || true; echo "$nuevas"; } | crontab -
 registro "Cron instalado:"
 crontab -l | grep "$marca"
