@@ -132,7 +132,13 @@ export function setup() {
     usuarios.push({ id, rol: u.rol, usuario: u.usuario });
   });
   console.log(`Usuarios de prueba: ${usuarios.length} (${nuevos} nuevos). Proyectos: ${proyectos.map((p) => p.id)}`);
-  return { proyectos, usuarios };
+
+  // 4. Clientes a los que se asocian las PQRS (toda PQRS debe indicar el cliente).
+  const clientesPqrs = [];
+  for (let c = 0; c < Math.min(30, V.pqrs); c++) {
+    clientesPqrs.push(exigir(s.pedir('POST', '/api/v1/clientes', cliente(3, c), 'POST /clientes'), 201, 'Cliente de PQRS').id);
+  }
+  return { proyectos, usuarios, clientesPqrs };
 }
 
 let sesion = null;
@@ -161,7 +167,7 @@ function lote(datos, i) {
   }
 }
 
-// prefijo 1: clientes sueltos; 2: clientes con reserva (números de documento distintos).
+// prefijo 1: clientes sueltos; 2: con reserva; 3: de las PQRS (números de documento distintos).
 function cliente(prefijo, i) {
   const sufijo = `${prefijo}${String(i).padStart(6, '0')}`;
   return {
@@ -201,6 +207,14 @@ export default function (datos) {
     if (!check(r, { 'prospecto creado': (x) => x.status >= 200 && x.status < 300 })) return console.warn(`Prospecto: ${r.status} ${r.body}`);
     creados.add(1, { tipo: 'prospecto' });
     if (Math.random() < V.oportunidadesPorc) {
+      // Solo un prospecto calificado puede tener oportunidad.
+      const temperatura = elegir(['TIBIO', 'CALIENTE']);
+      const c = sesion.pedir('PATCH', `/api/v1/prospectos/${r.json().id}/calificacion`,
+        { estado: 'CALIFICADO', temperatura, justificacion: 'Calificado por la semilla de carga' },
+        'PATCH /prospectos/{id}/calificacion');
+      if (!check(c, { 'prospecto calificado': (x) => x.status >= 200 && x.status < 300 })) {
+        return console.warn(`Calificar: ${c.status} ${c.body}`);
+      }
       const o = sesion.pedir('POST', '/api/v1/oportunidades', {
         proyectoId: proyecto.id, prospectoId: r.json().id, asesorId: asesor,
         valorEstimado: azar(80, 400) * 1000000, fechaProximaAccion: fechaIso(azar(1, 20)),
@@ -218,7 +232,8 @@ export default function (datos) {
     else console.warn(`Tarea: ${r.status} ${r.body}`);
   } else if (tipo === 'pqrs') {
     const r = sesion.pedir('POST', '/api/v1/solicitudes', {
-      proyectoId: proyecto.id, tipo: elegir(['PETICION', 'QUEJA', 'RECLAMO', 'SUGERENCIA', 'SOLICITUD']),
+      proyectoId: proyecto.id, clienteId: elegir(datos.clientesPqrs),
+      tipo: elegir(['PETICION', 'QUEJA', 'RECLAMO', 'SUGERENCIA', 'SOLICITUD']),
       categoria: elegir(['Pagos', 'Escrituración', 'Obras', 'Documentos']),
       asunto: `Solicitud de carga ${SELLO}-${i}`, descripcion: 'Generada por carga/semilla.js',
       prioridad: elegir(['BAJA', 'MEDIA', 'ALTA']),

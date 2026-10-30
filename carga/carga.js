@@ -63,7 +63,7 @@ const NOMBRES = [
   'GET /solicitudes', 'GET /solicitudes/ID', 'GET /solicitudes/ID/mensajes', 'GET /solicitudes/ID/historial',
   'POST /solicitudes', 'POST /solicitudes/ID/mensajes', 'GET /citas-servicio',
   'GET /base-conocimiento/articulos', 'GET /base-conocimiento/categorias', 'GET /clientes', 'GET /clientes/ID',
-  'GET /cartera/resumen', 'GET /cartera/mora', 'GET /cartera/gestiones-cobro', 'GET /contratos', 'GET /pagos',
+  'GET /cartera/resumen', 'GET /cartera/mora', 'GET /contratos', 'GET /pagos',
   'GET /gerencia/rentabilidad', 'GET /metas-comerciales',
 ];
 
@@ -209,7 +209,9 @@ const asesor = [
     check(f, { 'reserva respondida': (x) => x.status < 500 });
   }],
   [10, () => {
-    ok(pedir('GET', '/api/v1/dashboards/comercial', null, 'GET /dashboards/comercial'), 'dashboard comercial');
+    // Un asesor con alcance por proyecto ve el tablero de un proyecto a la vez.
+    ok(pedir('GET', `/api/v1/dashboards/comercial?proyectoId=${proyecto()}`, null, 'GET /dashboards/comercial'),
+      'dashboard comercial');
     ok(pedir('GET', '/api/v1/notificaciones/resumen', null, 'GET /notificaciones/resumen'), 'notificaciones');
   }],
   [10, () => tareas()],
@@ -252,8 +254,12 @@ const servicio = [
     }
   }],
   [10, () => {
+    // Se registra a nombre de un cliente buscado en el listado, como en la pantalla.
+    const c = lista(json(pedir('GET', `/api/v1/clientes?tamano=20&pagina=${azar(0, 5)}`, null, 'GET /clientes')));
+    if (!c.length) return;
+    pausa();
     ok(pedir('POST', '/api/v1/solicitudes', {
-      proyectoId: proyecto(), tipo: elegir(['PETICION', 'QUEJA', 'RECLAMO']), categoria: 'Pagos',
+      proyectoId: proyecto(), clienteId: elegir(c).id, tipo: elegir(['PETICION', 'QUEJA', 'RECLAMO']), categoria: 'Pagos',
       asunto: 'Solicitud registrada en prueba de carga', descripcion: 'Texto de prueba', prioridad: 'MEDIA',
     }, 'POST /solicitudes'), 'crear PQRS');
   }],
@@ -291,14 +297,14 @@ const cartera = [
   }],
   [15, () => ok(pedir('GET', '/api/v1/contratos?tamano=20', null, 'GET /contratos'), 'contratos')],
   [15, () => ok(pedir('GET', '/api/v1/pagos?tamano=20', null, 'GET /pagos'), 'pagos')],
-  [10, () => ok(pedir('GET', '/api/v1/cartera/gestiones-cobro', null, 'GET /cartera/gestiones-cobro'), 'gestiones de cobro')],
-  [10, () => clientes()],
+  [20, () => clientes()],
 ];
 
 // ---------- Gerencia ----------
 const gerencia = [
   [40, () => ok(pedir('GET', '/api/v1/dashboards/gerencial', null, 'GET /dashboards/gerencial'), 'dashboard gerencial')],
-  [15, () => ok(pedir('GET', '/api/v1/gerencia/rentabilidad', null, 'GET /gerencia/rentabilidad'), 'rentabilidad')],
+  [15, () => ok(pedir('GET', `/api/v1/gerencia/rentabilidad?desde=${fechaIso(-90).slice(0, 10)}&hasta=${fechaIso(0).slice(0, 10)}`,
+    null, 'GET /gerencia/rentabilidad'), 'rentabilidad')],
   [15, () => ok(pedir('GET', `/api/v1/oportunidades?proyectoId=${proyecto()}&tamano=20`, null, 'GET /oportunidades'),
     'oportunidades del proyecto')],
   [15, () => ok(pedir('GET', `/api/v1/proyectos/${proyecto()}/inventario/resumen`, null,

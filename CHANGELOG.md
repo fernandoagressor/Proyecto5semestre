@@ -52,6 +52,9 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   servidor.
 
 ### Corregido
+- Dos inicios de sesión simultáneos del mismo usuario (dos dispositivos a la vez) hacían que uno
+  respondiera 409: registrar el acceso guardaba el usuario completo con su versión. Lo encontró la
+  prueba de carga.
 - Crear o reasignar tareas, asignar metas y asignar alertas de auditoría respondían 500: la
   validación del usuario filtraba por una columna `activo` que no existe en `usuarios`.
 - MongoDB 8.0 en `compose.yaml` arranca en kernels Linux 6.19+ (SERVER-121912).
