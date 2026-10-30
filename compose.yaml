@@ -47,6 +47,8 @@ services:
       MONGO_MIGRATOR_USER: ${MONGO_MIGRATOR_USER:-nexora_migrator}
       MONGO_MIGRATOR_PASSWORD: ${MONGO_MIGRATOR_PASSWORD:-NexoraDevMongoMigrator2026}
       TZ: America/Bogota
+      # MongoDB 8.0 no arranca en kernels Linux 6.19+ sin esto (SERVER-121912); inofensivo en los demás.
+      GLIBC_TUNABLES: glibc.pthread.rseq=1
     ports:
       - "127.0.0.1:${MONGO_PORT:-27017}:27017"
     volumes:
