@@ -5,6 +5,16 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Agregado
+- Prueba de humo de punta a punta en el CI (`Prueba de humo E2E`): levanta el stack completo con
+  `docker compose` y recorre frontend, sesión, dashboards, MySQL, MongoDB, sincronización y
+  auditoría con `scripts/prueba-humo.sh`, que también sirve contra staging.
+
+### Corregido
+- Crear o reasignar tareas, asignar metas y asignar alertas de auditoría respondían 500: la
+  validación del usuario filtraba por una columna `activo` que no existe en `usuarios`.
+- MongoDB 8.0 en `compose.yaml` arranca en kernels Linux 6.19+ (SERVER-121912).
+
 ## [0.3.1] - 2026-10-29
 
 > Publicada con el tag `v0.3.1`: el tag `v0.3.0` quedó retirado porque el repositorio usa releases
