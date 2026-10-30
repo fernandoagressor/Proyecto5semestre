@@ -192,6 +192,7 @@ SSH.
    | Secret | `SSH_KEY` | Contenido de `nexora-despliegue` (la llave privada) |
    | Secret | `SSH_KNOWN_HOSTS` | Salida de `ssh-keyscan -H <ELASTIC_IP>` |
    | Secret | `ADMIN_USUARIO` / `ADMIN_PASSWORD` | Administrador para la prueba de humo de staging |
+   | Secret | `CARGA_PASSWORD` | Solo en `staging`: usuarios de las pruebas de carga (`docs/PRUEBAS_DE_CARGA.md`) |
    | Variable | `DOMINIO` | `staging.nexora.com.co` (o el de producción) |
 
    En `produccion` active **Required reviewers** con Fernando: nadie despliega a producción sin
