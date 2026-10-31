@@ -157,6 +157,12 @@ jobs:
             || { echo "::error::Grafana no tiene el tablero de NEXORA"; exit 1; }
           echo "Grafana arriba con el tablero de NEXORA"
 
+      - name: Ningún contenedor se reinició
+        run: |
+          reinicios="$(docker compose ps -aq | xargs docker inspect -f '{{.Name}} {{.RestartCount}}' | awk '$2 > 0')"
+          if [ -n "$reinicios" ]; then echo "::error::Contenedores reiniciados en el arranque: $reinicios"; exit 1; fi
+          echo "Ningún contenedor se reinició"
+
       - name: Puertos y endpoints cerrados
         run: |
           set -e
