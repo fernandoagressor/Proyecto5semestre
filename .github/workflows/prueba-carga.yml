@@ -157,6 +157,24 @@ jobs:
       VOLUMEN: ${{ inputs.volumen }}
       CARGA_PASSWORD: ${{ secrets.CARGA_PASSWORD }}
     steps:
+      - name: Configuración del entorno staging
+        env:
+          DOMINIO: ${{ vars.DOMINIO }}
+          TIENE_ADMIN_USUARIO: ${{ secrets.ADMIN_USUARIO != '' }}
+          TIENE_ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD != '' }}
+          TIENE_CARGA_PASSWORD: ${{ secrets.CARGA_PASSWORD != '' }}
+        run: |
+          falta=""
+          [ -n "$DOMINIO" ] || falta="$falta variable DOMINIO (Environment variables, no secrets);"
+          [ "$TIENE_CARGA_PASSWORD" = true ] || falta="$falta secret CARGA_PASSWORD;"
+          if [ "${{ inputs.accion }}" = semilla ]; then
+            [ "$TIENE_ADMIN_USUARIO" = true ] || falta="$falta secret ADMIN_USUARIO;"
+            [ "$TIENE_ADMIN_PASSWORD" = true ] || falta="$falta secret ADMIN_PASSWORD;"
+          fi
+          case "$DOMINIO" in http*|*/*) falta="$falta DOMINIO sin https:// ni barras (ej. 13-58-119-98.sslip.io);";; esac
+          if [ -n "$falta" ]; then echo "::error title=Entorno staging incompleto::Falta o está mal:$falta"; exit 1; fi
+          echo "Entorno staging completo: https://$DOMINIO"
+
       - uses: actions/checkout@v4
       - uses: grafana/setup-k6-action@v1
 
