@@ -7,13 +7,30 @@ saca el certificado HTTPS solo. El plan completo y el cronograma están en el do
 
 Tiempo estimado la primera vez: 1 a 2 horas.
 
-## 1. Cuenta y presupuesto (una sola vez)
+## 1. Cuenta, proyecto y límite de gasto (una sola vez por entorno)
 
-1. Entre a la consola de AWS con el usuario raíz solo para crear un **usuario IAM administrador
-   con MFA**; de ahí en adelante use ese usuario.
-2. **Billing → Budgets → Create budget**: presupuesto mensual de USD 100 con alerta por correo al
-   80 % y al 100 %.
-3. Trabaje siempre en la región **us-east-1 (N. Virginia)**.
+Las cuentas nuevas de AWS (desde septiembre de 2026) usan la **nueva experiencia** en
+[settings.aws.com](https://settings.aws.com): cada **proyecto** es una cuenta de AWS aparte, con su
+propia factura y su propio límite de gasto.
+
+1. **Plan pago.** Configuración → **Facturación** → **Actualizar**. El plan gratuito no permite
+   máquinas xlarge. Los créditos se siguen usando primero.
+2. **Un proyecto por entorno.** Configuración → **Proyectos** → **Crear proyecto**:
+   `nexora.staging` y, para la entrega, `nexora.produccion` (solo letras, números y puntos). Así un
+   error en staging no toca producción.
+3. **Límite de gasto** (antes de crear nada). Facturación → **Costo por proyecto** → lápiz en
+   **Límite de gasto**:
+   - `nexora.staging`: USD 100. Como control anticipado, solo *Stop new resource creation*.
+   - `nexora.produccion`: con margen (USD 250 o más) y **sin** controles de pausa.
+   - Al llegar al límite **AWS pausa el proyecto y apaga todo**: la aplicación se cae. Avisa al 50 %,
+     75 % y 90 %.
+4. **Región**: la asigna AWS según el país de la cuenta. Desde Colombia es **US East (Ohio)
+   us-east-2**; se ve en el proyecto → *Información adicional* → **Región**. La consola del proyecto
+   no tiene selector de región.
+5. Para trabajar, abra el proyecto y su consola (la URL empieza por `<cuenta>-<id>.us-east-2.console…`).
+
+En una cuenta con la consola clásica: usuario IAM administrador con MFA, **Billing → Budgets** en
+vez del límite de gasto y la región que el equipo elija.
 
 ## 2. Contraseñas nuevas (obligatorio)
 
@@ -44,10 +61,19 @@ dentro de la URL de MongoDB. La contraseña del primer administrador la elige el
 | Tipo | `m7i.xlarge` (4 vCPU, 16 GiB). No use `t3`: bajo carga sostenida gastan créditos de CPU y bajan el rendimiento |
 | Par de llaves | Nuevo, tipo ED25519; guarde el `.pem` |
 | Disco | 60 GB `gp3` |
-| Grupo de seguridad | SSH 22 solo desde **Mi IP**; HTTP 80 y HTTPS 443 desde `0.0.0.0/0` y `::/0` |
+| Grupo de seguridad | `nexora-staging-sg`: SSH 22 solo desde **Mi IP**; HTTP 80 y HTTPS 443 desde **Anywhere-IPv4** y **Anywhere-IPv6** (5 reglas) |
+| Detalles avanzados → Perfil de instancia de IAM | `nexora-ec2` (sección 11; créelo antes de lanzar) |
 
-Después: **Elastic IPs → Allocate** y **Associate** a la instancia, para que la IP no cambie al
-reiniciar.
+Después: **Direcciones IP elásticas → Asignar** y **Asociar** a la instancia, para que la IP no
+cambie al apagar o reiniciar.
+
+La llave `.pem` en Windows: guárdela en `C:\Users\<usted>\.ssh\` y déjela legible solo por usted
+(si no, `ssh` se niega a usarla):
+
+```powershell
+icacls "$HOME\.ssh\nexora-staging.pem" /inheritance:r
+icacls "$HOME\.ssh\nexora-staging.pem" /grant:r "$($env:USERNAME):(R)"
+```
 
 ## 4. Dominio
 
@@ -61,18 +87,34 @@ dig +short staging.nexora.com.co   # debe responder la Elastic IP
 Caddy necesita que el dominio ya apunte al servidor y que el puerto 80 esté abierto para sacar
 el certificado.
 
+**Sin dominio propio (staging):** use `<ip-con-guiones>.sslip.io`. Por ejemplo, para la IP
+`13.58.119.98`, `DOMINIO=13-58-119-98.sslip.io`: ese nombre ya apunta a la IP y Caddy le saca el
+certificado igual. Al comprar el dominio solo cambia esa línea del `.env`.
+
 ## 5. Preparar el servidor
 
-```bash
-ssh -i nexora.pem ubuntu@<ELASTIC_IP>
+Desde Windows, si PowerShell responde que `ssh` no se reconoce, instale el cliente una vez
+(PowerShell **como administrador**) y abra otra ventana:
 
-sudo apt-get update && sudo apt-get upgrade -y
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+ssh -i "$HOME\.ssh\nexora-staging.pem" ubuntu@<ELASTIC_IP>
+```
+
+En el servidor:
+
+```bash
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get upgrade -y
+sudo apt-get install -y jq git cron
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker ubuntu
-sudo apt-get install -y jq git
 sudo snap install aws-cli --classic   # para subir los respaldos a S3 (sección 11)
-exit   # vuelva a entrar para que el grupo docker aplique
+sudo reboot                           # vuelva a entrar en un minuto
 ```
+
+Al volver, compruebe: `docker compose version` (v2.30 o más), `aws sts get-caller-identity` (debe
+decir `assumed-role/nexora-ec2`). No acepte el aviso de pasar a otra versión de Ubuntu.
 
 ## 6. Primer despliegue
 
@@ -86,8 +128,25 @@ git clone --branch develop https://github.com/fernandoagressor/Proyecto5semestre
 cd /opt/nexora
 cp deploy/produccion.env.example .env
 chmod 600 .env
-nano .env    # DOMINIO, ACME_EMAIL, las contraseñas del paso 2 y BOOTSTRAP_ADMIN_ENABLED=true
+gen() { openssl rand -base64 36 | tr -d '/+=' | cut -c1-32; }
+poner() { sed -i "s|^$1=.*|$1=$2|" .env; }
+for v in DB_PASSWORD DB_ROOT_PASSWORD MYSQL_MIGRATOR_PASSWORD MONGO_ROOT_PASSWORD MONGO_APP_PASSWORD \
+         MONGO_MIGRATOR_PASSWORD REDIS_PASSWORD MYSQL_EXPORTER_PASSWORD GRAFANA_ADMIN_PASSWORD; do
+  poner "$v" "$(gen)"
+done
+poner JWT_SECRET "$(openssl rand -base64 48 | tr -d '/+=')"
+poner DOMINIO <dominio>
+poner RESPALDO_S3_BUCKET <bucket>
+poner BOOTSTRAP_ADMIN_ENABLED true
+poner BOOTSTRAP_ADMIN_PASSWORD "Nx-$(gen)!"
+poner ACME_EMAIL '<correo del equipo>'
+poner BOOTSTRAP_EMPRESA_NIT '<NIT>'
+poner BOOTSTRAP_ADMIN_DOCUMENTO '<documento>'
+poner BOOTSTRAP_ADMIN_EMAIL '<correo del administrador>'
+cat .env     # cópielo al gestor de contraseñas del equipo; nunca al chat ni al repositorio
 ```
+
+Así las contraseñas se generan en el servidor (el paso 2 queda como alternativa).
 
 La plantilla ya trae `COMPOSE_FILE=compose.prod.yaml:compose.monitoring.yaml`: la aplicación y el
 monitoreo se levantan juntos con un simple `docker compose`.
@@ -200,6 +259,22 @@ SSH.
 4. Para que cada merge a `develop` se despliegue solo en staging: Settings → Secrets and variables
    → Actions → **Variables** → `STAGING_AUTODEPLOY` = `true`.
 
+**Ojo con el puerto 22.** Los runners de GitHub salen de IP que cambian, y el grupo de seguridad
+solo deja entrar por SSH desde la IP del equipo: así el workflow **Desplegar** no puede conectarse.
+Mientras tanto se despliega a mano por SSH (`cd /opt/nexora && git pull && bash
+deploy/desplegar.sh develop`). Abrir el 22 a todo internet funciona (solo se entra con llave), pero
+expone el servidor a intentos constantes; para producción conviene decidirlo aparte. El workflow
+**Prueba de carga** no usa SSH: solo necesita `DOMINIO`, `ADMIN_USUARIO`, `ADMIN_PASSWORD` y
+`CARGA_PASSWORD` en el entorno `staging`.
+
+Desde Windows, la llave de despliegue se instala en el servidor así (no existe `ssh-copy-id`):
+
+```powershell
+ssh-keygen -t ed25519 -f "$HOME\.ssh\nexora-despliegue" -N '""' -C github-actions
+type "$HOME\.ssh\nexora-despliegue.pub" | ssh -i "$HOME\.ssh\nexora-staging.pem" ubuntu@<ELASTIC_IP> "cat >> ~/.ssh/authorized_keys"
+ssh-keyscan -H <ELASTIC_IP>
+```
+
 **Desplegar a mano:** Actions → **Desplegar** → Run workflow → entorno y versión (`develop`,
 `sha-<commit>` o `0.4.0`). Staging corre además la prueba de humo completa; producción solo
 comprueba la salud por HTTPS, para no crear datos de prueba.
@@ -211,7 +286,7 @@ documentos subidos, los sube a S3 y conserva 3 días en el servidor. Cada doming
 `deploy/probar-restauracion.sh` carga el último respaldo en un MySQL y un MongoDB temporales y
 comprueba que esté completo, sin tocar los datos reales. Redis no se respalda (solo es caché).
 
-**Una sola vez (consola de AWS, región us-east-1):**
+**Una sola vez (en la consola del proyecto):**
 
 1. **S3 → Create bucket**: nombre `nexora-respaldos-<entorno>-<algo único>` (p. ej.
    `nexora-respaldos-staging-altamar`). Deje **Block all public access** marcado y el cifrado por
