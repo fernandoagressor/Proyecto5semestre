@@ -1,0 +1,185 @@
+name: Prueba de carga
+
+# k6 contra NEXORA CORE (carga/semilla.js y carga/carga.js; guía en docs/PRUEBAS_DE_CARGA.md).
+# - En cada PR que toque carga/: valida los scripts contra el stack de producción levantado en el
+#   runner, con pocos datos y 5 usuarios.
+# - A mano (Run workflow): genera los datos de volumen o corre un escenario contra staging.
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'carga/**'
+      - '.github/workflows/prueba-carga.yml'
+  workflow_dispatch:
+    inputs:
+      accion:
+        description: semilla = generar datos de volumen (una vez); prueba = correr un escenario
+        type: choice
+        options: [prueba, semilla]
+        default: prueba
+      escenario:
+        description: humo 1 min · carga 100 usuarios 27 min · estres hasta 300 · pico 200 en 30 s · resistencia 67 min
+        type: choice
+        options: [humo, carga, estres, pico, resistencia]
+        default: humo
+      volumen:
+        description: Debe ser el mismo con que se generaron los datos
+        type: choice
+        options: [completo, pequeno]
+        default: completo
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Carga (validación local)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      COMPOSE_FILE: compose.prod.yaml
+      BASE_URL: https://localhost
+      INSECURE: "1"
+      ADMIN_USUARIO: SUPERADMIN
+      ADMIN_PASSWORD: HumoAdminNueva2026!
+      CARGA_PASSWORD: CargaPrueba2026!
+      VOLUMEN: pequeno
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Variables de prueba (no son las del servidor)
+        run: |
+          cat > .env <<'VARS'
+          DOMINIO=localhost
+          ACME_EMAIL=ci@ejemplo.com
+          DB_PASSWORD=HumoMysql2026x
+          DB_ROOT_PASSWORD=HumoRoot2026x
+          MYSQL_MIGRATOR_PASSWORD=HumoMigrator2026x
+          MONGO_ROOT_PASSWORD=HumoMongoRoot2026x
+          MONGO_APP_PASSWORD=HumoMongoApp2026x
+          MONGO_MIGRATOR_PASSWORD=HumoMongoMigrator2026x
+          REDIS_PASSWORD=HumoRedis2026x
+          JWT_SECRET=humo-jwt-secret-de-prueba-con-mas-de-32-caracteres
+          BOOTSTRAP_ADMIN_ENABLED=true
+          BOOTSTRAP_EMPRESA_CODIGO=EYC-ALTAMAR
+          BOOTSTRAP_EMPRESA_NOMBRE=E&C Altamar Constructora
+          BOOTSTRAP_EMPRESA_NIT=900000002
+          BOOTSTRAP_ADMIN_DOCUMENTO=1000000002
+          BOOTSTRAP_ADMIN_NOMBRES=Administrador
+          BOOTSTRAP_ADMIN_APELLIDOS=NEXORA
+          BOOTSTRAP_ADMIN_USERNAME=SUPERADMIN
+          BOOTSTRAP_ADMIN_EMAIL=admin@ejemplo.com
+          BOOTSTRAP_ADMIN_PASSWORD=HumoAdmin2026!
+          VARS
+
+      - name: Levantar el stack de producción
+        run: |
+          docker compose up -d --build --wait --wait-timeout 900 || {
+            docker compose ps -a --format '{{.Service}}: {{.Status}}' \
+              | while IFS= read -r l; do echo "::error title=Servicio::$l"; done
+            exit 1
+          }
+
+      - name: Prueba de humo (deja la contraseña definitiva del administrador)
+        env:
+          CURL_INSECURE: "1"
+          ADMIN_PASSWORD: HumoAdmin2026!
+          ADMIN_PASSWORD_NUEVA: HumoAdminNueva2026!
+        run: bash scripts/prueba-humo.sh
+
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Datos de volumen (pequeño)
+        run: |
+          set -o pipefail
+          k6 run --quiet -e VUS=4 carga/semilla.js 2>&1 | tee semilla.log
+        continue-on-error: true
+        id: semilla
+
+      - name: Escenario humo (5 usuarios, 2 min)
+        run: |
+          set -o pipefail
+          mkdir -p resultados
+          k6 run -e ESCENARIO=humo -e DURACION=2m carga/carga.js 2>&1 | tee carga.log
+        continue-on-error: true
+        id: carga
+
+      - name: Resultados
+        if: always()
+        run: |
+          [ -f resultados/ultimo.md ] && cat resultados/ultimo.md >> "$GITHUB_STEP_SUMMARY"
+          # Avisos de k6 como anotaciones (se leen sin bajar el log).
+          for log in semilla.log carga.log; do
+            [ -f "$log" ] || continue
+            grep -E 'level=(warning|error)' "$log" | sed -E 's/.*msg="?//' | sort | uniq -c | sort -rn | head -8 \
+              | while IFS= read -r l; do echo "::warning title=k6 $log::${l:0:900}"; done
+          done
+          j="$(ls -t resultados/humo-*.json 2>/dev/null | head -1)"
+          if [ -n "$j" ]; then
+            jq -r '.root_group.checks[]? | select(.fails > 0) | "\(.name): \(.fails) fallas de \(.passes + .fails)"' "$j" \
+              | while IFS= read -r l; do echo "::warning title=Check fallido::$l"; done
+            jq -r '.metrics | to_entries[] | select(.key | startswith("http_req_failed{name:")) | select(.value.values.rate > 0)
+                   | "\(.key | sub("http_req_failed\\{name:"; "") | rtrimstr("}")): \(.value.values.rate * 100 | floor) % con error"' "$j" \
+              | while IFS= read -r l; do echo "::warning title=Petición con errores::$l"; done
+          fi
+          docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -N -e "
+            SELECT CONCAT(\"lotes=\", (SELECT COUNT(*) FROM lotes), \" reservas=\", (SELECT COUNT(*) FROM reservas),
+                          \" clientes=\", (SELECT COUNT(*) FROM clientes), \" usuarios=\", (SELECT COUNT(*) FROM usuarios),
+                          \" crm_pendientes=\", (SELECT COUNT(*) FROM crm_pendientes WHERE procesado_en IS NULL))"' \
+            | while IFS= read -r l; do echo "::notice title=Datos en MySQL::$l"; done
+          docker compose logs --no-color api | grep ' ERROR ' | sort | uniq | head -5 \
+            | while IFS= read -r l; do echo "::warning title=ERROR en la API::${l:0:900}"; done
+          [ "${{ steps.semilla.outcome }}" = success ] || { echo "::error::La semilla falló"; exit 1; }
+          [ "${{ steps.carga.outcome }}" = success ] || { echo "::error::El escenario humo no cumplió los criterios"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultados-validacion
+          path: resultados/
+          if-no-files-found: ignore
+
+      - name: Bajar el stack
+        if: always()
+        run: docker compose down -v
+
+  staging:
+    name: Carga contra staging (${{ inputs.accion }} ${{ inputs.escenario }})
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    environment:
+      name: staging
+      url: https://${{ vars.DOMINIO }}
+    env:
+      BASE_URL: https://${{ vars.DOMINIO }}
+      VOLUMEN: ${{ inputs.volumen }}
+      CARGA_PASSWORD: ${{ secrets.CARGA_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Datos de volumen
+        if: inputs.accion == 'semilla'
+        env:
+          ADMIN_USUARIO: ${{ secrets.ADMIN_USUARIO }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: k6 run -e VUS=10 carga/semilla.js
+
+      - name: Escenario ${{ inputs.escenario }}
+        if: inputs.accion == 'prueba'
+        run: |
+          mkdir -p resultados
+          k6 run -e ESCENARIO=${{ inputs.escenario }} carga/carga.js
+
+      - name: Resumen
+        if: always() && inputs.accion == 'prueba'
+        run: '[ -f resultados/ultimo.md ] && cat resultados/ultimo.md >> "$GITHUB_STEP_SUMMARY" || true'
+
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.accion == 'prueba'
+        with:
+          name: resultados-${{ inputs.escenario }}-${{ github.run_number }}
+          path: resultados/
+          retention-days: 90

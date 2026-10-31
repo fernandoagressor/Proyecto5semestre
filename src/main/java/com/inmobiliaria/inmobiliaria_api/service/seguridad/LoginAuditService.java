@@ -52,7 +52,8 @@ public class LoginAuditService {
     ) {
         LocalDateTime ahora = LocalDateTime.now(BOGOTA);
         Optional<Usuario> usuario = usuarioRepository.findById(usuarioId);
-        usuario.ifPresent(value -> value.registrarAccesoExitoso(ahora));
+        // Sin tocar la versión del usuario: los inicios de sesión simultáneos no deben chocar.
+        usuario.ifPresent(value -> usuarioRepository.registrarAccesoExitoso(value.getId(), ahora));
         guardarIntento(new IntentoAcceso(
                 usuarioId,
                 limitar(identificador, 180),
