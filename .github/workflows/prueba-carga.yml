@@ -165,17 +165,30 @@ jobs:
         env:
           ADMIN_USUARIO: ${{ secrets.ADMIN_USUARIO }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-        run: k6 run -e VUS=10 carga/semilla.js
+        run: |
+          set -o pipefail
+          k6 run -e VUS=10 carga/semilla.js 2>&1 | tee semilla.log
 
       - name: Escenario ${{ inputs.escenario }}
         if: inputs.accion == 'prueba'
         run: |
+          set -o pipefail
           mkdir -p resultados
-          k6 run -e ESCENARIO=${{ inputs.escenario }} carga/carga.js
+          k6 run -e ESCENARIO=${{ inputs.escenario }} carga/carga.js 2>&1 | tee carga.log
 
       - name: Resumen
-        if: always() && inputs.accion == 'prueba'
-        run: '[ -f resultados/ultimo.md ] && cat resultados/ultimo.md >> "$GITHUB_STEP_SUMMARY" || true'
+        if: always()
+        run: |
+          [ -f resultados/ultimo.md ] && cat resultados/ultimo.md >> "$GITHUB_STEP_SUMMARY"
+          # Errores y avisos de k6 como anotaciones: se ven en la página de la ejecución sin abrir el log.
+          for log in semilla.log carga.log; do
+            [ -f "$log" ] || continue
+            grep -E 'level=(warning|error)|ERRO|Error:' "$log" | sed -E 's/.*msg="?//' | sort | uniq -c | sort -rn | head -8 \
+              | while IFS= read -r l; do echo "::warning title=k6 $log::${l:0:900}"; done
+            grep -E 'Semilla .* contra|Límites de la empresa|Usuarios de prueba:' "$log" \
+              | while IFS= read -r l; do echo "::notice title=Semilla::${l:0:500}"; done
+          done
+          true
 
       - uses: actions/upload-artifact@v4
         if: always() && inputs.accion == 'prueba'
