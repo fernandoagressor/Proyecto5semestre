@@ -58,9 +58,9 @@ archivos="$(tar -tzf "$dir/documentos.tar.gz" | grep -vc '/$' || true)"
 
 bd="$(manifiesto "$dir" mysql_base)"
 mongo_bd="$(manifiesto "$dir" mongodb_base)"
-flyway="$(my -N -s -e "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1" "$bd")"
+flyway="$(my -N -s -e "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1" "$bd" 2>/dev/null || echo ninguna)"
 tablas="$(my -N -s -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$bd'")"
-usuarios="$(my -N -s -e "SELECT COUNT(*) FROM usuarios" "$bd")"
+usuarios="$(my -N -s -e "SELECT COUNT(*) FROM usuarios" "$bd" 2>/dev/null || echo 0)"
 colecciones="$(docker exec "$id-mongo" mongosh --quiet "$mongo_bd" --eval 'db.getCollectionNames().length' | tail -1)"
 documentos_mongo="$(docker exec "$id-mongo" mongosh --quiet "$mongo_bd" --eval \
   'db.getCollectionNames().reduce((n, c) => n + db.getCollection(c).estimatedDocumentCount(), 0)' | tail -1)"
@@ -75,7 +75,9 @@ comparar "Tablas de MySQL" "$tablas" "$(manifiesto "$dir" mysql_tablas)"
 comparar "Usuarios" "$usuarios" "$(manifiesto "$dir" mysql_usuarios)"
 comparar "Colecciones de MongoDB" "$colecciones" "$(manifiesto "$dir" mongodb_colecciones)"
 comparar "Documentos subidos" "$archivos" "$(manifiesto "$dir" documentos_archivos)"
-[[ "$usuarios" -gt 0 ]] || { registro "  MAL la tabla usuarios quedó vacía"; fallos=$((fallos + 1)); }
+if [[ "$(manifiesto "$dir" mysql_usuarios)" != 0 && "$usuarios" -eq 0 ]]; then
+  registro "  MAL la tabla usuarios quedó vacía"; fallos=$((fallos + 1))
+fi
 registro "  MongoDB tiene $documentos_mongo documentos en total"
 
 [[ "$fallos" == 0 ]] || error "La restauración de $nombre no coincide con su manifiesto ($fallos diferencias)"

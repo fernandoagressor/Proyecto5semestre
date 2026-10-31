@@ -1,4 +1,8 @@
 #!/usr/bin/env sh
+# Usuario de solo lectura para Relational Migrator. Debe ser EJECUTABLE (100755 en git): si no,
+# la imagen de MySQL lo carga con "source" dentro de su propio proceso, el "set -eu" de abajo se
+# le queda puesto y el arranque inicial se cae más adelante con "MYSQL_ONETIME_PASSWORD: unbound
+# variable" (el contenedor se reinicia y el primer despliegue falla).
 
 set -eu
 
