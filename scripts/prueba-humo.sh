@@ -119,6 +119,12 @@ USUARIO_ID="$(cuerpo .usuario.id)"
 
 api GET /api/v1/empresas/actual
 [[ "$STATUS" == 200 ]] && paso "Empresa actual: $(cuerpo .nombre)" || falla "Empresa actual respondió $STATUS"
+api GET /api/v1/empresas/actual/usuarios
+if [[ "$STATUS" == 200 ]] && jq -e --argjson id "$USUARIO_ID" 'any(.[]; .id == $id)' "$TMP/cuerpo" > /dev/null; then
+  paso "Directorio del equipo: $(jq length "$TMP/cuerpo") usuarios"
+else
+  falla "Directorio del equipo respondió $STATUS o no incluye al usuario: $(head -c 300 "$TMP/cuerpo")"
+fi
 
 echo "3. Dashboards (MySQL, tablas espejo, Redis)"
 for tablero in gerencial comercial cartera servicio; do

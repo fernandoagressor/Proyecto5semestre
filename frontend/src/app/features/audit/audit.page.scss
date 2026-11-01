@@ -1,0 +1,55 @@
+:host { display: block; }
+
+.alert-card { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; }
+.alert-card--closed { opacity: .72; }
+.alert-card__top { display: flex; justify-content: space-between; gap: 8px; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.alert-card b { font-size: 15px; }
+.alert-card p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.45; }
+.alert-card__meta { display: grid; gap: 4px; margin: 0; font-size: 12px; }
+.alert-card__meta div { display: flex; gap: 6px; }
+.alert-card__meta dt { color: var(--text-subtle); font-weight: 600; }
+.alert-card__meta dd { margin: 0; color: var(--text-strong); }
+.alert-card .nx-row { margin-top: auto; padding-top: 4px; }
+
+.log { display: flex; flex-direction: column; }
+.log__item { border-bottom: 1px solid var(--border-faint); }
+.log__item:last-child { border-bottom: 0; }
+.log__row {
+  display: grid;
+  grid-template-columns: 78px 120px minmax(0, 1fr) 160px 18px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 4px;
+  border: 0;
+  color: var(--text-strong);
+  background: transparent;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.log__row:hover { background: var(--surface-muted); }
+.log__row > app-icon { width: 16px; height: 16px; color: var(--text-subtle); }
+.log__time { display: flex; flex-direction: column; color: var(--text-muted); }
+.log__time small { color: var(--text-subtle); font-family: var(--font-body); font-size: 11px; }
+.log__what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log__who { overflow: hidden; color: var(--text-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.log__detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+  margin: 0 4px 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+.log__detail span { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.log__detail .before { color: var(--tone-danger-fg); }
+.log__detail .after { color: var(--tone-success-fg); }
+.log__detail pre { margin: 4px 0 0; color: var(--text-strong); font-family: var(--font-mono); font-size: 12px; line-height: 20px; white-space: pre-wrap; word-break: break-word; }
+.overdue { color: var(--tone-danger-fg); font-size: 13px; font-weight: 600; }
+
+@media (max-width: 760px) {
+  .log__row { grid-template-columns: 64px minmax(0, 1fr) 18px; }
+  .log__row nx-badge, .log__who { display: none; }
+}

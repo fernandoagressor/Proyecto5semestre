@@ -129,15 +129,14 @@ export const routes: Routes = [
           title: 'Gerencia y control',
         },
         loadComponent: () =>
-          import('./features/workspace/module-workspace.page').then((m) => m.ModuleWorkspacePage),
+          import('./features/management/management.page').then((m) => m.ManagementPage),
         title: 'Gerencia y control | Nexora Core',
       },
       {
         path: 'auditoria',
         canActivate: [permissionGuard, companyModuleGuard],
         data: { permissions: ['AUDITORIA_VER'], module: 'ADMINISTRACION_SEGURIDAD', title: 'Auditoría' },
-        loadComponent: () =>
-          import('./features/workspace/module-workspace.page').then((m) => m.ModuleWorkspacePage),
+        loadComponent: () => import('./features/audit/audit.page').then((m) => m.AuditPage),
         title: 'Auditoría | Nexora Core',
       },
       {

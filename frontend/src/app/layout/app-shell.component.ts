@@ -12,11 +12,11 @@ import { AppNotification, NotificationService } from '../core/services/notificat
 import { ThemeService } from '../core/services/theme.service';
 import { AppIconComponent } from '../shared/components/app-icon.component';
 import { BrandMarkComponent } from '../shared/components/brand-mark.component';
-import { FechaPipe, statusLabel } from '../shared/ui';
+import { FechaPipe, statusLabel, ToasterComponent } from '../shared/ui';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, BrandMarkComponent, FechaPipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, BrandMarkComponent, FechaPipe, ToasterComponent],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

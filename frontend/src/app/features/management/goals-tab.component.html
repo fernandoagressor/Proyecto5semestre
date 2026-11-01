@@ -1,0 +1,132 @@
+<div class="tab-body">
+  <div class="nx-toolbar">
+    <label class="nx-field">
+      <span>Periodo</span>
+      <input class="nx-input" type="month" [value]="period()" (change)="changePeriod($any($event.target).value)" />
+    </label>
+    <button type="button" class="nx-btn nx-btn--ghost" (click)="load()" [disabled]="loading()"><app-icon name="refresh" /> Actualizar</button>
+  </div>
+
+  <section class="nx-grid nx-grid--kpi" aria-label="Resumen de metas">
+    <nx-kpi [label]="'Meta de ventas · ' + periodLabel()" [value]="kpis().target" [hint]="kpis().targetHint" icon="target" tone="primary" [loading]="loading()" />
+    <nx-kpi label="Ejecutado" [value]="kpis().achieved" [hint]="kpis().achievedHint" [progress]="kpis().pct" icon="trend-up" [tone]="kpis().pct >= 100 ? 'success' : 'neutral'" [loading]="loading()" />
+    <nx-kpi label="Asesores sobre la meta" [value]="kpis().above" [hint]="kpis().aboveHint" icon="users" [loading]="loading()" />
+    <nx-kpi label="Contratos firmados / meta" [value]="kpis().contracts" icon="file" [loading]="loading()" />
+    <nx-kpi label="Proyección de cierre" [value]="kpis().projection.value" [hint]="kpis().projection.hint" icon="calendar" [loading]="loading()" />
+  </section>
+
+  <div class="nx-grid" [class.nx-grid--main-aside]="canManage">
+    <section class="nx-card nx-card--pad nx-card--stack" aria-label="Metas por asesor">
+      <div class="nx-section-head">
+        <div>
+          <h2 class="nx-section-title">Cumplimiento por asesor · {{ periodLabel() }}</h2>
+          <p class="nx-section-subtitle">La marca vertical es el 100 % de la meta individual.</p>
+        </div>
+      </div>
+
+      <nx-state [loading]="loading()" [error]="error()" [empty]="rows().length === 0" (retry)="load()"
+        emptyIcon="target" emptyTitle="Sin metas para este periodo"
+        [emptyText]="canManage ? 'Asigne la primera meta con el formulario.' : 'Gerencia aún no ha asignado metas.'">
+        @if (overall(); as o) {
+          <div class="goal-row goal-row--overall">
+            <div class="goal-row__who"><span class="nx-avatar"><app-icon name="target" /></span><div><b>Meta general</b><small>{{ projectName(o.goal.proyectoId) }}</small></div></div>
+            <div class="goal-bar"><span [style.width.%]="barWidth(o.pct)" [attr.data-tone]="barTone(o.pct)"></span><i></i></div>
+            <div class="goal-row__nums"><b>{{ o.pct | porcentaje: 0 }}</b><small>{{ money(o.progress?.valorLogrado) }} / {{ money(o.goal.valorMeta) }}</small></div>
+            <nx-badge [status]="o.goal.estado" />
+            <ng-container *ngTemplateOutlet="actions; context: { $implicit: o.goal }" />
+          </div>
+        }
+        @for (r of advisorRows(); track r.goal.id) {
+          <div class="goal-row">
+            <div class="goal-row__who">
+              <span class="nx-avatar">{{ r.name.charAt(0) }}</span>
+              <div><b>{{ r.name }}</b><small>{{ projectName(r.goal.proyectoId) }} · {{ r.progress?.cantidadLograda ?? 0 }}/{{ r.goal.cantidadMeta }} contratos</small></div>
+            </div>
+            <div class="goal-bar" role="progressbar" [attr.aria-valuenow]="r.pct" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Cumplimiento de ' + r.name">
+              <span [style.width.%]="barWidth(r.pct)" [attr.data-tone]="barTone(r.pct)"></span><i></i>
+            </div>
+            <div class="goal-row__nums"><b>{{ r.pct | porcentaje: 0 }}</b><small>{{ money(r.progress?.valorLogrado) }} / {{ money(r.goal.valorMeta) }}</small></div>
+            <nx-badge [status]="r.goal.estado" />
+            <ng-container *ngTemplateOutlet="actions; context: { $implicit: r.goal }" />
+          </div>
+        }
+      </nx-state>
+    </section>
+
+    @if (canManage) {
+      <form class="nx-card nx-card--pad nx-card--stack" [formGroup]="form" (ngSubmit)="create()" aria-label="Nueva meta">
+        <h2 class="nx-section-title">Asignar meta</h2>
+        <label class="nx-field">
+          <span>Asesor</span>
+          <select class="nx-select" formControlName="asesorId">
+            <option value="">Meta general (sin asesor)</option>
+            @for (m of team.advisors(); track m.id) {
+              <option [value]="m.id">{{ m.nombre }}</option>
+            }
+          </select>
+        </label>
+        <label class="nx-field">
+          <span>Periodo</span>
+          <input class="nx-input" type="month" formControlName="periodo" />
+        </label>
+        <div class="nx-grid nx-grid--2">
+          <label class="nx-field">
+            <span>Valor de ventas</span>
+            <input class="nx-input" nexoraMoney formControlName="valorMeta" placeholder="$ 0" />
+            @if (form.controls.valorMeta.touched && form.controls.valorMeta.invalid) {
+              <span class="nx-field__error">Indique un valor mayor que cero.</span>
+            }
+          </label>
+          <label class="nx-field">
+            <span>Contratos</span>
+            <input class="nx-input" type="number" min="0" step="1" formControlName="cantidadMeta" />
+          </label>
+        </div>
+        <label class="nx-field">
+          <span>Proyecto</span>
+          <select class="nx-select" formControlName="proyectoId">
+            <option value="">Todos los proyectos</option>
+            @for (p of projects(); track p.id) {
+              <option [value]="p.id">{{ p.nombre }}</option>
+            }
+          </select>
+        </label>
+        <button type="submit" class="nx-btn nx-btn--primary" [disabled]="saving()">
+          @if (saving()) { <span class="nx-spinner"></span> } Guardar meta
+        </button>
+        <p class="nx-field__hint">La meta queda en borrador hasta que la apruebe alguien con permiso de aprobación.</p>
+      </form>
+    }
+  </div>
+</div>
+
+<ng-template #actions let-goal>
+  <div class="row-actions">
+    @if (canManage && goal.estado === 'BORRADOR') {
+      <button type="button" class="nx-btn nx-btn--xs" (click)="openEdit(goal)">Editar</button>
+    }
+    @if (canApprove && goal.estado === 'BORRADOR') {
+      <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="approve(goal)" [disabled]="busy() === goal.id">Aprobar</button>
+    }
+    @if (canApprove && goal.estado === 'APROBADA') {
+      <button type="button" class="nx-btn nx-btn--xs" (click)="close(goal)" [disabled]="busy() === goal.id">Cerrar</button>
+    }
+  </div>
+</ng-template>
+
+<nx-drawer [(open)]="editOpen" variant="dialog" title="Editar meta" [subtitle]="editing() ? team.name(editing()!.asesorId) + ' · ' + periodLabel() : ''" [dismissible]="!saving()">
+  <form class="nx-stack" [formGroup]="editForm" (ngSubmit)="saveEdit()" id="goal-edit">
+    <label class="nx-field">
+      <span>Valor de ventas</span>
+      <input class="nx-input" nexoraMoney formControlName="valorMeta" />
+    </label>
+    <label class="nx-field">
+      <span>Contratos</span>
+      <input class="nx-input" type="number" min="0" step="1" formControlName="cantidadMeta" />
+    </label>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="editOpen.set(false)" [disabled]="saving()">Cancelar</button>
+    <button type="submit" form="goal-edit" class="nx-btn nx-btn--primary" [disabled]="saving() || editForm.invalid">Guardar</button>
+  </ng-container>
+</nx-drawer>
