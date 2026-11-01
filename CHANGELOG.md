@@ -6,6 +6,76 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Usuarios y roles de la empresa** (`/usuarios`, vista "Usuarios-Roles"). El administrador de la
+  empresa crea usuarios con contraseña temporal, define su alcance (empresa, proyecto o registros
+  propios), bloquea, reactiva y reinicia credenciales, y arma roles con la matriz de permisos.
+  API nueva `/api/v1/seguridad` (USUARIOS_* y ROLES_*) con regla de delegación: nadie otorga ni
+  administra permisos que no tiene, ni cambia su propia cuenta desde ahí.
+- **Superadministración**: letra legible y colores del diseño; el asistente "Crear empresa" (cuatro
+  pasos, vista previa, módulos y confirmación) recibe por fin sus estilos.
+- **Rediseño, fase 3b: Proyectos e Inventario.**
+  - Proyectos: tarjetas con imagen, avance de ventas e inventario disponible; filtros por estado,
+    búsqueda y límite del plan; detalle con cambio de estado y etapas; creación y edición en panel.
+  - Inventario: tarjetas por estado que filtran, panel de etapas y manzanas, plano con fichas de
+    color por estado y tabla paginada; detalle del lote con precio, disponibilidad e historial.
+- **Rediseño, fase 0: sistema visual** del tablero "NEXORA CORE — Vistas propuestas". Manrope
+  para títulos, Inter para el texto y JetBrains Mono para bitácoras; acento índigo `#4f46e5` sobre
+  fondo `#f4f6fb`. Piezas reutilizables en `frontend/src/app/shared/ui` (encabezado de página,
+  indicador, insignia con tono por estado, pestañas, filtros en píldoras, panel lateral y diálogo,
+  estados de carga/error/vacío, formatos de pesos y fechas de Colombia) y clases globales `nx-`
+  en `frontend/src/styles/_nx.scss` (tarjetas, botones, campos, tablas, avisos).
+- **Rediseño, fase 1: Gerencia y Auditoría** reemplazan la vista provisional.
+  - Gerencia (`/gerencia`), con pestañas según permisos: **Metas** (cumplimiento por asesor con
+    barra y marca del 100 %, proyección de cierre del mes, asignar, editar, aprobar y cerrar
+    metas), **Comisiones** (totales por estado, aprobación en lote, causar y pagar con fecha,
+    anular, proyectar desde un contrato y reglas de comisión), **Presupuesto y costos**
+    (presupuesto contra ejecutado por categoría, costos por aprobar, presupuestos, categorías y
+    registro de costos) y **Rentabilidad** (ventas, recaudo, costos, utilidad y margen por rango).
+  - Auditoría (`/auditoria`): alertas de anomalías (asignar, cerrar como atendida o descartar),
+    bitácora filtrable por módulo, usuario, acción y rango con el antes y el después de cada
+    cambio, exportación a CSV con motivo (queda registrada en la API) y tareas vencidas.
+- **Rediseño, fase 2a: Comercial y Simulador.**
+  - Comercial (`/crm`): indicadores (valor del embudo, abiertas, ganadas y tasa de cierre del
+    mes, días al cierre), embudo en **tablero** por etapa (con el total real de cada etapa) o en
+    **tabla** paginada, y un **panel de la oportunidad** con avance por etapas, datos del cliente,
+    probabilidad, línea de tiempo (actividades, cambios de etapa y citas), registrar actividad,
+    agendar cita, editar valor y próxima acción, cerrar como perdida, reabrir y lotes de interés.
+    Prospectos con filtros, editar, calificar, reasignar y crear oportunidad; agenda con
+    confirmar, realizada, reprogramar, no asistió y cancelar.
+  - Simulador (`/simulador`, nuevo en el menú): condiciones con deslizadores (cuota inicial,
+    plazo, interés, periodicidad, día de pago), vista previa inmediata con cuota fija, gráfica de
+    capital e intereses por año, cronograma, y al guardar el plan oficial calculado por la API;
+    historial de simulaciones de la oportunidad con enviar y cancelar.
+- **Rediseño, fase 2b: Reservas y contratos** (`/ventas`) con el estilo del diseño: indicadores,
+  pestañas con conteo, reservas con días para el vencimiento y acciones directas (confirmar pago,
+  crear contrato), contratos en tabla, expediente del contrato con la ruta Borrador → Negociación
+  → En firma → Vigente → Saldado, firmantes, participantes y documentos; todos los formularios en
+  paneles laterales o diálogos.
+- **Rediseño, fase 2c: Cartera** (`/cartera`) con el sistema visual y secciones nuevas:
+  **Refinanciaciones** (proponer sobre el saldo, aprobar, rechazar, aplicar al plan y ver las
+  cuotas propuestas), **Conciliación bancaria** (crear por cuenta y rango, cargar movimientos del
+  extracto, cruzarlos con pagos confirmados sugiriendo los de igual valor, ignorar y cerrar),
+  **reversiones pendientes** con aprobar o rechazar (solo otro usuario) y **Cierre de mes**.
+- `GET /api/v1/pagos/reversiones?estado=`: solicitudes de reversión de la empresa (antes no había
+  forma de encontrarlas para aprobarlas).
+- La Prueba de humo E2E carga datos de ejemplo (`carga/semilla.js`, volumen pequeño) antes de las
+  capturas, para que muestren tablas y tableros con contenido.
+- **Rediseño, fase 2d: Servicio** (`/servicio`): indicadores, bandeja de PQRS con lista y detalle
+  lado a lado (conversación, adjuntos, historial, cambio de estado), **asignar responsable**,
+  **usar un artículo** de la base de conocimiento en la respuesta y **escalar a ticket**; citas en
+  tarjetas; pestañas nuevas de **Tickets internos** (crear, asignar, cambiar estado, conversación
+  con notas internas) y **Base de conocimiento** (buscar, crear y editar artículos, publicar,
+  archivar, categorías).
+- **Rediseño, fase 3a: Dashboard e inicio de sesión.** El dashboard sigue la vista
+  "Dashboard-Gerencia": periodo en botones, indicadores, análisis principal con lo que requiere
+  atención y la salud del negocio, cartera vencida por edades, embudo comercial con conversión
+  entre etapas e inventario de lotes por proyecto (vendidos, reservados, disponibles). El inicio de
+  sesión pasa a dos paneles: mensajes rotativos sobre fondo índigo y formulario sin Material.
+- `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
+  usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
+- Mensajes de resultado (`nx-toaster`) en todas las pantallas.
+- Capturas de pantalla de las rutas principales en escritorio y celular en cada PR (artefacto
+  `capturas` de la Prueba de humo E2E, `scripts/capturas.mjs`), con los errores de la consola.
 - Prueba de humo de punta a punta en el CI (`Prueba de humo E2E`): levanta el stack completo con
   `docker compose` y recorre frontend, sesión, dashboards, MySQL, MongoDB, sincronización y
   auditoría con `scripts/prueba-humo.sh`, que también sirve contra staging.
@@ -46,6 +116,10 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   MongoDB, documentos, tablas espejo e inicio de sesión.
 
 ### Cambiado
+- Menú lateral claro con grupos Inventario, Ventas y Gestión, logotipo de la empresa y usuario con
+  cierre de sesión; barra superior con la ubicación (grupo y pantalla). Aparecen en el menú
+  Comercial y Nuevo cliente y lote, que solo se abrían por enlace. Cada enlace exige los mismos
+  permisos y módulo que su ruta (prueba en `navigation.config.spec.ts`).
 - nginx solo expone `/actuator/health`, toma la IP real del cliente detrás de Caddy, acepta
   subidas de hasta 16 MB (igual que la API) y agrega cabeceras de seguridad y gzip.
 - `.env` sale del repositorio: las contraseñas que estuvieron publicadas no se usan en ningún

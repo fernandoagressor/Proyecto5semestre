@@ -1,43 +1,57 @@
 <div class="shell" [class.menu-open]="mobileMenuOpen()">
   <aside class="sidebar" aria-label="Navegación principal">
-    <div class="sidebar__header">
+    <div class="sidebar__brand">
       <a routerLink="/dashboard" class="brand" aria-label="Ir al dashboard">
-        <app-brand-mark />
+        @if (isGlobalScope()) {
+          <span class="brand__logo brand__logo--nexora"><app-brand-mark [showText]="false" /></span>
+          <span class="brand__copy"><strong>NEXORA CORE</strong><small>Control global</small></span>
+        } @else {
+          @if (company()?.logoUrl && !logoFailed()) {
+            <img class="brand__logo" [src]="company()!.logoUrl ?? ''" [alt]="companyName()" (error)="logoFailed.set(true)" />
+          } @else {
+            <span class="brand__logo brand__logo--initial">{{ companyInitial() }}</span>
+          }
+          <span class="brand__copy"><strong>{{ companyName() }}</strong><small>con NEXORA CORE</small></span>
+        }
       </a>
       <button class="icon-button mobile-close" type="button" (click)="mobileMenuOpen.set(false)" aria-label="Cerrar menú">
         <app-icon name="close" />
       </button>
     </div>
 
-    <div class="company-chip">
-      <span>{{ companyName().charAt(0).toUpperCase() }}</span>
-      <div>
-        <small>{{ auth.hasAuthority('ROLE_SUPER_ADMIN') && !auth.user()?.empresaId ? 'CONTROL GLOBAL' : 'ESPACIO DE TRABAJO' }}</small>
-        <strong>{{ companyName() }}</strong>
-      </div>
-    </div>
-
-    <nav class="navigation">
-      <span class="navigation__label">{{ auth.hasAuthority('ROLE_SUPER_ADMIN') ? 'CONTROL Y OPERACIÓN' : 'OPERACIÓN EMPRESARIAL' }}</span>
-      @for (item of navigation(); track item.route) {
-        <a
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
-        >
-          <span class="nav-icon"><app-icon [name]="item.icon" /></span>
-          <span class="nav-copy"><strong>{{ item.label }}</strong><small>{{ item.caption }}</small></span>
-          <app-icon class="nav-chevron" name="chevron" />
-        </a>
+    <nav class="navigation" aria-label="Menú principal">
+      @for (group of navigationGroups(); track group.id) {
+        <div class="navigation__group">
+          @if (group.label) {
+            <span class="navigation__label">{{ group.label }}</span>
+          }
+          @for (item of group.items; track item.route) {
+            <a
+              [routerLink]="item.route"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+              [title]="item.caption"
+            >
+              <app-icon [name]="item.icon" />
+              <span>{{ item.label }}</span>
+            </a>
+          }
+        </div>
       }
     </nav>
 
     <div class="sidebar__footer">
-      <div class="system-status">
-        <span></span>
-        <div><strong>Sistema operativo</strong><small>Servicios disponibles</small></div>
+      <div class="user-card">
+        <span class="nx-avatar">{{ auth.initials() }}</span>
+        <span class="user-card__copy">
+          <strong>{{ auth.user()?.nombreUsuario }}</strong>
+          <small>{{ roleLabel() }}</small>
+        </span>
+        <button class="icon-button icon-button--sm" type="button" (click)="logout()" [disabled]="loggingOut()" aria-label="Cerrar sesión" title="Cerrar sesión">
+          <app-icon name="logout" />
+        </button>
       </div>
-      <div class="version">NEXORA CORE · INTELLIGENCE 2.0</div>
     </div>
   </aside>
 
@@ -51,15 +65,16 @@
         <button class="icon-button menu-button" type="button" (click)="mobileMenuOpen.set(true)" aria-label="Abrir menú">
           <app-icon name="menu" />
         </button>
-        <div>
-          <span>{{ companyName() }}</span>
-          <h1>{{ pageTitle() }}</h1>
-        </div>
-        <span class="workspace-scope" [class.workspace-scope--global]="auth.hasAuthority('ROLE_SUPER_ADMIN') && !auth.user()?.empresaId"><i></i>{{ auth.hasAuthority('ROLE_SUPER_ADMIN') && !auth.user()?.empresaId ? 'Global' : 'Empresa privada' }}</span>
+        <nav class="breadcrumb" aria-label="Ubicación">
+          <span>{{ activeGroupLabel() }}</span>
+          <app-icon name="chevron" />
+          <strong>{{ pageTitle() }}</strong>
+        </nav>
+        <span class="workspace-scope" [class.workspace-scope--global]="isGlobalScope()"><i></i>{{ isGlobalScope() ? 'Control global' : 'Empresa privada' }}</span>
       </div>
 
       <div class="topbar__actions">
-        <button class="icon-button" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'">
+        <button class="icon-button" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.isDark() ? 'Activar modo claro' : 'Activar modo oscuro'" [title]="theme.isDark() ? 'Modo claro' : 'Modo oscuro'">
           <app-icon [name]="theme.isDark() ? 'sun' : 'moon'" />
         </button>
         <div class="notifications">
@@ -70,14 +85,17 @@
             }
           </button>
           @if (notificationOpen()) {
-            <div class="notification-menu">
-              <header><div><strong>Notificaciones</strong><small>{{ unreadNotifications() }} sin leer</small></div><span>RECIENTES</span></header>
+            <div class="menu notification-menu">
+              <header><strong>Notificaciones</strong><small>{{ unreadNotifications() }} sin leer</small></header>
               @if (notificationsLoading()) {
                 <div class="notification-empty">Cargando notificaciones…</div>
               } @else if (recentNotifications().length > 0) {
                 <div class="notification-list">
                   @for (notification of recentNotifications(); track notification.id) {
-                    <article><i [class]="'priority priority--' + notification.prioridad.toLowerCase()"></i><div><strong>{{ notification.titulo }}</strong><p>{{ notification.mensaje }}</p><small>{{ notification.creadoEn }}</small></div></article>
+                    <article>
+                      <i [class]="'priority priority--' + notification.prioridad.toLowerCase()"></i>
+                      <div><strong>{{ notification.titulo }}</strong><p>{{ notification.mensaje }}</p><small>{{ notification.creadoEn | fecha: 'relativa' }}</small></div>
+                    </article>
                   }
                 </div>
               } @else {
@@ -87,19 +105,16 @@
           }
         </div>
         <div class="profile">
-          <button class="profile__trigger" type="button" (click)="notificationOpen.set(false); profileOpen.set(!profileOpen())" [attr.aria-expanded]="profileOpen()">
-            <span class="avatar">{{ auth.initials() }}</span>
-            <span class="profile__copy">
-              <strong>{{ auth.user()?.nombreUsuario }}</strong>
-              <small>{{ auth.user()?.roles?.[0] ?? 'Usuario' }}</small>
-            </span>
-            <app-icon name="chevron" />
+          <button class="profile__trigger" type="button" (click)="notificationOpen.set(false); profileOpen.set(!profileOpen())" [attr.aria-expanded]="profileOpen()" aria-label="Mi cuenta">
+            <span class="nx-avatar">{{ auth.initials() }}</span>
+            <app-icon name="chevron-down" />
           </button>
           @if (profileOpen()) {
-            <div class="profile-menu">
+            <div class="menu profile-menu">
               <div class="profile-menu__identity">
-                <strong>{{ auth.user()?.correo }}</strong>
-                <small>Sesión protegida</small>
+                <strong>{{ auth.user()?.nombreUsuario }}</strong>
+                <small>{{ auth.user()?.correo }}</small>
+                <span class="nx-badge nx-badge--primary">{{ roleLabel() }}</span>
               </div>
               <a routerLink="/seguridad/cambiar-password">
                 <app-icon name="lock" />
@@ -116,7 +131,7 @@
     </header>
 
     @if (auth.user()?.requiereCambioPassword) {
-      <div class="security-banner">
+      <div class="nx-alert nx-alert--warning security-banner">
         <app-icon name="warning" />
         <span>Debes actualizar tu contraseña temporal antes de continuar.</span>
         <a routerLink="/seguridad/cambiar-password">Actualizar ahora</a>
@@ -125,4 +140,5 @@
 
     <main class="content"><router-outlet /></main>
   </section>
+  <nx-toaster />
 </div>

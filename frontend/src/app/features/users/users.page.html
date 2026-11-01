@@ -1,0 +1,227 @@
+<div class="nx-page">
+  <nx-page-header eyebrow="Seguridad de la empresa" title="Usuarios y roles" description="Cuentas del equipo, qué puede hacer cada rol y hasta dónde llega su alcance.">
+    @if (tab() === 'usuarios' && canCreateUser) {
+      <button type="button" class="nx-btn nx-btn--primary" (click)="openUser(null)"><app-icon name="plus" /> Nuevo usuario</button>
+    }
+    @if (tab() === 'roles' && canCreateRole) {
+      <button type="button" class="nx-btn nx-btn--primary" (click)="openRole(null)"><app-icon name="plus" /> Nuevo rol</button>
+    }
+  </nx-page-header>
+
+  @if (issued(); as cred) {
+    <div class="nx-alert nx-alert--success credentials" role="status">
+      <app-icon name="key" />
+      <div>
+        <b>{{ cred.nuevo ? 'Usuario creado' : 'Contraseña reiniciada' }}: entregue estos datos por un canal seguro.</b>
+        <p>Usuario <code>{{ cred.usuario }}</code> · contraseña temporal <code>{{ cred.password }}</code>. Se pedirá cambiarla en el primer ingreso y no se volverá a mostrar.</p>
+      </div>
+      <button type="button" class="nx-btn nx-btn--sm" (click)="copy(cred.password)"><app-icon name="file" /> Copiar contraseña</button>
+      <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="issued.set(null)" aria-label="Ocultar">×</button>
+    </div>
+  }
+
+  <section class="nx-grid nx-grid--kpi" aria-label="Indicadores">
+    <nx-kpi label="Usuarios activos" icon="users" [value]="'' + kpis().activos" [hint]="users().length + ' cuentas en total'" />
+    <nx-kpi label="Bloqueados" icon="lock" [value]="'' + kpis().bloqueados" tone="danger" hint="Sin acceso a la plataforma" />
+    <nx-kpi label="Cambio de contraseña" icon="key" [value]="'' + kpis().pendientes" tone="warning" hint="Pendientes del primer ingreso" />
+    <nx-kpi label="Roles personalizados" icon="audit" [value]="'' + kpis().personalizados" [hint]="roles().length + ' roles disponibles'" />
+  </section>
+
+  <nx-tabs [items]="tabs()" [(active)]="tab" label="Secciones de seguridad" />
+
+  @switch (tab()) {
+    @case ('usuarios') {
+      <section class="nx-card nx-card--stack nx-card--pad">
+        <div class="nx-toolbar">
+          <span class="nx-search"><app-icon name="search" /><input class="nx-input nx-input--sm" [formControl]="search" placeholder="Nombre, usuario, documento o correo" aria-label="Buscar usuarios" /></span>
+          <nx-filter-chips [options]="statusFilters" [value]="status()" (valueChange)="status.set($event)" label="Estado" />
+        </div>
+        <nx-state [loading]="loading()" [error]="error()" [empty]="users().length === 0" (retry)="loadUsers()" emptyIcon="users"
+          emptyTitle="No hay usuarios con estos filtros" emptyText="Ajuste la búsqueda o cree la primera cuenta del equipo.">
+          <div class="nx-table-wrap">
+            <table class="nx-table">
+              <thead><tr><th>Usuario</th><th>Roles</th><th>Alcance</th><th>Estado</th><th>Último ingreso</th><th class="nx-actions"></th></tr></thead>
+              <tbody>
+                @for (u of users(); track u.id) {
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="nx-avatar">{{ (u.nombres.charAt(0) + (u.apellidos ?? '').charAt(0)).toUpperCase() }}</span>
+                        <span><b>{{ u.nombreCompleto }}</b>@if (u.id === me) { <span class="you">usted</span> }<small>{{ u.nombreUsuario }} · {{ u.correo }}</small></span>
+                      </div>
+                    </td>
+                    <td><div class="chips">@for (r of u.roles; track r) { <span class="chip">{{ roleName(r) }}</span> }</div></td>
+                    <td>{{ scopeLabel(u) }}</td>
+                    <td>
+                      <nx-badge [status]="u.estado" />
+                      @if (u.requiereCambioPassword) { <div class="sub warn">Cambio de contraseña pendiente</div> }
+                    </td>
+                    <td>{{ u.ultimoAccesoEn ? (u.ultimoAccesoEn | fecha: 'relativa') : 'Nunca' }}</td>
+                    <td class="nx-actions">
+                      @if (manageable(u)) {
+                        <div class="nx-row nx-row--end">
+                          @if (canEditUser) { <button type="button" class="nx-btn nx-btn--xs" (click)="openUser(u)">Editar</button> }
+                          @if (canReset && u.estado === 'ACTIVO') { <button type="button" class="nx-btn nx-btn--xs" [disabled]="saving()" (click)="resetCredentials(u)" title="Genera una contraseña temporal y cierra sus sesiones">Contraseña</button> }
+                          @if (canBlock) {
+                            @if (u.estado === 'ACTIVO') { <button type="button" class="nx-btn nx-btn--xs nx-btn--danger" (click)="askStatus(u, 'BLOQUEADO')">Bloquear</button> }
+                            @else { <button type="button" class="nx-btn nx-btn--xs nx-btn--soft" (click)="askStatus(u, 'ACTIVO')">Activar</button> }
+                          }
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </nx-state>
+      </section>
+    }
+    @case ('roles') {
+      <section class="roles">
+        @for (r of roles(); track r.id) {
+          <button type="button" class="nx-card role" (click)="openRole(r)">
+            <span class="role__head">
+              <span class="role__icon" [class.sys]="r.sistema"><app-icon [name]="r.sistema ? 'audit' : 'key'" /></span>
+              <span class="role__name"><b>{{ r.nombre }}</b><small class="nx-mono">{{ r.codigo }}</small></span>
+              <nx-badge [tone]="r.sistema ? 'info' : r.activo ? 'success' : 'neutral'" [text]="r.sistema ? 'Sistema' : r.activo ? 'Activo' : 'Inactivo'" />
+            </span>
+            <span class="role__desc">{{ r.descripcion || 'Sin descripción' }}</span>
+            <span class="role__foot">
+              <span><b>{{ r.permisos.length }}</b> permisos</span>
+              <span class="nx-muted">{{ r.sistema || r.protegido ? 'Solo lectura' : !delegable(r) ? 'Incluye permisos que usted no tiene' : canEditRole ? 'Editar' : 'Ver' }}</span>
+            </span>
+          </button>
+        } @empty {
+          <div class="nx-card nx-card--pad"><nx-state [empty]="true" emptyIcon="key" emptyTitle="Sin roles" emptyText="Cree un rol con los permisos que necesita su equipo." /></div>
+        }
+      </section>
+    }
+  }
+</div>
+
+<!-- Usuario -->
+<nx-drawer [open]="userOpen()" (openChange)="userOpen.set($event)" width="640px" [title]="editingUser() ? 'Editar usuario' : 'Nuevo usuario'"
+  [subtitle]="editingUser()?.nombreUsuario ?? 'Recibirá una contraseña temporal que debe cambiar al ingresar.'" [dismissible]="!saving()">
+  <form class="nx-stack" [formGroup]="userForm" (ngSubmit)="saveUser()" id="user-form">
+    <div class="nx-form-grid">
+      <label class="nx-field"><span>Tipo de documento</span><select class="nx-select" formControlName="tipoDocumento"><option value="CC">Cédula de ciudadanía</option><option value="CE">Cédula de extranjería</option><option value="PASAPORTE">Pasaporte</option></select></label>
+      <label class="nx-field"><span>Número de documento</span><input class="nx-input" formControlName="numeroDocumento" /></label>
+      <label class="nx-field"><span>Nombres</span><input class="nx-input" formControlName="nombres" (blur)="suggestUsername()" /></label>
+      <label class="nx-field"><span>Apellidos</span><input class="nx-input" formControlName="apellidos" (blur)="suggestUsername()" /></label>
+      <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" /></label>
+      <label class="nx-field"><span>Teléfono</span><input class="nx-input" formControlName="telefono" /></label>
+      <label class="nx-field"><span>Nombre de usuario</span><input class="nx-input" formControlName="nombreUsuario" autocomplete="off" /></label>
+      @if (!editingUser()) {
+        <label class="nx-field"><span>Contraseña temporal</span>
+          <span class="pw"><input class="nx-input nx-mono" [type]="showPassword() ? 'text' : 'password'" formControlName="passwordTemporal" readonly autocomplete="new-password" />
+            <button type="button" class="nx-btn nx-btn--sm nx-btn--icon" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Ocultar' : 'Mostrar'"><app-icon name="eye" /></button>
+            <button type="button" class="nx-btn nx-btn--sm nx-btn--icon" (click)="regeneratePassword()" aria-label="Generar otra"><app-icon name="refresh" /></button></span>
+          <span class="nx-field__hint">20 caracteres con mayúsculas, números y símbolos.</span>
+        </label>
+      }
+    </div>
+
+    <fieldset class="group">
+      <legend>Alcance</legend>
+      <div class="scope">
+        @for (s of scopeOptions; track s.value) {
+          <label class="scope__opt" [class.on]="userForm.controls.alcanceTipo.value === s.value">
+            <input type="radio" formControlName="alcanceTipo" [value]="s.value" />
+            <b>{{ s.label }}</b>
+            <small>{{ s.hint }}</small>
+          </label>
+        }
+      </div>
+      @if (userForm.controls.alcanceTipo.value === 'PROYECTO') {
+        <label class="nx-field"><span>Proyecto</span>
+          <select class="nx-select" formControlName="proyectoId"><option [ngValue]="null">Seleccione…</option>@for (p of projects(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }</select>
+        </label>
+      }
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Roles <span class="nx-muted">({{ userRoles().size }})</span></legend>
+      <div class="role-picks">
+        @for (r of roles(); track r.id) {
+          @if (r.activo) {
+            <label class="pick" [class.on]="userRoles().has(r.id)" [class.off]="!delegable(r)" [title]="delegable(r) ? '' : 'Incluye permisos que usted no tiene'">
+              <input type="checkbox" [checked]="userRoles().has(r.id)" [disabled]="!delegable(r)" (change)="toggleUserRole(r)" />
+              <span><b>{{ r.nombre }}</b><small>{{ r.permisos.length }} permisos{{ delegable(r) ? '' : ' · no delegable' }}</small></span>
+            </label>
+          }
+        }
+      </div>
+    </fieldset>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="userOpen.set(false)" [disabled]="saving()">Cancelar</button>
+    <button type="submit" form="user-form" class="nx-btn nx-btn--primary" [disabled]="saving()">{{ saving() ? 'Guardando…' : editingUser() ? 'Guardar cambios' : 'Crear usuario' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Cambio de estado -->
+<nx-drawer [open]="!!statusTarget()" (openChange)="$event || statusTarget.set(null)" variant="dialog"
+  [title]="statusTarget()?.estado === 'ACTIVO' ? 'Activar usuario' : 'Bloquear usuario'" [subtitle]="statusTarget()?.user?.nombreCompleto ?? ''" [dismissible]="!saving()">
+  <div class="nx-stack">
+    <p class="nx-muted">{{ statusTarget()?.estado === 'ACTIVO' ? 'Podrá volver a ingresar con su contraseña actual.' : 'Se cerrarán sus sesiones y no podrá ingresar hasta que lo active de nuevo.' }}</p>
+    <label class="nx-field"><span>Motivo</span><textarea class="nx-textarea" [formControl]="statusReason" placeholder="Queda en la auditoría"></textarea></label>
+  </div>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="statusTarget.set(null)" [disabled]="saving()">Cancelar</button>
+    <button type="button" class="nx-btn" [class.nx-btn--danger]="statusTarget()?.estado !== 'ACTIVO'" [class.nx-btn--primary]="statusTarget()?.estado === 'ACTIVO'" [disabled]="saving() || statusReason.invalid" (click)="confirmStatus()">Confirmar</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Rol editable -->
+<nx-drawer [open]="roleOpen()" (openChange)="roleOpen.set($event)" width="760px" [title]="editingRole() ? 'Editar rol' : 'Nuevo rol'"
+  [subtitle]="rolePermissions().size + ' permisos seleccionados'" [dismissible]="!saving()">
+  <form class="nx-stack" [formGroup]="roleForm" (ngSubmit)="saveRole()" id="role-form">
+    <div class="nx-form-grid">
+      <label class="nx-field"><span>Nombre</span><input class="nx-input" formControlName="nombre" placeholder="Coordinador de ventas" /></label>
+      <label class="nx-field"><span>Código</span><input class="nx-input nx-mono" formControlName="codigo" placeholder="COORDINADOR_VENTAS" /></label>
+      <label class="nx-field nx-span-all"><span>Descripción</span><textarea class="nx-textarea" formControlName="descripcion" rows="2"></textarea></label>
+      <label class="nx-check nx-span-all"><input type="checkbox" formControlName="activo" /> Rol activo (se puede asignar)</label>
+    </div>
+    <p class="nx-muted small">Solo puede otorgar permisos que usted tiene; los demás aparecen deshabilitados.</p>
+    <div class="matrix">
+      @for (g of permissionGroups(); track g.module) {
+        <section class="module">
+          <header>
+            <label class="nx-check"><input type="checkbox" [checked]="groupState(g) === 'all'" [indeterminate]="groupState(g) === 'some'" (change)="toggleGroup(g)" /> <b>{{ g.module }}</b></label>
+            <span class="nx-muted small">{{ groupCount(g) }} / {{ g.items.length }}</span>
+          </header>
+          <div class="perms">
+            @for (p of g.items; track p.id) {
+              <label class="perm" [class.off]="!p.owned" [title]="p.descripcion ?? ''">
+                <input type="checkbox" [checked]="rolePermissions().has(p.id)" [disabled]="!p.owned" (change)="togglePermission(p)" />
+                <span>{{ p.nombre }}@if (p.sensible) { <em>sensible</em> }<small class="nx-mono">{{ p.codigo }}</small></span>
+              </label>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="roleOpen.set(false)" [disabled]="saving()">Cancelar</button>
+    <button type="submit" form="role-form" class="nx-btn nx-btn--primary" [disabled]="saving()">{{ saving() ? 'Guardando…' : editingRole() ? 'Guardar rol' : 'Crear rol' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Rol de solo lectura -->
+<nx-drawer [open]="!!viewingRole()" (openChange)="$event || viewingRole.set(null)" width="560px" [title]="viewingRole()?.nombre ?? ''"
+  [subtitle]="viewingRole() ? viewingRole()!.codigo + ' · ' + viewingRole()!.permisos.length + ' permisos' : ''">
+  @if (viewingRole(); as r) {
+    <div class="nx-stack">
+      @if (r.sistema || r.protegido) { <div class="nx-alert nx-alert--info"><app-icon name="info" /> Rol del sistema: no se modifica, pero puede crear uno propio a partir de él.</div> }
+      @else if (!delegable(r)) { <div class="nx-alert nx-alert--warning"><app-icon name="info" /> Incluye permisos que usted no tiene, por eso no puede editarlo.</div> }
+      @if (r.descripcion) { <p class="nx-muted">{{ r.descripcion }}</p> }
+      @for (g of rolePermissionGroups(r); track g.module) {
+        <div class="view-group"><b>{{ g.module }}</b><div class="chips">@for (p of g.items; track p.id) { <span class="chip">{{ p.nombre }}</span> }</div></div>
+      } @empty {
+        <div class="chips">@for (code of r.permisos; track code) { <span class="chip nx-mono">{{ code }}</span> }</div>
+      }
+    </div>
+  }
+</nx-drawer>

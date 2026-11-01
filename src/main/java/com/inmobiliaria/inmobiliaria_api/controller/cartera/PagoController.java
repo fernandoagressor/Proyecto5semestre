@@ -63,6 +63,13 @@ public class PagoController {
         return service.rechazar(ContextoUsuario.empresa(jwt), pagoId, request.motivo());
     }
 
+    @GetMapping("/reversiones")
+    @PreAuthorize("hasAuthority('PAGOS_REVERSAR')")
+    public java.util.List<ReversionResponse> reversiones(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) com.inmobiliaria.inmobiliaria_api.entity.cartera.EstadoReversion estado) {
+        return service.reversiones(ContextoUsuario.empresa(jwt), estado);
+    }
+
     @PostMapping("/{pagoId}/reversiones")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('PAGOS_REVERSAR')")

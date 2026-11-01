@@ -71,6 +71,13 @@ export const routes: Routes = [
         title: 'CRM comercial | Nexora Core',
       },
       {
+        path: 'simulador',
+        canActivate: [permissionGuard, companyModuleGuard],
+        data: { permissions: ['SIMULACIONES_VER'], module: 'CLIENTES_VENTAS', title: 'Simulador' },
+        loadComponent: () => import('./features/simulator/simulator.page').then((m) => m.SimulatorPage),
+        title: 'Simulador | Nexora Core',
+      },
+      {
         path: 'clientes/nuevo',
         canActivate: [permissionGuard, companyModuleGuard],
         data: {
@@ -129,15 +136,21 @@ export const routes: Routes = [
           title: 'Gerencia y control',
         },
         loadComponent: () =>
-          import('./features/workspace/module-workspace.page').then((m) => m.ModuleWorkspacePage),
+          import('./features/management/management.page').then((m) => m.ManagementPage),
         title: 'Gerencia y control | Nexora Core',
+      },
+      {
+        path: 'usuarios',
+        canActivate: [permissionGuard, companyModuleGuard],
+        data: { permissions: ['USUARIOS_VER', 'ROLES_VER'], module: 'ADMINISTRACION_SEGURIDAD', title: 'Usuarios y roles' },
+        loadComponent: () => import('./features/users/users.page').then((m) => m.UsersPage),
+        title: 'Usuarios y roles | Nexora Core',
       },
       {
         path: 'auditoria',
         canActivate: [permissionGuard, companyModuleGuard],
         data: { permissions: ['AUDITORIA_VER'], module: 'ADMINISTRACION_SEGURIDAD', title: 'Auditoría' },
-        loadComponent: () =>
-          import('./features/workspace/module-workspace.page').then((m) => m.ModuleWorkspacePage),
+        loadComponent: () => import('./features/audit/audit.page').then((m) => m.AuditPage),
         title: 'Auditoría | Nexora Core',
       },
       {

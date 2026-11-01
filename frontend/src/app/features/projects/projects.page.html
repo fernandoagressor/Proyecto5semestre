@@ -1,136 +1,104 @@
-<section class="projects-page">
-  <header class="page-header">
-    <div>
-      <span class="eyebrow">PORTAFOLIO INMOBILIARIO</span>
-      <h2>Proyectos</h2>
-      <p>Consulta el avance, ubicación y estado de los proyectos autorizados para tu usuario.</p>
-    </div>
-    @if (auth.hasAuthority('PROYECTOS_CREAR')) {
-      <span class="permission-chip"><app-icon name="plus" /> Creación autorizada</span>
+<div class="nx-page">
+  <nx-page-header eyebrow="Portafolio inmobiliario" title="Proyectos" [description]="limitLabel()">
+    <span class="nx-search search"><app-icon name="search" /><input class="nx-input" [formControl]="search" placeholder="Nombre, código o ciudad" aria-label="Buscar proyectos" /></span>
+    @if (canCreate) {
+      <button type="button" class="nx-btn nx-btn--primary" (click)="openForm(null)" [disabled]="atLimit()" [title]="atLimit() ? 'Alcanzó el límite de proyectos de su plan' : ''"><app-icon name="plus" /> Nuevo proyecto</button>
     }
-  </header>
+  </nx-page-header>
 
-  @if (feedback()) {
-    <div class="action-message action-message--success">
-      <span>{{ feedback() }}</span
-      ><button type="button" (click)="feedback.set('')">×</button>
-    </div>
-  }
-  @if (actionError()) {
-    <div class="action-message action-message--error">
-      <span>{{ actionError() }}</span
-      ><button type="button" (click)="actionError.set('')">×</button>
-    </div>
-  }
+  <nx-filter-chips [options]="filters" [value]="status()" (valueChange)="status.set($event)" label="Estado del proyecto" />
 
-  <div class="toolbar">
-    <label class="search-box">
-      <app-icon name="search" />
-      <input
-        [formControl]="search"
-        placeholder="Buscar por nombre, código o ciudad"
-        aria-label="Buscar proyectos"
-      />
-    </label>
-    <label class="status-filter">
-      <span>Estado</span>
-      <select #status [value]="selectedStatus()" (change)="changeStatus(status.value)">
-        @for (item of statuses; track item.value) {
-          <option [value]="item.value">{{ item.label }}</option>
-        }
-      </select>
-    </label>
-  </div>
-
-  @if (error()) {
-    <div class="state-panel state-panel--error">
-      <span><app-icon name="warning" /></span>
-      <h3>No fue posible cargar los proyectos</h3>
-      <p>Comprueba que la API esté disponible y vuelve a intentarlo.</p>
-      <button type="button" (click)="load()">Reintentar</button>
-    </div>
-  } @else if (loading()) {
-    <div class="project-grid">
-      @for (item of [1, 2, 3, 4, 5, 6]; track item) {
-        <div class="project-card skeleton"></div>
-      }
-    </div>
-  } @else if (page()?.contenido?.length) {
-    <div class="results-heading">
-      <span>{{ page()?.totalElementos }} proyectos encontrados</span>
-      <small>Página {{ (page()?.pagina ?? 0) + 1 }} de {{ page()?.totalPaginas }}</small>
-    </div>
-    <div class="project-grid">
-      @for (project of page()?.contenido; track project.id) {
-        <article
-          class="project-card"
-          [routerLink]="['/inventario']"
-          [queryParams]="{ proyecto: project.id }"
-          tabindex="0"
-        >
-          <div class="project-card__visual">
-            @if (project.imagenPrincipalUrl) {
-              <img [src]="project.imagenPrincipalUrl" [alt]="project.nombre" />
+  <nx-state [loading]="loading()" [error]="error()" [empty]="projects().length === 0" (retry)="load()" emptyIcon="projects"
+    emptyTitle="Sin proyectos" [emptyText]="canCreate ? 'Cree el primer proyecto para cargar su inventario.' : 'Aún no hay proyectos autorizados para su usuario.'">
+    <div class="grid">
+      @for (p of projects(); track p.id) {
+        <button type="button" class="card" [class.on]="selected()?.id === p.id" (click)="open(p)">
+          <span class="card__img">
+            @if (p.imagenPrincipalUrl) { <img [src]="p.imagenPrincipalUrl" [alt]="'Imagen de ' + p.nombre" loading="lazy" /> }
+            @else { <span class="placeholder">{{ initials(p.nombre) }}</span> }
+            <span class="card__tags"><span class="code">{{ p.codigo }}</span><nx-badge [status]="p.estado" [text]="statusLabel(p.estado)" /></span>
+          </span>
+          <span class="card__body">
+            <span><b>{{ p.nombre }}</b><small>{{ p.ciudad }}, {{ p.departamento }}</small></span>
+            @if (summary(p.id); as s) {
+              <span class="sales">
+                <span class="sales__head"><span>Lotes vendidos</span><b>{{ s.vendidos }} de {{ s.total }}</b></span>
+                <span class="bar"><span class="sold" [style.width.%]="soldPct(p.id)"></span><span class="res" [style.width.%]="resPct(p.id)"></span></span>
+              </span>
+              <span class="stats">
+                <span>Disponibles<b>{{ s.disponibles }}</b></span>
+                <span>Reservados<b>{{ s.reservados }}</b></span>
+                <span>Inventario<b>{{ money(s.valorDisponible) }}</b></span>
+              </span>
             } @else {
-              <span>{{ project.codigo.slice(0, 2).toUpperCase() }}</span>
+              <span class="sales">
+                <span class="sales__head"><span>Avance de obra</span><b>{{ p.porcentajeAvance }} %</b></span>
+                <span class="bar"><span class="sold" [style.width.%]="p.porcentajeAvance"></span></span>
+              </span>
             }
-            <span class="status" [class]="'status status--' + project.estado.toLowerCase()">{{
-              statusLabel(project.estado)
-            }}</span>
-          </div>
-          <div class="project-card__body">
-            <small>{{ project.codigo }}</small>
-            <h3>{{ project.nombre }}</h3>
-            <div class="location">
-              <app-icon name="location" /> {{ project.ciudad }}, {{ project.departamento }}
-            </div>
-            <div class="progress-heading">
-              <span>Avance del proyecto</span><strong>{{ progress(project) }} %</strong>
-            </div>
-            <div class="progress"><span [style.width.%]="progress(project)"></span></div>
-          </div>
-          <footer>
-            <span
-              ><app-icon name="calendar" /> {{ project.fechaInicio || 'Fecha por definir' }}</span
-            >
-            <div class="card-actions">
-              @if (auth.hasAuthority('PROYECTOS_EDITAR') && canActivate(project)) {
-                <button
-                  class="activate-button"
-                  type="button"
-                  (click)="activateProject($event, project)"
-                  [disabled]="activatingProjectId() !== null"
-                >
-                  {{ activatingProjectId() === project.id ? 'Activando…' : 'Activar proyecto' }}
-                </button>
-              }
-              <span class="detail-indicator" aria-hidden="true"><app-icon name="chevron" /></span>
-            </div>
-          </footer>
-        </article>
+          </span>
+        </button>
       }
     </div>
+  </nx-state>
+</div>
 
-    @if ((page()?.totalPaginas ?? 0) > 1) {
-      <nav class="pagination" aria-label="Paginación de proyectos">
-        <button
-          type="button"
-          [disabled]="page()?.primera"
-          (click)="load((page()?.pagina ?? 0) - 1)"
-        >
-          Anterior
-        </button>
-        <span>{{ (page()?.pagina ?? 0) + 1 }} / {{ page()?.totalPaginas }}</span>
-        <button type="button" [disabled]="page()?.ultima" (click)="load((page()?.pagina ?? 0) + 1)">
-          Siguiente
-        </button>
-      </nav>
-    }
-  } @else {
-    <div class="state-panel">
-      <span><app-icon name="projects" /></span>
-      <h3>No hay proyectos para mostrar</h3>
-      <p>Ajusta los filtros o solicita a tu administrador acceso a un proyecto.</p>
+<nx-drawer [open]="!!selected()" (openChange)="$event || selected.set(null)" width="520px" [title]="selected()?.nombre ?? ''" [subtitle]="selected() ? selected()!.codigo + ' · ' + selected()!.ciudad : ''">
+  @if (selected(); as p) {
+    <div class="nx-stack detail">
+      <div class="hero">
+        @if (p.imagenPrincipalUrl) { <img [src]="p.imagenPrincipalUrl" [alt]="'Imagen de ' + p.nombre" /> }
+        @else { <span class="placeholder big">{{ initials(p.nombre) }}</span> }
+      </div>
+      @if (canEdit) {
+        <label class="nx-field">
+          <span>Estado del proyecto</span>
+          <select class="nx-select" [value]="p.estado" (change)="changeStatus(p, $any($event.target).value)" [disabled]="busy()">
+            @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+          </select>
+          @if (p.estado !== 'ACTIVO') { <span class="nx-field__hint">Solo los proyectos activos se pueden usar en Ventas.</span> }
+        </label>
+      } @else {
+        <nx-badge [status]="p.estado" [text]="statusLabel(p.estado)" />
+      }
+      <dl class="facts">
+        <div><dt>Ubicación</dt><dd>{{ p.direccion || p.ciudad }}</dd></div>
+        <div><dt>Departamento</dt><dd>{{ p.departamento }}</dd></div>
+        <div><dt>Inicio</dt><dd>{{ p.fechaInicio | fecha }}</dd></div>
+        <div><dt>Fin estimado</dt><dd>{{ p.fechaFinEstimada | fecha }}</dd></div>
+        <div><dt>Máximo de lotes</dt><dd>{{ p.maxLotes ?? 'Sin límite' }}</dd></div>
+        <div><dt>Inventario disponible</dt><dd>{{ summary(p.id) ? money(summary(p.id)!.valorDisponible) : '—' }}</dd></div>
+      </dl>
+      @if (p.descripcion) { <p class="nx-muted desc">{{ p.descripcion }}</p> }
+      <h3 class="nx-section-title small">Etapas</h3>
+      <div class="nx-list">
+        @for (e of stages(); track e.id) {
+          <div class="nx-list-row"><span><b>{{ e.nombre }}</b> <span class="nx-mono nx-muted">{{ e.codigo }}</span><div class="sub">{{ e.fechaInicio | fecha }} – {{ e.fechaFin | fecha }}</div></span><nx-badge [status]="e.estado" /></div>
+        } @empty { <p class="nx-muted">Sin etapas. Créelas desde el inventario.</p> }
+      </div>
+      <div class="nx-row">
+        @if (seesLots) { <a class="nx-btn nx-btn--primary" routerLink="/inventario" [queryParams]="{ proyecto: p.id }"><app-icon name="inventory" /> Abrir inventario</a> }
+        @if (canEdit) { <button type="button" class="nx-btn" (click)="openForm(p)"><app-icon name="edit" /> Editar</button> }
+      </div>
     </div>
   }
-</section>
+</nx-drawer>
+
+<nx-drawer [open]="formOpen()" (openChange)="formOpen.set($event)" width="620px" [title]="editing() ? 'Editar proyecto' : 'Nuevo proyecto'" [subtitle]="editing() ? editing()!.nombre : 'Queda en planeación hasta que lo active.'" [dismissible]="!busy()">
+  <form class="nx-form-grid" [formGroup]="form" (ngSubmit)="save()" id="project-form">
+    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" placeholder="PRY-004" /></label>
+    <label class="nx-field"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
+    <label class="nx-field"><span>Departamento</span><input class="nx-input" formControlName="departamento" placeholder="Sucre" /></label>
+    <label class="nx-field"><span>Ciudad</span><input class="nx-input" formControlName="ciudad" placeholder="Coveñas" /></label>
+    <label class="nx-field nx-span-all"><span>Dirección</span><input class="nx-input" formControlName="direccion" /></label>
+    <label class="nx-field"><span>Fecha de inicio</span><input class="nx-input" type="date" formControlName="fechaInicio" /></label>
+    <label class="nx-field"><span>Fin estimado</span><input class="nx-input" type="date" formControlName="fechaFinEstimada" /></label>
+    <label class="nx-field"><span>Máximo de lotes</span><input class="nx-input" type="number" min="1" formControlName="maxLotes" /></label>
+    <label class="nx-field"><span>Imagen principal (URL)</span><input class="nx-input" formControlName="imagenPrincipalUrl" placeholder="https://…" /></label>
+    <label class="nx-field nx-span-all"><span>Descripción</span><textarea class="nx-textarea" formControlName="descripcion"></textarea></label>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="formOpen.set(false)" [disabled]="busy()">Cancelar</button>
+    <button type="submit" form="project-form" class="nx-btn nx-btn--primary" [disabled]="busy()">{{ editing() ? 'Guardar' : 'Crear proyecto' }}</button>
+  </ng-container>
+</nx-drawer>

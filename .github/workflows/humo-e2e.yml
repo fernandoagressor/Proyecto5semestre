@@ -56,6 +56,50 @@ jobs:
           COMPOSE: "1"
         run: bash scripts/prueba-humo.sh
 
+      # Datos de ejemplo para que las capturas muestren tablas y tableros con contenido
+      # (proyectos, lotes, prospectos, oportunidades, reservas, tareas y PQRS).
+      - uses: grafana/setup-k6-action@v1
+      - name: Datos de ejemplo para las capturas
+        continue-on-error: true
+        env:
+          BASE_URL: http://localhost:4200
+          ADMIN_USUARIO: SUPERADMIN
+          ADMIN_PASSWORD: HumoAdminNueva2026!
+          CARGA_PASSWORD: CargaPrueba2026!
+          VOLUMEN: pequeno
+        run: k6 run --quiet -e VUS=4 carga/semilla.js 2>&1 | tail -15
+
+      # Capturas de las pantallas principales (escritorio y celular) para revisar el diseño en el
+      # PR sin levantar nada: quedan en el artefacto "capturas". No bloquea el PR.
+      - name: Capturas de pantalla
+        continue-on-error: true
+        env:
+          BASE_URL: http://localhost:4200
+          USUARIO: SUPERADMIN
+          PASSWORD: HumoAdminNueva2026!
+          CAPTURAS_JPG: "1"
+        run: |
+          npm install --no-save --no-package-lock --prefix . playwright@1.56.1 > /dev/null
+          npx --prefix . playwright install --with-deps chromium > /dev/null
+          node scripts/capturas.mjs
+          if [[ "$(cat capturas/errores.txt)" != "Sin errores" ]]; then
+            head -20 capturas/errores.txt | while IFS= read -r l; do echo "::warning title=Navegador::${l:0:900}"; done
+          fi
+          # Versión liviana en el log (una línea por imagen, en base64) para revisarlas sin
+          # descargar el artefacto.
+          echo "::group::Capturas en base64"
+          for f in capturas/jpg/*.jpg; do echo "CAPTURA $(basename "$f") $(base64 -w0 "$f")"; done
+          echo "::endgroup::"
+
+      - name: Subir capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: capturas/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Estado y registros
         if: always()
         run: |

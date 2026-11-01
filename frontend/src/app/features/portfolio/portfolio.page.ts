@@ -30,17 +30,21 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { PortfolioService } from '../../core/services/portfolio.service';
 import { SalesService } from '../../core/services/sales.service';
-import { AppIconComponent } from '../../shared/components/app-icon.component';
+import { apiErrorMessage, currentPeriod, NX_UI, ToastService } from '../../shared/ui';
+import { PortfolioClosing } from '../../core/models/portfolio.models';
+import { ReconciliationTabComponent } from './reconciliation-tab.component';
+import { RefinancingTabComponent } from './refinancing-tab.component';
+import { ReversalsPanelComponent } from './reversals-panel.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 
-type PortfolioTab = 'contratos' | 'pagos' | 'mora';
+type PortfolioTab = 'contratos' | 'pagos' | 'mora' | 'refinanciaciones' | 'conciliacion';
 type PortfolioModal = 'pago' | 'cobro' | 'configuracion' | 'motivo' | null;
 type ReasonAction = 'rechazar' | 'reversion';
 type CollectionView = 'formulario' | 'historial';
 
 @Component({
   selector: 'app-portfolio-page',
-  imports: [CommonModule, ReactiveFormsModule, AppIconComponent, MoneyInputDirective],
+  imports: [CommonModule, ReactiveFormsModule, ...NX_UI, MoneyInputDirective, RefinancingTabComponent, ReconciliationTabComponent, ReversalsPanelComponent],
   templateUrl: './portfolio.page.html',
   styleUrl: './portfolio.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,6 +57,13 @@ export class PortfolioPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<PortfolioTab>('contratos');
+  private readonly toast = inject(ToastService);
+  /** Cierre de mes: periodo, resultado y estado del diálogo. */
+  readonly closingOpen = signal(false);
+  readonly closingPeriod = signal(this.previousPeriod());
+  readonly closingResult = signal<PortfolioClosing | null>(null);
+  readonly closingBusy = signal(false);
+  readonly reversalKey = signal(0);
   readonly summary = signal<PortfolioSummary | null>(null);
   readonly contracts = signal<PortfolioContract[]>([]);
   readonly payments = signal<PortfolioPayment[]>([]);
@@ -133,6 +144,43 @@ export class PortfolioPage implements OnInit {
       this.activeTab.set('pagos');
     }
     this.loadAll();
+  }
+
+  openClosing(): void {
+    this.closingResult.set(null);
+    this.closingPeriod.set(this.previousPeriod());
+    this.closingOpen.set(true);
+  }
+
+  closePeriod(): void {
+    this.closingBusy.set(true);
+    this.portfolio.closePeriod(this.closingPeriod()).subscribe({
+      next: (result) => {
+        this.closingBusy.set(false);
+        this.closingResult.set(result);
+        this.toast.success(`Cartera de ${result.periodo} cerrada.`);
+      },
+      error: (e) => {
+        this.closingBusy.set(false);
+        this.toast.error(apiErrorMessage(e, 'No se pudo cerrar el periodo.'));
+      },
+    });
+  }
+
+  collectionTitle(): string {
+    const item = this.selectedFollowUp();
+    if (this.collectionView() === 'historial') return 'HISTORIAL DE GESTIONES';
+    return item?.estado === 'VENCIDA' ? 'GESTIÓN DE COBRANZA' : 'GESTIÓN PREVENTIVA';
+  }
+
+  reloadAfterReversal(): void {
+    this.loadAll();
+  }
+
+  /** Mes anterior (el que normalmente se cierra) como AAAA-MM. */
+  private previousPeriod(): string {
+    const d = new Date();
+    return currentPeriod(new Date(d.getFullYear(), d.getMonth() - 1, 1));
   }
 
   setTab(tab: PortfolioTab): void {
@@ -601,7 +649,10 @@ export class PortfolioPage implements OnInit {
       .payments({ status: this.paymentStatus() })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (page) => this.payments.set(page.contenido),
+        next: (page) => {
+          this.payments.set(page.contenido);
+          this.reversalKey.update((k) => k + 1);
+        },
         error: (error) => this.error.set(this.errorDetail(error)),
       });
   }

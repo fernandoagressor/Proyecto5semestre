@@ -1,0 +1,10 @@
+// Secciones nuevas de Cartera: refinanciaciones, conciliación y reversiones.
+:host { display: flex; flex-direction: column; gap: 14px; }
+.sub { margin-top: 2px; color: var(--text-muted); font-size: 12px; font-weight: 500; }
+.sub.warn { color: var(--tone-warning-fg); font-weight: 700; }
+.motive { max-width: 260px; color: var(--text-muted); font-size: 13px; }
+.recon-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding: 12px 14px; border-radius: 12px; background: var(--surface-muted); font-size: 13px; }
+.recon-add { display: grid; grid-template-columns: 150px minmax(140px, 1fr) minmax(140px, 1.4fr) 150px auto; gap: 8px; }
+@media (max-width: 900px) { .recon-add { grid-template-columns: 1fr 1fr; } }
+.reversals { align-items: flex-start; }
+.reversal-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: var(--text-strong); font-size: 13px; }

@@ -18,7 +18,9 @@ import { Project } from '../../core/models/empresa.models';
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { ProjectService } from '../../core/services/project.service';
-import { AppIconComponent } from '../../shared/components/app-icon.component';
+import { formatCopCompact, KpiTone, NX_UI } from '../../shared/ui';
+import { InventorySummary } from '../../core/models/inventory.models';
+import { InventoryService } from '../../core/services/inventory.service';
 import { InsightChartComponent, InsightChartPoint } from '../../shared/components/insight-chart.component';
 
 interface MetricCard {
@@ -67,7 +69,7 @@ interface DashboardAlert {
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [RouterLink, AppIconComponent, InsightChartComponent],
+  imports: [RouterLink, ...NX_UI, InsightChartComponent],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -373,14 +375,67 @@ export class DashboardPage {
     { label: 'Revisar cartera', caption: 'Pagos, cuotas y mora', route: '/cartera', icon: 'wallet', permissions: ['PAGOS_VER', 'CUOTAS_VER'] },
   ];
 
+  private readonly inventoryService = inject(InventoryService);
+  /** Lotes vendidos, reservados y disponibles por proyecto (hasta 6). */
+  readonly inventory = signal<{ project: Project; summary: InventorySummary; pctSold: number }[]>([]);
+
+  /** Cartera vencida por edades (del tablero de cartera). */
+  readonly aging = computed(() => {
+    const portfolio = this.dashboardOf('cartera') as PortfolioDashboard | null;
+    const series = portfolio?.edadesMora ?? [];
+    const total = series.reduce((s, x) => s + Number(x.valor), 0);
+    const colors = ['#f59e0b', '#ea580c', '#dc2626', '#991b1b', '#7f1d1d'];
+    return series.map((x, i) => ({
+      label: x.categoria,
+      value: formatCopCompact(x.valor),
+      count: x.cantidad,
+      pct: total > 0 ? (Number(x.valor) / total) * 100 : 0,
+      color: colors[i] ?? '#7f1d1d',
+    }));
+  });
+
+  /** Embudo comercial con la conversión desde la etapa anterior. */
+  readonly funnel = computed(() => {
+    const commercial = this.dashboardOf('comercial') as CommercialDashboard | null;
+    const series = commercial?.embudo ?? [];
+    const max = Math.max(...series.map((x) => x.cantidad), 1);
+    return series.map((x, i) => ({
+      label: x.categoria.charAt(0) + x.categoria.slice(1).toLowerCase().replace(/_/g, ' '),
+      count: x.cantidad,
+      width: (x.cantidad / max) * 100,
+      conv: i > 0 && series[i - 1].cantidad > 0 ? `${Math.round((x.cantidad / series[i - 1].cantidad) * 100)} %` : '',
+    }));
+  });
+
+  kpiTone(tone: MetricCard['tone']): KpiTone {
+    return ({ blue: 'primary', green: 'success', orange: 'warning', violet: 'neutral' } as const)[tone];
+  }
+
   constructor() {
     if (this.auth.hasAuthority('PROYECTOS_VER')) {
       this.projectService
         .list({ size: 100 })
         .pipe(catchError(() => of(null)))
-        .subscribe((page) => this.projects.set(page?.contenido ?? []));
+        .subscribe((page) => {
+          const list = page?.contenido ?? [];
+          this.projects.set(list);
+          this.loadInventory(list);
+        });
     }
     this.load();
+  }
+
+  private loadInventory(projects: Project[]): void {
+    if (!this.auth.hasAuthority('LOTES_VER') || projects.length === 0) return;
+    const shown = projects.filter((p) => p.estado !== 'INACTIVO').slice(0, 6);
+    forkJoin(shown.map((p) => this.inventoryService.summary(p.id).pipe(catchError(() => of(null))))).subscribe((summaries) =>
+      this.inventory.set(
+        shown
+          .map((project, i) => ({ project, summary: summaries[i] }))
+          .filter((x): x is { project: Project; summary: InventorySummary } => !!x.summary && x.summary.total > 0)
+          .map((x) => ({ ...x, pctSold: Math.round((x.summary.vendidos / x.summary.total) * 100) })),
+      ),
+    );
   }
 
   selectProject(value: string): void {

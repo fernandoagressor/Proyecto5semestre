@@ -1,27 +1,60 @@
 @use '@angular/material' as mat;
+@use './styles/nx';
 
+/*
+ * Sistema visual de NEXORA CORE (rediseño 0.5.0).
+ * Fuente: tablero "NEXORA CORE — Vistas propuestas". Manrope para títulos, Inter para el texto,
+ * JetBrains Mono para bitácoras y códigos; acento índigo sobre fondo claro.
+ * Las piezas reutilizables llevan el prefijo `nx-` (clases aquí y componentes en shared/ui).
+ */
 html {
   @include mat.theme((
     color: (
-      primary: mat.$azure-palette,
+      primary: mat.$violet-palette,
       tertiary: mat.$cyan-palette,
     ),
     typography: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
     density: 0,
   ));
 
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
+  --font-display: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-primary: #4f46e5;
+  --color-primary-hover: #3730a3;
   --color-primary-soft: #eef0ff;
+  --color-primary-strong: #3730a3;
+  --color-on-primary: #ffffff;
   --color-accent: #20d3b0;
   --surface-page: #f4f6fb;
   --surface-card: #ffffff;
   --surface-muted: #f8fafc;
+  --surface-sunken: #eef1f6;
   --text-strong: #071426;
   --text-muted: #526079;
   --text-subtle: #8a96a9;
+  --border-faint: #eef1f6;
   --border-soft: #e6eaf3;
   --border-medium: #cdd5e1;
+
+  --tone-success-bg: #e7f6f1;
+  --tone-success-fg: #0f6e55;
+  --tone-warning-bg: #fff8eb;
+  --tone-warning-fg: #9a4b06;
+  --tone-danger-bg: #fde2e2;
+  --tone-danger-fg: #b42318;
+  --tone-info-bg: #eef0ff;
+  --tone-info-fg: #3730a3;
+  --tone-neutral-bg: #eef1f6;
+  --tone-neutral-fg: #526079;
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+  --control-height: 44px;
+  --sidebar-width: 248px;
+
   --shadow-sm: 0 .45rem 1.4rem rgba(32, 44, 78, .045);
   --shadow-lg: 0 1rem 2.4rem rgba(42, 52, 89, .11);
   --shadow-xl: 0 1.3rem 3.2rem rgba(15, 23, 42, .16);
@@ -30,17 +63,33 @@ html {
 }
 
 html[data-theme='dark'] {
-  --color-primary: #60a5fa;
-  --color-primary-hover: #93c5fd;
-  --color-primary-soft: rgba(37, 99, 235, .15);
-  --surface-page: #07111f;
-  --surface-card: #0d1b2d;
-  --surface-muted: #122338;
-  --text-strong: #f1f5f9;
-  --text-muted: #aebbd0;
-  --text-subtle: #718096;
-  --border-soft: #1e3047;
-  --border-medium: #334862;
+  --color-primary: #818cf8;
+  --color-primary-hover: #a5b4fc;
+  --color-primary-soft: rgba(99, 102, 241, .16);
+  --color-primary-strong: #c7d2fe;
+  --color-on-primary: #0b1020;
+  --surface-page: #0a1120;
+  --surface-card: #111a2c;
+  --surface-muted: #152036;
+  --surface-sunken: #1a263d;
+  --text-strong: #eef2f8;
+  --text-muted: #a9b5c9;
+  --text-subtle: #75839a;
+  --border-faint: #1a263d;
+  --border-soft: #22304a;
+  --border-medium: #33445f;
+
+  --tone-success-bg: rgba(16, 185, 129, .14);
+  --tone-success-fg: #6ee7b7;
+  --tone-warning-bg: rgba(245, 158, 11, .14);
+  --tone-warning-fg: #fcd34d;
+  --tone-danger-bg: rgba(239, 68, 68, .15);
+  --tone-danger-fg: #fca5a5;
+  --tone-info-bg: rgba(99, 102, 241, .16);
+  --tone-info-fg: #c7d2fe;
+  --tone-neutral-bg: #1a263d;
+  --tone-neutral-fg: #a9b5c9;
+
   --shadow-sm: 0 .35rem 1.2rem rgba(0, 0, 0, .15);
   --shadow-lg: 0 .9rem 2.2rem rgba(0, 0, 0, .22);
   --shadow-xl: 0 1.3rem 3.2rem rgba(0, 0, 0, .3);
@@ -52,29 +101,31 @@ html, body { min-height: 100%; margin: 0; }
 body {
   min-width: 320px;
   color: var(--text-strong);
-  background:
-    radial-gradient(ellipse at 80% 0%, rgba(99, 102, 241, .045), transparent 34rem),
-    radial-gradient(ellipse at 100% 70%, rgba(32, 211, 176, .035), transparent 30rem),
-    var(--surface-page);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+h1, h2, h3, h4 { font-family: var(--font-display); }
+a { color: var(--color-primary); }
+a:hover { color: var(--color-primary-hover); }
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled) { transition-property: background-color, border-color, color, box-shadow, transform; transition-duration: .2s; transition-timing-function: ease; }
 button:disabled { cursor: not-allowed; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid var(--color-accent);
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-::selection { color: #fff; background: #2563eb; }
+::selection { color: #fff; background: #4f46e5; }
 ::-webkit-scrollbar { width: .65rem; height: .65rem; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 1rem; background: color-mix(in srgb, var(--text-subtle) 45%, transparent); background-clip: padding-box; }
 
 .mat-mdc-form-field {
-  --mdc-outlined-text-field-container-shape: .75rem;
+  --mdc-outlined-text-field-container-shape: var(--radius-control);
   --mdc-outlined-text-field-outline-color: var(--border-soft);
   --mdc-outlined-text-field-hover-outline-color: var(--border-medium);
   --mdc-outlined-text-field-focus-outline-color: var(--color-primary);

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, merge, Observable, of } from 'rxjs';
 
 import { PageResponse } from '../../core/models/api.models';
@@ -19,7 +19,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
-import { AppIconComponent } from '../../shared/components/app-icon.component';
+import { NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 
 type InventoryView = 'lotes' | 'estructura';
@@ -27,7 +27,7 @@ type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | null;
 
 @Component({
   selector: 'app-inventory-page',
-  imports: [ReactiveFormsModule, AppIconComponent, MoneyInputDirective],
+  imports: [ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective],
   templateUrl: './inventory.page.html',
   styleUrl: './inventory.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,6 +55,8 @@ export class InventoryPage {
   readonly stateHistory = signal<LotStateHistory[]>([]);
   readonly priceHistory = signal<LotPriceHistory[]>([]);
   readonly view = signal<InventoryView>('lotes');
+  /** Plano (todos los lotes de la selección como fichas) o tabla paginada. */
+  readonly lotsView = signal<'plano' | 'tabla'>('plano');
   readonly panel = signal<InventoryPanel>(null);
   readonly loading = signal(true);
   readonly lotsLoading = signal(false);
@@ -103,6 +105,11 @@ export class InventoryPage {
     motivo: ['', [Validators.required, Validators.maxLength(300)]],
   });
 
+  readonly viewOptions = [
+    { value: 'plano', label: 'Plano' },
+    { value: 'tabla', label: 'Tabla' },
+  ];
+
   readonly lotStatuses = [
     { value: '', label: 'Todos los estados' },
     { value: 'DISPONIBLE', label: 'Disponible' },
@@ -133,6 +140,16 @@ export class InventoryPage {
       replaceUrl: true,
     });
     this.loadProject();
+  }
+
+  setLotsView(view: string): void {
+    this.lotsView.set(view === 'tabla' ? 'tabla' : 'plano');
+    this.loadLots(0);
+  }
+
+  /** Tarjetas de estado: filtran los lotes por estado (otra vez el mismo estado quita el filtro). */
+  filterByState(state: string): void {
+    this.changeStateFilter(this.stateFilter() === state ? '' : state);
   }
 
   selectView(view: InventoryView): void {
@@ -340,7 +357,7 @@ export class InventoryPage {
         blockId: this.blockFilter(),
         text: this.search.value.trim(),
         page,
-        size: 20,
+        size: this.lotsView() === 'plano' ? 100 : 20,
       })
       .pipe(
         catchError(() => {

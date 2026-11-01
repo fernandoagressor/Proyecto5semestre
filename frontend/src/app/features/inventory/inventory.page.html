@@ -1,177 +1,215 @@
-<section class="inventory-page">
-  <header class="page-header">
-    <div>
-      <span class="eyebrow">CONTROL DE DISPONIBILIDAD</span>
-      <h2>Inventario inmobiliario</h2>
-      <p>Administra la estructura del proyecto y cada lote con control de precio, estado e historial.</p>
-    </div>
-    <label class="project-picker">
-      <span>PROYECTO ACTIVO</span>
-      <select #project [value]="selectedProjectId() ?? ''" (change)="selectProject(project.value)">
-        @for (item of projects(); track item.id) {
-          <option [value]="item.id">{{ item.codigo }} · {{ item.nombre }}</option>
-        }
+<div class="nx-page">
+  <nx-page-header eyebrow="Control de disponibilidad" title="Inventario de lotes"
+    [description]="selectedProject() ? selectedProject()!.nombre + ' · ' + selectedProject()!.ciudad + ' · ' + statusLabel(selectedProject()!.estado) : 'Estructura del proyecto y cada lote con precio, estado e historial.'">
+    <label class="nx-field">
+      <span>Proyecto</span>
+      <select class="nx-select" [value]="selectedProjectId() ?? ''" (change)="selectProject($any($event.target).value)">
+        @for (item of projects(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }
       </select>
     </label>
-  </header>
+    @if (auth.hasAuthority('LOTES_CREAR') && selectedProject()) {
+      <button class="nx-btn nx-btn--primary" type="button" (click)="openCreateLot()"><app-icon name="plus" /> Nuevo lote</button>
+    }
+  </nx-page-header>
 
   @if (feedback()) {
-    <div class="feedback"><app-icon name="warning" /><span>{{ feedback() }}</span><button type="button" (click)="feedback.set('')">×</button></div>
+    <div class="nx-alert nx-alert--success" role="status"><app-icon name="check" /><span style="flex: 1">{{ feedback() }}</span><button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="feedback.set('')" aria-label="Cerrar">×</button></div>
   }
 
   @if (loading()) {
-    <div class="loading-state"><span></span><p>Preparando inventario…</p></div>
+    <div class="nx-card nx-card--pad"><nx-state [loading]="true" /></div>
   } @else if (!selectedProject()) {
-    <div class="empty-state"><app-icon name="projects" /><h3>No hay proyectos disponibles</h3><p>Solicita acceso a un proyecto para consultar su inventario.</p></div>
+    <div class="nx-card nx-card--pad"><nx-state [empty]="true" emptyIcon="projects" emptyTitle="No hay proyectos disponibles" emptyText="Solicite acceso a un proyecto para consultar su inventario." /></div>
   } @else {
-    <div class="project-strip">
-      <div class="project-strip__identity">
-        <span>{{ selectedProject()?.codigo }}</span>
-        <div><strong>{{ selectedProject()?.nombre }}</strong><small>{{ selectedProject()?.ciudad }}, {{ selectedProject()?.departamento }}</small></div>
-      </div>
-      <div class="project-strip__status"><i></i>{{ statusLabel(selectedProject()?.estado ?? '') }}</div>
-    </div>
+    <section class="stats" aria-label="Lotes por estado">
+      <button type="button" class="stat" [class.on]="!stateFilter()" (click)="changeStateFilter('')"><span><i class="all"></i>Total</span><b>{{ summary()?.total ?? 0 }}</b></button>
+      <button type="button" class="stat" [class.on]="stateFilter() === 'DISPONIBLE'" (click)="filterByState('DISPONIBLE')"><span><i class="free"></i>Disponibles</span><b>{{ summary()?.disponibles ?? 0 }}</b></button>
+      <button type="button" class="stat" [class.on]="stateFilter() === 'RESERVADO'" (click)="filterByState('RESERVADO')"><span><i class="res"></i>Reservados</span><b>{{ summary()?.reservados ?? 0 }}</b></button>
+      <button type="button" class="stat" [class.on]="stateFilter() === 'VENDIDO'" (click)="filterByState('VENDIDO')"><span><i class="sold"></i>Vendidos</span><b>{{ summary()?.vendidos ?? 0 }}</b></button>
+      <button type="button" class="stat" [class.on]="stateFilter() === 'BLOQUEADO'" (click)="filterByState('BLOQUEADO')"><span><i class="blocked"></i>Bloqueados</span><b>{{ summary()?.bloqueados ?? 0 }}</b></button>
+      <div class="stat stat--value"><span>Valor disponible</span><b>{{ summary()?.valorDisponible | cop: 'compact' }}</b></div>
+    </section>
 
-    <div class="summary-grid">
-      <article><span class="metric-icon metric-icon--blue"><app-icon name="inventory" /></span><div><small>Total de lotes</small><strong>{{ summary()?.total ?? 0 }}</strong></div></article>
-      <article><span class="metric-icon metric-icon--green"><app-icon name="plus" /></span><div><small>Disponibles</small><strong>{{ summary()?.disponibles ?? 0 }}</strong></div></article>
-      <article><span class="metric-icon metric-icon--orange"><app-icon name="calendar" /></span><div><small>Reservados</small><strong>{{ summary()?.reservados ?? 0 }}</strong></div></article>
-      <article><span class="metric-icon metric-icon--violet"><app-icon name="wallet" /></span><div><small>Valor disponible</small><strong class="metric-value">{{ currency(summary()?.valorDisponible) }}</strong></div></article>
-    </div>
-
-    <div class="module-card">
-      <nav class="tabs" aria-label="Secciones de inventario">
-        <button type="button" [class.active]="view() === 'lotes'" (click)="selectView('lotes')"><app-icon name="inventory" /> Lotes</button>
-        @if (auth.hasAuthority('ETAPAS_VER')) {
-          <button type="button" [class.active]="view() === 'estructura'" (click)="selectView('estructura')"><app-icon name="projects" /> Estructura</button>
-        }
-      </nav>
-
-      @if (view() === 'lotes') {
-        <div class="toolbar">
-          <label class="search-box"><app-icon name="search" /><input [formControl]="search" placeholder="Buscar lote por código, número o ubicación" /></label>
-          <select #state [value]="stateFilter()" (change)="changeStateFilter(state.value)" aria-label="Filtrar por estado">
-            @for (item of lotStatuses; track item.value) { <option [value]="item.value">{{ item.label }}</option> }
-          </select>
-          @if (stages().length) {
-            <select #stage [value]="stageFilter() ?? ''" (change)="changeStageFilter(stage.value)" aria-label="Filtrar por etapa">
-              <option value="">Todas las etapas</option>
-              @for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }
-            </select>
-          }
-          @if (blocks().length) {
-            <select #block [value]="blockFilter() ?? ''" (change)="changeBlockFilter(block.value)" aria-label="Filtrar por manzana">
-              <option value="">Todas las manzanas</option>
-              @for (item of blocks(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }
-            </select>
-          }
-          @if (auth.hasAuthority('LOTES_CREAR')) {
-            <button class="primary-button" type="button" (click)="openCreateLot()"><app-icon name="plus" /> Nuevo lote</button>
-          }
-        </div>
-
-        @if (error()) {
-          <div class="inline-state"><app-icon name="warning" /><div><strong>No pudimos cargar el inventario</strong><span>Verifica la conexión con la API.</span></div><button type="button" (click)="loadLots(0)">Reintentar</button></div>
-        } @else if (lotsLoading()) {
-          <div class="table-skeleton">Actualizando disponibilidad…</div>
-        } @else if (lots()?.contenido?.length) {
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Lote</th><th>Estructura</th><th>Área</th><th>Precio de lista</th><th>Estado</th><th></th></tr></thead>
-              <tbody>
-                @for (lot of lots()?.contenido; track lot.id) {
-                  <tr (click)="showLot(lot)">
-                    <td><span class="lot-code">{{ lot.codigo }}</span><strong>Lote {{ lot.numero }}</strong><small>{{ lot.ubicacionReferencia || 'Sin referencia' }}</small></td>
-                    <td><strong>{{ stageName(lot.etapaId) }}</strong><small>{{ blockName(lot.manzanaId) }}</small></td>
-                    <td><strong>{{ lot.areaM2 }} m²</strong><small>{{ lot.frenteM || '—' }} × {{ lot.fondoM || '—' }} m</small></td>
-                    <td><strong>{{ currency(lot.valorLista) }}</strong><small>Precio vigente</small></td>
-                    <td><span [class]="'status-pill status-pill--' + lot.estado.toLowerCase()"><i></i>{{ statusLabel(lot.estado) }}</span></td>
-                    <td><div class="row-tools">@if (auth.hasAuthority('LOTES_EDITAR') && lot.estado !== 'RESERVADO' && lot.estado !== 'VENDIDO') { <button class="row-edit" type="button" (click)="openEditLot(lot); $event.stopPropagation()">Editar</button> }<button class="row-button" type="button" aria-label="Ver lote"><app-icon name="chevron" /></button></div></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          @if ((lots()?.totalPaginas ?? 0) > 1) {
-            <nav class="pagination"><button type="button" [disabled]="lots()?.primera" (click)="loadLots((lots()?.pagina ?? 0) - 1)">Anterior</button><span>Página {{ (lots()?.pagina ?? 0) + 1 }} de {{ lots()?.totalPaginas }}</span><button type="button" [disabled]="lots()?.ultima" (click)="loadLots((lots()?.pagina ?? 0) + 1)">Siguiente</button></nav>
-          }
-        } @else {
-          <div class="empty-state empty-state--compact"><app-icon name="inventory" /><h3>No hay lotes con estos filtros</h3><p>Ajusta la búsqueda o registra el primer lote del proyecto.</p></div>
-        }
-      } @else {
-        <div class="structure-header"><div><h3>Etapas y manzanas</h3><p>Configura la jerarquía utilizada para organizar el inventario.</p></div>@if (auth.hasAuthority('ETAPAS_GESTIONAR')) { <button class="primary-button" type="button" (click)="openCreateStage()"><app-icon name="plus" /> Nueva etapa</button> }</div>
-        <div class="stage-grid">
+    <div class="layout">
+      @if (auth.hasAuthority('ETAPAS_VER')) {
+        <aside class="nx-card nx-card--pad-sm structure" aria-label="Etapas y manzanas">
+          <div class="structure__head"><b>Etapas y manzanas</b>@if (auth.hasAuthority('ETAPAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs" (click)="openCreateStage()"><app-icon name="plus" /> Etapa</button> }</div>
+          <button type="button" class="stage" [class.on]="!stageFilter()" (click)="changeStageFilter('')"><b>Todo el proyecto</b></button>
           @for (item of stages(); track item.id) {
-            <article class="stage-card">
-              <header><span>{{ item.secuencia }}</span><div><small>{{ item.codigo }}</small><strong>{{ item.nombre }}</strong></div><i [class]="'stage-state stage-state--' + item.estado.toLowerCase()">{{ statusLabel(item.estado) }}</i></header>
-              <div class="stage-card__meta"><span><app-icon name="calendar" /> {{ item.fechaInicio || 'Inicio por definir' }}</span><span>{{ item.fechaFin || 'Sin cierre programado' }}</span></div>
-              <footer><button type="button" (click)="viewStageLots(item.id)">Ver lotes</button>@if (auth.hasAuthority('MANZANAS_GESTIONAR')) { <button type="button" (click)="openCreateBlock(item.id)"><app-icon name="plus" /> Manzana</button> }</footer>
-            </article>
+            <button type="button" class="stage" [class.on]="stageFilter() === item.id" (click)="changeStageFilter('' + item.id)">
+              <b>{{ item.nombre }}</b><small>{{ statusLabel(item.estado) }}</small>
+            </button>
+            @if (stageFilter() === item.id) {
+              <div class="blocks">
+                <button type="button" class="block" [class.on]="!blockFilter()" (click)="changeBlockFilter('')">Todas</button>
+                @for (b of blocks(); track b.id) {
+                  <button type="button" class="block" [class.on]="blockFilter() === b.id" (click)="changeBlockFilter('' + b.id)">{{ b.nombre }}</button>
+                }
+                @if (auth.hasAuthority('MANZANAS_GESTIONAR')) { <button type="button" class="block block--add" (click)="openCreateBlock(item.id)"><app-icon name="plus" /> Manzana</button> }
+              </div>
+            }
           } @empty {
-            <div class="empty-state empty-state--compact"><app-icon name="projects" /><h3>Aún no hay etapas</h3><p>Crea la primera etapa para organizar manzanas y lotes.</p></div>
+            <p class="nx-muted small">Aún no hay etapas.</p>
           }
-        </div>
+        </aside>
       }
+
+      <section class="nx-card nx-card--pad nx-card--stack" aria-label="Lotes">
+        <div class="nx-section-head">
+          <h2 class="nx-section-title">{{ stageFilter() ? stageName(stageFilter()!) : 'Todos los lotes' }}{{ blockFilter() ? ' · ' + blockName(blockFilter()!) : '' }}</h2>
+          <div class="nx-row">
+            <span class="nx-search"><app-icon name="search" /><input class="nx-input nx-input--sm" [formControl]="search" placeholder="Código, número o ubicación" /></span>
+            <nx-filter-chips [options]="viewOptions" [value]="lotsView()" (valueChange)="setLotsView($event)" label="Vista" />
+          </div>
+        </div>
+
+        <nx-state [loading]="lotsLoading() && !lots()" [error]="error() ? 'No se pudo cargar el inventario.' : null" [empty]="(lots()?.contenido ?? []).length === 0" (retry)="loadLots(0)"
+          emptyIcon="inventory" emptyTitle="No hay lotes con estos filtros" emptyText="Ajuste la búsqueda o registre el primer lote.">
+          @if (lotsView() === 'plano') {
+            <div class="plan" [class.dim]="lotsLoading()">
+              @for (lot of lots()?.contenido ?? []; track lot.id) {
+                <button type="button" class="lot" [attr.data-state]="lot.estado" [class.on]="selectedLot()?.id === lot.id" (click)="showLot(lot)"
+                  [attr.aria-label]="'Lote ' + lot.codigo + ', ' + statusLabel(lot.estado) + ', ' + currency(lot.valorLista)" [title]="lot.codigo + ' · ' + lot.areaM2 + ' m² · ' + currency(lot.valorLista)">
+                  <b>{{ lot.numero }}</b><small>{{ lot.areaM2 }} m²</small>
+                </button>
+              }
+            </div>
+            <div class="legend"><span><i class="free"></i>Disponible</span><span><i class="res"></i>Reservado</span><span><i class="sold"></i>Vendido</span><span><i class="blocked"></i>Bloqueado</span></div>
+            @if ((lots()?.totalElementos ?? 0) > (lots()?.contenido?.length ?? 0)) {
+              <p class="nx-muted small">Se muestran {{ lots()?.contenido?.length }} de {{ lots()?.totalElementos }} lotes. Elija una etapa o manzana para ver el resto.</p>
+            }
+          } @else {
+            <div class="nx-table-wrap">
+              <table class="nx-table nx-table--clickable">
+                <thead><tr><th>Lote</th><th>Etapa / manzana</th><th>Medidas</th><th class="nx-right">Área</th><th class="nx-right">Valor</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
+                <tbody>
+                  @for (lot of lots()?.contenido ?? []; track lot.id) {
+                    <tr (click)="showLot(lot)" [class.is-selected]="selectedLot()?.id === lot.id">
+                      <td><b class="nx-mono">{{ lot.codigo }}</b><div class="sub">{{ lot.ubicacionReferencia || 'Lote ' + lot.numero }}</div></td>
+                      <td>{{ stageName(lot.etapaId) }}<div class="sub">{{ blockName(lot.manzanaId) }}</div></td>
+                      <td>{{ lot.frenteM || '—' }} × {{ lot.fondoM || '—' }} m</td>
+                      <td class="nx-right nx-num">{{ lot.areaM2 }} m²</td>
+                      <td class="nx-right nx-num"><b>{{ currency(lot.valorLista) }}</b></td>
+                      <td><nx-badge [status]="lot.estado" [text]="statusLabel(lot.estado)" /></td>
+                      <td class="nx-actions">@if (auth.hasAuthority('LOTES_EDITAR') && lot.estado !== 'RESERVADO' && lot.estado !== 'VENDIDO') { <button class="nx-btn nx-btn--xs" type="button" (click)="openEditLot(lot); $event.stopPropagation()">Editar</button> }</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if ((lots()?.totalPaginas ?? 0) > 1) {
+              <div class="pager"><span>Página {{ (lots()?.pagina ?? 0) + 1 }} de {{ lots()?.totalPaginas }}</span><button class="nx-btn nx-btn--sm" type="button" [disabled]="lots()?.primera" (click)="loadLots((lots()?.pagina ?? 0) - 1)">Anterior</button><button class="nx-btn nx-btn--sm" type="button" [disabled]="lots()?.ultima" (click)="loadLots((lots()?.pagina ?? 0) + 1)">Siguiente</button></div>
+            }
+          }
+        </nx-state>
+      </section>
     </div>
   }
-</section>
+</div>
 
-@if (panel()) {
-  <button class="drawer-scrim" type="button" (click)="closePanel()" aria-label="Cerrar panel"></button>
-  <aside class="drawer" role="dialog" aria-modal="true">
-    <header class="drawer__header">
-      <div>
-        <small>{{ panel() === 'detalle' || editingLot() ? selectedLot()?.codigo : 'NUEVO REGISTRO' }}</small>
-        <h3>@switch (panel()) { @case ('lote') { @if (editingLot()) { Editar lote } @else { Crear lote } } @case ('etapa') { Crear etapa } @case ('manzana') { Crear manzana } @default { Lote {{ selectedLot()?.numero }} } }</h3>
-      </div>
-      <button type="button" (click)="closePanel()"><app-icon name="close" /></button>
-    </header>
-
-    @if (panel() === 'lote') {
-      <form class="drawer-form" [formGroup]="lotForm" (ngSubmit)="submitLot()">
-        <div class="form-grid form-grid--2">
-          <label><span>Etapa *</span><select formControlName="etapaId" #lotStage (change)="lotStageChanged(lotStage.value)" [attr.disabled]="editingLot() ? '' : null"><option [value]="0">Selecciona</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
-          <label><span>Manzana *</span><select formControlName="manzanaId" [attr.disabled]="editingLot() ? '' : null"><option [value]="0">Selecciona</option>@for (item of blocks(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
-          <label><span>Código *</span><input formControlName="codigo" placeholder="LT-A-001" /></label>
-          <label><span>Número *</span><input formControlName="numero" placeholder="001" /></label>
-          <label><span>Frente (m)</span><input type="number" min="0" step="0.01" formControlName="frenteM" /></label>
-          <label><span>Fondo (m)</span><input type="number" min="0" step="0.01" formControlName="fondoM" /></label>
-          <label><span>Área m² *</span><input type="number" min="0.01" step="0.01" formControlName="areaM2" /><small class="field-hint">Se calcula automáticamente: frente × fondo.</small></label>
-          <label><span>Precio de lista *</span><input type="text" nexoraMoney formControlName="valorLista" [readOnly]="!!editingLot()" placeholder="0" />@if (editingLot()) { <small class="field-hint">El precio se modifica desde el historial del lote.</small> }</label>
+<!-- Detalle del lote -->
+<nx-drawer [open]="panel() === 'detalle'" (openChange)="$event || closePanel()" [title]="selectedLot() ? 'Lote ' + selectedLot()!.codigo : ''"
+  [subtitle]="selectedLot() ? stageName(selectedLot()!.etapaId) + ' · ' + blockName(selectedLot()!.manzanaId) : ''" [dismissible]="!submitting()">
+  @if (selectedLot(); as lot) {
+    <div class="nx-stack detail">
+      <div class="nx-row"><nx-badge [status]="lot.estado" [text]="statusLabel(lot.estado)" /></div>
+      <dl class="facts">
+        <div><dt>Valor de lista</dt><dd>{{ currency(lot.valorLista) }}</dd></div>
+        <div><dt>Por m²</dt><dd>{{ lot.areaM2 ? currency(lot.valorLista / lot.areaM2) : '—' }}</dd></div>
+        <div><dt>Área</dt><dd>{{ lot.areaM2 }} m²</dd></div>
+        <div><dt>Medidas</dt><dd>{{ lot.frenteM || '—' }} × {{ lot.fondoM || '—' }} m</dd></div>
+        <div class="span"><dt>Ubicación</dt><dd>{{ lot.ubicacionReferencia || 'Sin referencia' }}</dd></div>
+      </dl>
+      @if (lot.descripcion) { <p class="nx-muted">{{ lot.descripcion }}</p> }
+      @if (lot.estado === 'DISPONIBLE' && auth.hasAuthority('RESERVAS_CREAR') && auth.hasAuthority('CLIENTES_CREAR')) {
+        <div class="nx-row">
+          <a class="nx-btn nx-btn--sm nx-btn--primary" routerLink="/clientes/nuevo" [queryParams]="{ proyecto: lot.proyectoId, lote: lot.id }"><app-icon name="plus" /> Cliente y reserva</a>
         </div>
-        <label><span>Referencia de ubicación</span><input formControlName="ubicacionReferencia" placeholder="Esquina nororiental" /></label>
-        <label><span>Descripción</span><textarea formControlName="descripcion" rows="3"></textarea></label>
-        <footer><button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button><button class="primary-button" type="submit" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingLot() ? 'Guardar cambios' : 'Crear lote') }}</button></footer>
-      </form>
-    } @else if (panel() === 'etapa') {
-      <form class="drawer-form" [formGroup]="stageForm" (ngSubmit)="submitStage()">
-        <div class="form-grid form-grid--2"><label><span>Código *</span><input formControlName="codigo" /></label><label><span>Secuencia *</span><input type="number" min="1" formControlName="secuencia" /></label></div>
-        <label><span>Nombre *</span><input formControlName="nombre" /></label>
-        <div class="form-grid form-grid--2"><label><span>Fecha de inicio</span><input type="date" formControlName="fechaInicio" /></label><label><span>Fecha de cierre</span><input type="date" formControlName="fechaFin" /></label></div>
-        <label><span>Estado</span><select formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
-        <footer><button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button><button class="primary-button" type="submit" [disabled]="submitting()">Crear etapa</button></footer>
-      </form>
-    } @else if (panel() === 'manzana') {
-      <form class="drawer-form" [formGroup]="blockForm" (ngSubmit)="submitBlock()">
-        <label><span>Etapa *</span><select formControlName="etapaId"><option [value]="0">Selecciona</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
-        <div class="form-grid form-grid--2"><label><span>Código *</span><input formControlName="codigo" /></label><label><span>Secuencia *</span><input type="number" min="1" formControlName="secuencia" /></label></div>
-        <label><span>Nombre *</span><input formControlName="nombre" /></label>
-        <label><span>Estado</span><select formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
-        <footer><button class="secondary-button" type="button" (click)="closePanel()">Cancelar</button><button class="primary-button" type="submit" [disabled]="submitting()">Crear manzana</button></footer>
-      </form>
-    } @else if (panel() === 'detalle' && selectedLot(); as lot) {
-      <div class="lot-detail">
-        <div class="lot-hero"><span [class]="'status-pill status-pill--' + lot.estado.toLowerCase()"><i></i>{{ statusLabel(lot.estado) }}</span><strong>{{ currency(lot.valorLista) }}</strong><small>{{ lot.areaM2 }} m² · {{ stageName(lot.etapaId) }} / {{ blockName(lot.manzanaId) }}</small></div>
-        @if (auth.hasAuthority('LOTES_EDITAR') && lot.estado !== 'RESERVADO' && lot.estado !== 'VENDIDO') { <button class="secondary-button edit-lot-button" type="button" (click)="openEditLot(lot)">Editar datos del lote</button> }
-        <dl><div><dt>Ubicación</dt><dd>{{ lot.ubicacionReferencia || 'Sin referencia' }}</dd></div><div><dt>Dimensiones</dt><dd>{{ lot.frenteM || '—' }} × {{ lot.fondoM || '—' }} m</dd></div><div><dt>Versión</dt><dd>{{ lot.version }}</dd></div></dl>
-        @if (auth.hasAuthority('PRECIOS_LOTE_CAMBIAR') && lot.estado !== 'VENDIDO') {
-          <form class="detail-action" [formGroup]="priceForm" (ngSubmit)="submitPrice()"><h4>Actualizar precio</h4><label><span>Nuevo valor</span><input type="text" nexoraMoney formControlName="valor" /></label><label><span>Motivo obligatorio</span><textarea rows="2" formControlName="motivo"></textarea></label><button class="primary-button" type="submit" [disabled]="submitting()">Guardar precio</button></form>
+      }
+      @if (auth.hasAuthority('LOTES_EDITAR') && lot.estado !== 'RESERVADO' && lot.estado !== 'VENDIDO') {
+        <button class="nx-btn nx-btn--sm" type="button" (click)="openEditLot(lot)" style="align-self: flex-start"><app-icon name="edit" /> Editar datos del lote</button>
+      }
+      @if (auth.hasAuthority('PRECIOS_LOTE_CAMBIAR') && lot.estado !== 'VENDIDO') {
+        <form class="inline-form" [formGroup]="priceForm" (ngSubmit)="submitPrice()">
+          <b>Cambiar precio</b>
+          <div class="nx-grid nx-grid--2">
+            <label class="nx-field"><span>Nuevo valor</span><input class="nx-input" type="text" nexoraMoney formControlName="valor" /></label>
+            <label class="nx-field"><span>Motivo</span><input class="nx-input" formControlName="motivo" placeholder="Ajuste de lista 2027" /></label>
+          </div>
+          <button class="nx-btn nx-btn--sm nx-btn--primary" type="submit" [disabled]="submitting()">Guardar precio</button>
+        </form>
+      }
+      @if (auth.hasAuthority('LOTES_CAMBIAR_ESTADO') && (lot.estado === 'DISPONIBLE' || lot.estado === 'BLOQUEADO')) {
+        <form class="inline-form" [formGroup]="stateForm" (ngSubmit)="submitState()">
+          <b>Disponibilidad</b>
+          <div class="nx-grid nx-grid--2">
+            <label class="nx-field"><span>Nuevo estado</span><select class="nx-select" formControlName="estado"><option value="DISPONIBLE">Disponible</option><option value="BLOQUEADO">Bloqueado</option></select></label>
+            <label class="nx-field"><span>Motivo</span><input class="nx-input" formControlName="motivo" /></label>
+          </div>
+          <button class="nx-btn nx-btn--sm" type="submit" [disabled]="submitting()">Aplicar</button>
+        </form>
+      }
+      <h3 class="nx-section-title small">Historial</h3>
+      <ol class="timeline">
+        @for (item of stateHistory().slice(0, 6); track item.id) {
+          <li><span class="dot"></span><div><b>{{ statusLabel(item.estadoAnterior || 'INICIAL') }} → {{ statusLabel(item.estadoNuevo) }}</b><p>{{ item.motivo }}</p><small>{{ item.creadoEn | fecha: 'hora' }}</small></div></li>
         }
-        @if (auth.hasAuthority('LOTES_CAMBIAR_ESTADO') && (lot.estado === 'DISPONIBLE' || lot.estado === 'BLOQUEADO')) {
-          <form class="detail-action" [formGroup]="stateForm" (ngSubmit)="submitState()"><h4>Cambiar disponibilidad</h4><label><span>Nuevo estado</span><select formControlName="estado"><option value="DISPONIBLE">Disponible</option><option value="BLOQUEADO">Bloqueado</option></select></label><label><span>Motivo obligatorio</span><textarea rows="2" formControlName="motivo"></textarea></label><button class="secondary-button" type="submit" [disabled]="submitting()">Aplicar estado</button></form>
+        @for (item of priceHistory().slice(0, 4); track item.id) {
+          <li><span class="dot dot--price"></span><div><b>{{ currency(item.valorAnterior) }} → {{ currency(item.valorNuevo) }}</b><p>{{ item.motivo }}</p><small>Desde {{ item.vigenteDesde | fecha }}</small></div></li>
         }
-        <section class="history"><h4>Historial reciente</h4>@for (item of stateHistory().slice(0, 4); track item.id) { <article><i></i><div><strong>{{ statusLabel(item.estadoAnterior || 'INICIAL') }} → {{ statusLabel(item.estadoNuevo) }}</strong><span>{{ item.motivo }}</span><small>{{ item.creadoEn }}</small></div></article> } @for (item of priceHistory().slice(0, 3); track item.id) { <article><i class="price-dot"></i><div><strong>{{ currency(item.valorAnterior) }} → {{ currency(item.valorNuevo) }}</strong><span>{{ item.motivo }}</span><small>{{ item.vigenteDesde }}</small></div></article> }</section>
-      </div>
-    }
-  </aside>
-}
+        @if (!stateHistory().length && !priceHistory().length) { <p class="nx-muted">Sin movimientos registrados.</p> }
+      </ol>
+    </div>
+  }
+</nx-drawer>
+
+<!-- Crear o editar lote -->
+<nx-drawer [open]="panel() === 'lote'" (openChange)="$event || closePanel()" [title]="editingLot() ? 'Editar lote' : 'Nuevo lote'" [subtitle]="editingLot()?.codigo ?? (selectedProject()?.nombre ?? '')" [dismissible]="!submitting()">
+  <form class="nx-form-grid" [formGroup]="lotForm" (ngSubmit)="submitLot()" id="lot-form">
+    <label class="nx-field"><span>Etapa</span><select class="nx-select" formControlName="etapaId" (change)="lotStageChanged($any($event.target).value)" [attr.disabled]="editingLot() ? '' : null"><option [value]="0">Seleccione…</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
+    <label class="nx-field"><span>Manzana</span><select class="nx-select" formControlName="manzanaId" [attr.disabled]="editingLot() ? '' : null"><option [value]="0">Seleccione…</option>@for (item of blocks(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
+    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" placeholder="E02-M03-L25" /></label>
+    <label class="nx-field"><span>Número</span><input class="nx-input" formControlName="numero" placeholder="25" /></label>
+    <label class="nx-field"><span>Frente (m)</span><input class="nx-input" type="number" min="0" step="0.01" formControlName="frenteM" /></label>
+    <label class="nx-field"><span>Fondo (m)</span><input class="nx-input" type="number" min="0" step="0.01" formControlName="fondoM" /></label>
+    <label class="nx-field"><span>Área (m²)</span><input class="nx-input" type="number" min="0.01" step="0.01" formControlName="areaM2" /><span class="nx-field__hint">Se calcula con frente × fondo.</span></label>
+    <label class="nx-field"><span>Valor de lista</span><input class="nx-input" type="text" nexoraMoney formControlName="valorLista" [readOnly]="!!editingLot()" />@if (editingLot()) { <span class="nx-field__hint">El precio se cambia desde el detalle del lote.</span> }</label>
+    <label class="nx-field nx-span-all"><span>Ubicación de referencia</span><input class="nx-input" formControlName="ubicacionReferencia" placeholder="Esquinero, frente a zona verde" /></label>
+    <label class="nx-field nx-span-all"><span>Descripción</span><textarea class="nx-textarea" formControlName="descripcion"></textarea></label>
+  </form>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="lot-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingLot() ? 'Guardar cambios' : 'Crear lote') }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Etapa -->
+<nx-drawer [open]="panel() === 'etapa'" (openChange)="$event || closePanel()" variant="dialog" title="Nueva etapa" [dismissible]="!submitting()">
+  <form class="nx-form-grid" [formGroup]="stageForm" (ngSubmit)="submitStage()" id="stage-form">
+    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
+    <label class="nx-field"><span>Secuencia</span><input class="nx-input" type="number" min="1" formControlName="secuencia" /></label>
+    <label class="nx-field nx-span-all"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
+    <label class="nx-field"><span>Inicio</span><input class="nx-input" type="date" formControlName="fechaInicio" /></label>
+    <label class="nx-field"><span>Cierre</span><input class="nx-input" type="date" formControlName="fechaFin" /></label>
+    <label class="nx-field nx-span-all"><span>Estado</span><select class="nx-select" formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
+  </form>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="stage-form" [disabled]="submitting()">Crear etapa</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Manzana -->
+<nx-drawer [open]="panel() === 'manzana'" (openChange)="$event || closePanel()" variant="dialog" title="Nueva manzana" [dismissible]="!submitting()">
+  <form class="nx-form-grid" [formGroup]="blockForm" (ngSubmit)="submitBlock()" id="block-form">
+    <label class="nx-field nx-span-all"><span>Etapa</span><select class="nx-select" formControlName="etapaId"><option [value]="0">Seleccione…</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
+    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
+    <label class="nx-field"><span>Secuencia</span><input class="nx-input" type="number" min="1" formControlName="secuencia" /></label>
+    <label class="nx-field nx-span-all"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
+    <label class="nx-field nx-span-all"><span>Estado</span><select class="nx-select" formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
+  </form>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="block-form" [disabled]="submitting()">Crear manzana</button>
+  </ng-container>
+</nx-drawer>

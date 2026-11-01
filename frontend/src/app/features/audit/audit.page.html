@@ -1,0 +1,175 @@
+<div class="nx-page">
+  <nx-page-header eyebrow="Control" title="Auditoría y alertas"
+    description="Quién hizo qué y cuándo: cambios con su antes y después, alertas de seguridad y tareas vencidas.">
+    @if (canExport && seesEvents) {
+      <button type="button" class="nx-btn" (click)="exportOpen.set(true)"><app-icon name="download" /> Exportar bitácora (CSV)</button>
+    }
+  </nx-page-header>
+
+  @if (seesAlerts) {
+    <section class="nx-stack" aria-label="Alertas de anomalías">
+      <div class="nx-section-head">
+        <h2 class="nx-section-title">Alertas</h2>
+        <nx-filter-chips [options]="alertOptions()" [value]="alertFilter()" (valueChange)="setAlertFilter($event)" label="Estado de las alertas" />
+      </div>
+      <nx-state [loading]="alertsLoading()" [error]="alertsError()" [empty]="visibleAlerts().length === 0" (retry)="loadAlerts()"
+        emptyIcon="audit" [emptyTitle]="alertFilter() === 'abiertas' ? 'Sin alertas abiertas' : 'Sin alertas'"
+        emptyText="El sistema avisa aquí de cuentas bloqueadas, accesos desde IP nuevas, exportaciones repetidas y acciones fuera de horario.">
+        <div class="nx-grid nx-grid--cards">
+          @for (a of visibleAlerts(); track a.id) {
+            <article class="nx-card alert-card" [class.alert-card--closed]="a.estado === 'RESUELTA' || a.estado === 'DESCARTADA'">
+              <div class="alert-card__top">
+                <nx-badge [status]="a.estado === 'RESUELTA' || a.estado === 'DESCARTADA' ? a.estado : a.severidad" />
+                <span>{{ relative(a.creadoEn) }}</span>
+              </div>
+              <b>{{ alertTitle(a) }}</b>
+              <p>{{ a.descripcion }}</p>
+              <dl class="alert-card__meta">
+                @if (a.usuarioId) { <div><dt>Usuario</dt><dd>{{ team.name(a.usuarioId) }}</dd></div> }
+                @if (a.asignadoA) { <div><dt>Responsable</dt><dd>{{ team.name(a.asignadoA) }}</dd></div> }
+                @if (a.resolucion) { <div><dt>Resolución</dt><dd>{{ a.resolucion }}</dd></div> }
+              </dl>
+              @if (manageAlerts && (a.estado === 'ABIERTA' || a.estado === 'EN_INVESTIGACION')) {
+                <div class="nx-row">
+                  <button type="button" class="nx-btn nx-btn--sm nx-btn--primary" (click)="askResolve(a, false)">Marcar como atendida</button>
+                  <button type="button" class="nx-btn nx-btn--sm" (click)="askAssign(a)">{{ a.asignadoA ? 'Reasignar' : 'Asignar' }}</button>
+                  <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="askResolve(a, true)">Descartar</button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      </nx-state>
+    </section>
+  }
+
+  @if (seesEvents) {
+    <section class="nx-card nx-card--pad nx-card--stack" aria-label="Bitácora de eventos">
+      <div class="nx-section-head">
+        <div>
+          <h2 class="nx-section-title">Bitácora de eventos</h2>
+          <p class="nx-section-subtitle">{{ total() }} eventos con los filtros actuales.</p>
+        </div>
+        <nx-filter-chips [options]="rangeOptions" [value]="range()" (valueChange)="range.set($any($event))" label="Rango de fechas" />
+      </div>
+      <div class="nx-toolbar">
+        <label class="nx-field">
+          <span>Módulo</span>
+          <select class="nx-select nx-select--sm" [value]="module()" (change)="module.set($any($event.target).value)">
+            <option value="">Todos</option>
+            @for (m of moduleOptions(); track m) { <option [value]="m">{{ label(m) }}</option> }
+          </select>
+        </label>
+        <label class="nx-field">
+          <span>Usuario</span>
+          <select class="nx-select nx-select--sm" [value]="actor()" (change)="actor.set($any($event.target).value)">
+            <option value="">Todos</option>
+            @for (m of team.members(); track m.id) { <option [value]="m.id">{{ m.nombre }}</option> }
+          </select>
+        </label>
+        <label class="nx-field">
+          <span>Acción</span>
+          <input class="nx-input nx-input--sm" placeholder="REGISTRAR_PAGO" [value]="action()" (keydown.enter)="applyAction($any($event.target).value)" (blur)="applyAction($any($event.target).value)" />
+        </label>
+        @if (module() || actor() || action() || range() !== '7d') {
+          <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="clearFilters()">Limpiar filtros</button>
+        }
+      </div>
+
+      <nx-state [loading]="loading()" [error]="error()" [empty]="events().length === 0" (retry)="loadEvents()"
+        emptyIcon="history" emptyTitle="Sin eventos" emptyText="No hay eventos con estos filtros en el rango elegido.">
+        <div class="log" role="list">
+          @for (e of events(); track e.id) {
+            <div class="log__item" role="listitem">
+              <button type="button" class="log__row" (click)="toggle(e.id)" [attr.aria-expanded]="open() === e.id">
+                <span class="nx-mono log__time" [title]="day(e.ocurridoEn)">{{ time(e.ocurridoEn) }}<small>{{ relative(e.ocurridoEn) }}</small></span>
+                <nx-badge [tone]="moduleTone(e.modulo)">{{ label(e.modulo) }}</nx-badge>
+                <span class="log__what"><b>{{ e.descripcion || label(e.accion) }}</b>@if (e.entidadTipo) { · <span class="nx-muted">{{ label(e.entidadTipo) }}{{ e.entidadId ? ' #' + e.entidadId : '' }}</span> }</span>
+                <span class="log__who">{{ actorName(e.actorId) }}</span>
+                <app-icon [name]="open() === e.id ? 'chevron-down' : 'chevron'" />
+              </button>
+              @if (open() === e.id) {
+                <div class="log__detail">
+                  <div><span class="before">Antes</span><pre>{{ pretty(e.datosAnterioresJson) }}</pre></div>
+                  <div><span class="after">Después</span><pre>{{ pretty(e.datosNuevosJson) }}</pre></div>
+                  <div>
+                    <span>Origen</span>
+                    <pre>Acción {{ e.accion }}
+{{ day(e.ocurridoEn) }}
+IP {{ e.ipOrigen ?? '—' }}{{ e.proyectoId ? '\nProyecto #' + e.proyectoId : '' }}{{ e.correlationId ? '\nCorrelación ' + e.correlationId : '' }}</pre>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        @if (hasMore()) {
+          <button type="button" class="nx-btn nx-btn--block" (click)="loadMore()" [disabled]="loadingMore()">
+            @if (loadingMore()) { <span class="nx-spinner"></span> } Cargar más eventos
+          </button>
+        }
+      </nx-state>
+    </section>
+  }
+
+  @if (seesTasks && overdue().length > 0) {
+    <section class="nx-card nx-card--pad nx-card--stack" aria-label="Tareas vencidas">
+      <h2 class="nx-section-title">Tareas vencidas del equipo</h2>
+      <div class="nx-list">
+        @for (t of overdue(); track t.id) {
+          <div class="nx-list-row">
+            <span><b>{{ t.titulo }}</b> · <span class="nx-muted">{{ label(t.tipo) }}</span></span>
+            <span class="overdue">Venció {{ relative(t.fechaVencimiento) }} · {{ team.name(t.asignadoA) }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (!seesEvents && !seesAlerts) {
+    <div class="nx-card nx-card--pad">
+      <nx-state [empty]="true" emptyIcon="lock" emptyTitle="Sin acceso a la bitácora" emptyText="Tu rol no tiene permiso para ver eventos ni alertas." />
+    </div>
+  }
+</div>
+
+<nx-drawer [(open)]="exportOpen" variant="dialog" title="Exportar bitácora" subtitle="La exportación queda registrada con su motivo." [dismissible]="!exporting()">
+  <div class="nx-stack">
+    <p class="nx-muted" style="margin: 0">Se descargan hasta 2.000 eventos con los filtros actuales en un archivo CSV que abre Excel.</p>
+    <label class="nx-field">
+      <span>Motivo</span>
+      <textarea class="nx-textarea" maxlength="500" placeholder="Revisión mensual de cartera solicitada por revisoría fiscal" [value]="exportReason()" (input)="exportReason.set($any($event.target).value)"></textarea>
+    </label>
+  </div>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="exportOpen.set(false)" [disabled]="exporting()">Cancelar</button>
+    <button type="button" class="nx-btn nx-btn--primary" (click)="confirmExport()" [disabled]="exporting() || !exportReason().trim()">
+      @if (exporting()) { <span class="nx-spinner"></span> } Exportar
+    </button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [(open)]="assignOpen" variant="dialog" title="Asignar alerta" [subtitle]="alertTarget() ? alertTitle(alertTarget()!) : ''" [dismissible]="!alertBusy()">
+  <label class="nx-field">
+    <span>Responsable</span>
+    <select class="nx-select" [value]="assignTo()" (change)="assignTo.set($any($event.target).value)">
+      <option value="">Seleccione…</option>
+      @for (m of team.active(); track m.id) { <option [value]="m.id">{{ m.nombre }}</option> }
+    </select>
+  </label>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="assignOpen.set(false)" [disabled]="alertBusy()">Cancelar</button>
+    <button type="button" class="nx-btn nx-btn--primary" (click)="confirmAssign()" [disabled]="alertBusy() || !assignTo()">Asignar</button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [(open)]="resolveOpen" variant="dialog" [title]="discard() ? 'Descartar alerta' : 'Cerrar alerta como atendida'" [subtitle]="alertTarget() ? alertTitle(alertTarget()!) : ''" [dismissible]="!alertBusy()">
+  <label class="nx-field">
+    <span>{{ discard() ? '¿Por qué no es una anomalía?' : '¿Qué se hizo?' }}</span>
+    <textarea class="nx-textarea" maxlength="5000" [value]="resolution()" (input)="resolution.set($any($event.target).value)"></textarea>
+  </label>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="resolveOpen.set(false)" [disabled]="alertBusy()">Cancelar</button>
+    <button type="button" class="nx-btn nx-btn--primary" (click)="confirmResolve()" [disabled]="alertBusy() || !resolution().trim()">{{ discard() ? 'Descartar' : 'Cerrar alerta' }}</button>
+  </ng-container>
+</nx-drawer>

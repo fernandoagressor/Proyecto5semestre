@@ -1,0 +1,210 @@
+<div class="tab-body">
+  <section class="status-cards" aria-label="Totales por estado">
+    @for (c of totals(); track c.id) {
+      <button type="button" class="status-card" [class.on]="filter() === c.id" [style.--dot]="c.color" (click)="filter.set(filter() === c.id ? '' : c.id)" [attr.aria-pressed]="filter() === c.id">
+        <span><i></i>{{ c.label }}</span>
+        @if (loading()) { <span class="nx-skeleton" style="width: 60%; height: 26px"></span> } @else { <b>{{ c.value }}</b> }
+        <small>{{ c.count }} {{ c.count === 1 ? 'comisión' : 'comisiones' }}</small>
+      </button>
+    }
+  </section>
+
+  <section class="nx-card nx-card--pad nx-card--stack" aria-label="Comisiones">
+    <div class="nx-section-head">
+      <div>
+        <h2 class="nx-section-title">Comisiones · {{ filterLabel() }}</h2>
+        @if (total() > items().length) {
+          <p class="nx-section-subtitle">Se muestran las {{ items().length }} más recientes de {{ total() }}. Filtre por proyecto para ver el resto.</p>
+        }
+      </div>
+      <div class="selection-bar">
+        @if (selected().size > 0) {
+          <span>{{ selected().size }} seleccionadas · {{ selectedTotal() }}</span>
+        }
+        @if (canManage) {
+          <button type="button" class="nx-btn nx-btn--sm" (click)="openProjection()"><app-icon name="plus" /> Proyectar</button>
+        }
+        @if (canApprove) {
+          <button type="button" class="nx-btn nx-btn--sm nx-btn--primary" (click)="approveSelected()" [disabled]="working() || approvable().length === 0">
+            Aprobar seleccionadas{{ approvable().length ? ' (' + approvable().length + ')' : '' }}
+          </button>
+          <button type="button" class="nx-btn nx-btn--sm" (click)="askDate('pagar', payable())" [disabled]="working() || payable().length === 0">
+            Liquidar aprobadas{{ payable().length ? ' (' + payable().length + ')' : '' }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <nx-state [loading]="loading()" [error]="error()" [empty]="visible().length === 0" (retry)="load()"
+      emptyIcon="money" emptyTitle="No hay comisiones en este estado"
+      emptyText="Las comisiones se proyectan desde un contrato con una regla vigente.">
+      <div class="nx-table-wrap">
+        <table class="nx-table">
+          <thead>
+            <tr>
+              @if (canApprove) {
+                <th scope="col"><input type="checkbox" [checked]="allSelected()" (change)="toggleAll($any($event.target).checked)" aria-label="Seleccionar todas" /></th>
+              }
+              <th scope="col">Contrato</th>
+              @if (seesTeam) { <th scope="col">Asesor</th> }
+              <th scope="col">Regla</th>
+              <th scope="col" class="nx-right">Base</th>
+              <th scope="col" class="nx-right">%</th>
+              <th scope="col" class="nx-right">Comisión</th>
+              <th scope="col">Causada</th>
+              <th scope="col">Estado</th>
+              <th scope="col" class="nx-actions"><span class="nx-sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of visible(); track c.id) {
+              <tr [class.is-selected]="selected().has(c.id)">
+                @if (canApprove) {
+                  <td><input type="checkbox" [checked]="selected().has(c.id)" (change)="toggle(c.id, $any($event.target).checked)" [attr.aria-label]="'Seleccionar ' + contractLabel(c.contratoId)" /></td>
+                }
+                <td><b>{{ contractLabel(c.contratoId) }}</b></td>
+                @if (seesTeam) { <td>{{ team.name(c.asesorId) }}</td> }
+                <td class="nx-muted">{{ ruleLabel(c.reglaComisionId) }}</td>
+                <td class="nx-right nx-num">{{ c.baseCalculo | cop }}</td>
+                <td class="nx-right nx-num">{{ c.porcentaje !== null ? (c.porcentaje | porcentaje: 2) : '—' }}</td>
+                <td class="nx-right nx-num"><b>{{ c.valorComision | cop }}</b></td>
+                <td class="nx-nowrap">{{ date(c.fechaCausacion) }}</td>
+                <td><nx-badge [status]="c.estado" /></td>
+                <td class="nx-actions">
+                  @if (canManage && c.estado === 'PROYECTADA') {
+                    <button type="button" class="nx-btn nx-btn--xs" (click)="askDate('causar', [c])" [disabled]="working()">Causar</button>
+                  }
+                  @if (canApprove && c.estado === 'APROBADA') {
+                    <button type="button" class="nx-btn nx-btn--xs" (click)="askDate('pagar', [c])" [disabled]="working()">Pagar</button>
+                  }
+                  @if (canManage && (c.estado === 'PROYECTADA' || c.estado === 'CAUSADA')) {
+                    <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="voidOne(c)" [disabled]="working()">Anular</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </nx-state>
+  </section>
+
+  <section class="nx-card nx-card--pad nx-card--stack" aria-label="Reglas de comisión">
+    <div class="nx-section-head">
+      <div>
+        <h2 class="nx-section-title">Reglas de comisión</h2>
+        <p class="nx-section-subtitle">Definen el porcentaje o valor y cuándo se causa la comisión.</p>
+      </div>
+      @if (canRules) {
+        <button type="button" class="nx-btn nx-btn--sm" (click)="ruleOpen.set(true)"><app-icon name="plus" /> Nueva regla</button>
+      }
+    </div>
+    <nx-state [empty]="rules().length === 0" emptyIcon="percent" emptyTitle="Sin reglas registradas">
+      <div class="nx-table-wrap">
+        <table class="nx-table nx-table--compact">
+          <thead><tr><th>Regla</th><th>Proyecto</th><th class="nx-right">Valor</th><th>Se causa</th><th>Vigencia</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
+          <tbody>
+            @for (r of rules(); track r.id) {
+              <tr>
+                <td><b>{{ r.nombre }}</b></td>
+                <td>{{ projectName(r.proyectoId) }}</td>
+                <td class="nx-right nx-num">{{ ruleValue(r) }}</td>
+                <td>{{ conditionLabel(r.condicionCausacion) }}</td>
+                <td class="nx-nowrap">{{ date(r.vigenteDesde) }} – {{ r.vigenteHasta ? date(r.vigenteHasta) : 'sin fin' }}</td>
+                <td><nx-badge [tone]="r.activo ? 'success' : 'neutral'">{{ r.activo ? 'Activa' : 'Cerrada' }}</nx-badge></td>
+                <td class="nx-actions">
+                  @if (canRules && r.activo) {
+                    <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="closeRule(r)" [disabled]="working()">Cerrar hoy</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </nx-state>
+  </section>
+</div>
+
+<nx-drawer [(open)]="dateOpen" variant="dialog" [title]="dateAction() === 'causar' ? 'Causar comisión' : 'Registrar pago de comisiones'"
+  [subtitle]="dateTargets().length + (dateTargets().length === 1 ? ' comisión' : ' comisiones')" [dismissible]="!working()">
+  <label class="nx-field">
+    <span>{{ dateAction() === 'causar' ? 'Fecha de causación' : 'Fecha de pago' }}</span>
+    <input class="nx-input" type="date" [value]="actionDate()" (change)="actionDate.set($any($event.target).value)" />
+  </label>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="dateOpen.set(false)" [disabled]="working()">Cancelar</button>
+    <button type="button" class="nx-btn nx-btn--primary" (click)="confirmDate()" [disabled]="working() || !actionDate()">
+      @if (working()) { <span class="nx-spinner"></span> } Confirmar
+    </button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [(open)]="ruleOpen" title="Nueva regla de comisión" subtitle="Aplica a los contratos que se proyecten desde su vigencia." [dismissible]="!working()">
+  <form class="nx-stack" [formGroup]="ruleForm" (ngSubmit)="saveRule()" id="rule-form">
+    <label class="nx-field"><span>Nombre</span><input class="nx-input" formControlName="nombre" placeholder="Comisión estándar 3 %" /></label>
+    <label class="nx-field">
+      <span>Proyecto</span>
+      <select class="nx-select" formControlName="proyectoId">
+        <option value="">Todos los proyectos</option>
+        @for (p of projects(); track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+      </select>
+    </label>
+    <div class="nx-grid nx-grid--2">
+      <label class="nx-field">
+        <span>Tipo</span>
+        <select class="nx-select" formControlName="tipo"><option value="PORCENTAJE">Porcentaje</option><option value="VALOR_FIJO">Valor fijo</option></select>
+      </label>
+      <label class="nx-field">
+        <span>{{ ruleForm.controls.tipo.value === 'PORCENTAJE' ? 'Porcentaje' : 'Valor' }}</span>
+        @if (ruleForm.controls.tipo.value === 'PORCENTAJE') {
+          <input class="nx-input" type="number" min="0" max="100" step="0.01" formControlName="valor" placeholder="3" />
+        } @else {
+          <input class="nx-input" nexoraMoney formControlName="valor" placeholder="$ 0" />
+        }
+      </label>
+    </div>
+    <label class="nx-field">
+      <span>Se causa</span>
+      <select class="nx-select" formControlName="condicionCausacion">
+        @for (c of conditions; track c.id) { <option [value]="c.id">{{ c.label }}</option> }
+      </select>
+    </label>
+    <div class="nx-grid nx-grid--2">
+      <label class="nx-field"><span>Vigente desde</span><input class="nx-input" type="date" formControlName="vigenteDesde" /></label>
+      <label class="nx-field"><span>Hasta (opcional)</span><input class="nx-input" type="date" formControlName="vigenteHasta" /></label>
+    </div>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="ruleOpen.set(false)" [disabled]="working()">Cancelar</button>
+    <button type="submit" form="rule-form" class="nx-btn nx-btn--primary" [disabled]="working()">Crear regla</button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [(open)]="projectOpen" title="Proyectar comisión" subtitle="Calcula la comisión de un contrato con una regla vigente." [dismissible]="!working()">
+  <form class="nx-stack" [formGroup]="projectForm" (ngSubmit)="saveProjection()" id="projection-form">
+    <label class="nx-field">
+      <span>Contrato</span>
+      <select class="nx-select" formControlName="contratoId">
+        <option value="">Seleccione…</option>
+        @for (c of contractOptions(); track c.id) { <option [value]="c.id">{{ c.codigo }} · {{ c.valorTotal | cop }}</option> }
+      </select>
+    </label>
+    <label class="nx-field">
+      <span>Regla</span>
+      <select class="nx-select" formControlName="reglaComisionId">
+        <option value="">Seleccione…</option>
+        @for (r of activeRules(); track r.id) { <option [value]="r.id">{{ r.nombre }} · {{ ruleValue(r) }}</option> }
+      </select>
+    </label>
+    <label class="nx-field">
+      <span>Base de cálculo (opcional)</span>
+      <input class="nx-input" nexoraMoney formControlName="baseCalculo" placeholder="Valor del contrato" />
+      <span class="nx-field__hint">Si se deja vacío, se usa el valor total del contrato.</span>
+    </label>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="projectOpen.set(false)" [disabled]="working()">Cancelar</button>
+    <button type="submit" form="projection-form" class="nx-btn nx-btn--primary" [disabled]="working()">Proyectar</button>
+  </ng-container>
+</nx-drawer>
