@@ -70,7 +70,11 @@ export class UsersPage {
   private readonly mine = new Set(this.auth.user()?.permisos ?? []);
 
   readonly statusFilters = STATUS_FILTERS;
-  readonly scopeLabels = SCOPE_LABELS;
+  readonly scopeOptions: { value: ScopeInput['tipo']; label: string; hint: string }[] = [
+    { value: 'EMPRESA', label: SCOPE_LABELS.EMPRESA, hint: 'Ve todos los proyectos y registros.' },
+    { value: 'PROYECTO', label: SCOPE_LABELS.PROYECTO, hint: 'Solo lo de un proyecto.' },
+    { value: 'PROPIOS', label: SCOPE_LABELS.PROPIOS, hint: 'Solo lo que él mismo registra o tiene asignado.' },
+  ];
   readonly tab = signal<string>(this.canSeeUsers ? 'usuarios' : 'roles');
   readonly tabs = computed<TabItem[]>(() => [
     ...(this.canSeeUsers ? [{ id: 'usuarios', label: 'Usuarios', count: this.users().length }] : []),
@@ -196,7 +200,7 @@ export class UsersPage {
     const scope = user.alcances[0];
     if (!scope) return 'Sin alcance';
     if (scope.tipo === 'PROYECTO') return scope.proyectoNombre ?? 'Un proyecto';
-    return SCOPE_LABELS[scope.tipo as ScopeInput['tipo']] ?? scope.tipo;
+    return SCOPE_LABELS[scope.tipo] ?? scope.tipo;
   }
 
   roleName(code: string): string {

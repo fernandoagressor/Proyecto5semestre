@@ -125,11 +125,11 @@
     <fieldset class="group">
       <legend>Alcance</legend>
       <div class="scope">
-        @for (s of ['EMPRESA', 'PROYECTO', 'PROPIOS']; track s) {
-          <label class="scope__opt" [class.on]="userForm.controls.alcanceTipo.value === s">
-            <input type="radio" formControlName="alcanceTipo" [value]="s" />
-            <b>{{ scopeLabels[$any(s)] }}</b>
-            <small>{{ s === 'EMPRESA' ? 'Ve todos los proyectos y registros.' : s === 'PROYECTO' ? 'Solo lo de un proyecto.' : 'Solo lo que él mismo registra o tiene asignado.' }}</small>
+        @for (s of scopeOptions; track s.value) {
+          <label class="scope__opt" [class.on]="userForm.controls.alcanceTipo.value === s.value">
+            <input type="radio" formControlName="alcanceTipo" [value]="s.value" />
+            <b>{{ s.label }}</b>
+            <small>{{ s.hint }}</small>
           </label>
         }
       </div>

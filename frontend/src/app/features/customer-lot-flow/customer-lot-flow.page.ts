@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 
 import { ApiProblem } from '../../core/models/api.models';
@@ -28,6 +28,12 @@ export class CustomerLotFlowPage {
   private readonly inventoryService = inject(InventoryService);
   private readonly flowService = inject(CustomerLotFlowService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
+  /** Lote elegido desde el inventario (`?proyecto=&lote=`): queda seleccionado al llegar al paso 2. */
+  private readonly preset = {
+    project: Number(this.route.snapshot.queryParamMap.get('proyecto')) || 0,
+    lot: Number(this.route.snapshot.queryParamMap.get('lote')) || 0,
+  };
 
   readonly step = signal<1 | 2 | 3 | 4>(1);
   readonly projects = signal<Project[]>([]);
@@ -347,8 +353,24 @@ export class CustomerLotFlowPage {
       .list({ status: 'ACTIVO', size: 100 })
       .pipe(finalize(() => this.loadingCatalogs.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => this.projects.set(result.contenido),
+        next: (result) => {
+          this.projects.set(result.contenido);
+          this.applyPreset();
+        },
         error: (error) => this.error.set(this.problemMessage(error, 'No fue posible cargar los proyectos activos.')),
+      });
+  }
+
+  private applyPreset(): void {
+    const { project, lot } = this.preset;
+    if (!project || !this.projects().some((p) => p.id === project)) return;
+    this.changeProject(project);
+    if (!lot) return;
+    this.inventoryService
+      .lot(project, lot)
+      .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe((found) => {
+        if (found?.estado === 'DISPONIBLE') this.selectedLot.set(found);
       });
   }
 
@@ -358,7 +380,9 @@ export class CustomerLotFlowPage {
     this.totalPages.set(result.totalPaginas);
     this.totalLots.set(result.totalElementos);
     const selected = this.selectedLot();
-    if (selected && !result.contenido.some((lot) => lot.id === selected.id)) this.selectedLot.set(null);
+    if (selected && selected.id !== this.preset.lot && !result.contenido.some((lot) => lot.id === selected.id)) {
+      this.selectedLot.set(null);
+    }
   }
 
   private nullIfBlank(value: string): string | null {
