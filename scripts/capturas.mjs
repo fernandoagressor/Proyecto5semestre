@@ -30,7 +30,21 @@ const RUTAS = [
 ];
 const MOVIL = ['dashboard', 'inventario', 'cartera'];
 const SALIDA = 'capturas';
-mkdirSync(SALIDA, { recursive: true });
+// Con CAPTURAS_JPG=1 guarda además una versión liviana (JPEG, hasta 2.600 px de alto) en
+// capturas/jpg para imprimirla en el log del CI: así se revisa el diseño sin descargar artefactos.
+const JPG = process.env.CAPTURAS_JPG === '1';
+mkdirSync(`${SALIDA}/jpg`, { recursive: true });
+
+async function capturar(page, archivo) {
+  await page.screenshot({ path: `${SALIDA}/${archivo}.png`, fullPage: true });
+  if (!JPG) return;
+  const alto = await page.evaluate(() => document.documentElement.scrollHeight);
+  const ancho = page.viewportSize().width;
+  await page.screenshot({
+    path: `${SALIDA}/jpg/${archivo}.jpg`, type: 'jpeg', quality: 45, fullPage: true,
+    clip: { x: 0, y: 0, width: ancho, height: Math.min(alto, 2600) },
+  });
+}
 
 const errores = [];
 const nombre = (ruta) => ruta.replace(/\//g, '-');
@@ -46,10 +60,10 @@ async function esperar(page) {
   await page.waitForTimeout(700);
 }
 
-async function iniciarSesion(page) {
+async function iniciarSesion(page, vista) {
   await page.goto(`${BASE}/login`);
   await esperar(page);
-  await page.screenshot({ path: `${SALIDA}/00-login.png`, fullPage: true });
+  await capturar(page, `${vista}-00-login`);
   await page.locator('[formcontrolname="identificador"]').fill(USUARIO);
   await page.locator('[formcontrolname="password"]').fill(PASSWORD);
   await page.locator('button[type="submit"]').click();
@@ -61,13 +75,13 @@ async function recorrer(browser, vista, viewport, rutas) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'es-CO' });
   const page = await context.newPage();
   await vigilar(page, vista);
-  await iniciarSesion(page);
+  await iniciarSesion(page, vista);
   let i = 1;
   for (const ruta of rutas) {
     await page.goto(`${BASE}/${ruta}`);
     await esperar(page);
-    const archivo = `${SALIDA}/${vista}-${String(i++).padStart(2, '0')}-${nombre(ruta)}.png`;
-    await page.screenshot({ path: archivo, fullPage: true });
+    const archivo = `${vista}-${String(i++).padStart(2, '0')}-${nombre(ruta)}`;
+    await capturar(page, archivo);
     console.log(`${archivo}  (${page.url().replace(BASE, '')})`);
   }
   if (vista === 'movil') {
@@ -75,7 +89,7 @@ async function recorrer(browser, vista, viewport, rutas) {
     if (await menu.isVisible()) {
       await menu.click();
       await page.waitForTimeout(400);
-      await page.screenshot({ path: `${SALIDA}/movil-menu.png` });
+      await capturar(page, 'movil-menu');
     }
   }
   await context.close();

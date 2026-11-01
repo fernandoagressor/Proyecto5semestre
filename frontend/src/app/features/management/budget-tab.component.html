@@ -1,0 +1,224 @@
+<div class="tab-body">
+  <div class="nx-row nx-row--between">
+    <p class="nx-muted" style="margin: 0">
+      {{ projectId() ? projectName(projectId()!) : 'Todos los proyectos' }} · presupuesto aprobado contra costos aprobados y pagados.
+    </p>
+    <div class="nx-row">
+      @if (canManage) {
+        <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="categoriesOpen.set(true)">Categorías</button>
+        <button type="button" class="nx-btn nx-btn--sm" (click)="budgetOpen.set(true)"><app-icon name="plus" /> Presupuesto</button>
+        <button type="button" class="nx-btn nx-btn--sm nx-btn--primary" (click)="costOpen.set(true)"><app-icon name="plus" /> Registrar costo</button>
+      }
+    </div>
+  </div>
+
+  <section class="nx-grid nx-grid--kpi" aria-label="Resumen del presupuesto">
+    <nx-kpi label="Presupuesto aprobado" [value]="totals().budget" icon="wallet" tone="primary" [loading]="loading()" />
+    <nx-kpi label="Ejecutado" [value]="totals().spent" [hint]="pct(totals().pct) + ' del presupuesto'" [progress]="totals().pct"
+      [tone]="totals().pct > 100 ? 'danger' : totals().pct > 90 ? 'warning' : 'success'" icon="trend-up" [loading]="loading()" />
+    <nx-kpi label="Disponible" [value]="totals().available" icon="money" [loading]="loading()" />
+    <nx-kpi label="Costos por aprobar" [value]="totals().pending" [hint]="pendingCosts().length + ' registros'" icon="clock"
+      [tone]="pendingCosts().length ? 'warning' : 'neutral'" [loading]="loading()" />
+  </section>
+
+  <div class="nx-grid nx-grid--main-aside">
+    <section class="nx-card nx-card--pad nx-card--stack" aria-label="Presupuesto contra ejecutado">
+      <h2 class="nx-section-title">Presupuesto contra ejecutado</h2>
+      <nx-state [loading]="loading()" [error]="error()" [empty]="lines().length === 0" (retry)="load()"
+        emptyIcon="wallet" emptyTitle="Sin presupuesto aprobado ni costos"
+        emptyText="Cree un presupuesto por categoría y apruébelo para comparar lo ejecutado.">
+        @for (l of lines(); track l.category.id) {
+          <div class="budget-line">
+            <div><b>{{ l.category.nombre }}</b><span>{{ money(l.spent) }} de {{ money(l.budget) }} · <b>{{ pct(l.pct) }}</b></span></div>
+            <div class="nx-progress" [class.nx-progress--success]="l.tone === 'success'" [class.nx-progress--warning]="l.tone === 'warning'" [class.nx-progress--danger]="l.tone === 'danger'">
+              <span [style.width.%]="l.pct > 100 ? 100 : l.pct"></span>
+            </div>
+          </div>
+        }
+        <div class="legend">
+          <span><i style="background: #10a37f"></i>Dentro del presupuesto</span>
+          <span><i style="background: #d97706"></i>Más de 90 %</span>
+          <span><i style="background: #d92d20"></i>Sobreejecutado</span>
+        </div>
+      </nx-state>
+    </section>
+
+    @if (seesCosts) {
+      <section class="nx-card nx-card--pad nx-card--stack" aria-label="Costos por aprobar">
+        <h2 class="nx-section-title">Costos por aprobar</h2>
+        <nx-state [loading]="loading()" [empty]="pendingCosts().length === 0" emptyIcon="check" emptyTitle="Nada pendiente">
+          @for (c of pendingCosts(); track c.id) {
+            <div class="cost-item">
+              <div><b>{{ c.concepto }}</b><b class="nx-num">{{ c.valor | cop: 'compact' }}</b></div>
+              <span>{{ categoryName(c.categoriaCostoId) }}{{ c.proveedor ? ' · ' + c.proveedor : '' }}{{ c.referencia ? ' · ' + c.referencia : '' }} · {{ date(c.fechaCosto) }}</span>
+              @if (canApprove) {
+                <div class="row-actions" style="justify-content: flex-start">
+                  <button type="button" class="nx-btn nx-btn--xs" (click)="costAction(c, 'anular')" [disabled]="busy()">Rechazar</button>
+                  <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="costAction(c, 'aprobar')" [disabled]="busy()">Aprobar</button>
+                </div>
+              }
+            </div>
+          }
+        </nx-state>
+      </section>
+    }
+  </div>
+
+  @if (seesBudgets) {
+    <section class="nx-card nx-card--pad nx-card--stack" aria-label="Presupuestos">
+      <h2 class="nx-section-title">Presupuestos</h2>
+      <nx-state [loading]="loading()" [empty]="budgets().length === 0" emptyIcon="file" emptyTitle="Sin presupuestos registrados">
+        <div class="nx-table-wrap">
+          <table class="nx-table nx-table--compact">
+            <thead><tr><th>Categoría</th>@if (!projectId()) {<th>Proyecto</th>}<th>Periodo</th><th class="nx-right">Valor</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
+            <tbody>
+              @for (b of budgets(); track b.id) {
+                <tr>
+                  <td><b>{{ categoryName(b.categoriaCostoId) }}</b></td>
+                  @if (!projectId()) { <td>{{ projectName(b.proyectoId) }}</td> }
+                  <td class="nx-nowrap">{{ date(b.periodoDesde) }} – {{ date(b.periodoHasta) }}</td>
+                  <td class="nx-right nx-num">{{ b.valorPresupuestado | cop }}</td>
+                  <td><nx-badge [status]="b.estado" /></td>
+                  <td class="nx-actions">
+                    @if (canApprove && b.estado === 'BORRADOR') {
+                      <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="budgetAction(b, 'aprobar')" [disabled]="busy()">Aprobar</button>
+                    }
+                    @if (canApprove && b.estado === 'APROBADO') {
+                      <button type="button" class="nx-btn nx-btn--xs" (click)="budgetAction(b, 'cerrar')" [disabled]="busy()">Cerrar</button>
+                    }
+                    @if (canApprove && (b.estado === 'BORRADOR' || b.estado === 'APROBADO')) {
+                      <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="budgetAction(b, 'anular')" [disabled]="busy()">Anular</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </nx-state>
+    </section>
+  }
+
+  @if (seesCosts && recentCosts().length > 0) {
+    <section class="nx-card nx-card--pad nx-card--stack" aria-label="Costos recientes">
+      <h2 class="nx-section-title">Costos aprobados y pagados</h2>
+      <div class="nx-table-wrap">
+        <table class="nx-table nx-table--compact">
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Proveedor</th><th class="nx-right">Valor</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
+          <tbody>
+            @for (c of recentCosts(); track c.id) {
+              <tr>
+                <td class="nx-nowrap">{{ date(c.fechaCosto) }}</td>
+                <td><b>{{ c.concepto }}</b></td>
+                <td>{{ categoryName(c.categoriaCostoId) }}</td>
+                <td class="nx-muted">{{ c.proveedor ?? '—' }}</td>
+                <td class="nx-right nx-num">{{ c.valor | cop }}</td>
+                <td><nx-badge [status]="c.estado" /></td>
+                <td class="nx-actions">
+                  @if (canManage && c.estado === 'APROBADO') {
+                    <button type="button" class="nx-btn nx-btn--xs" (click)="costAction(c, 'pagar')" [disabled]="busy()">Marcar pagado</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>
+
+<nx-drawer [(open)]="budgetOpen" title="Nuevo presupuesto" subtitle="Queda en borrador hasta que se apruebe." [dismissible]="!busy()">
+  <form class="nx-stack" [formGroup]="budgetForm" (ngSubmit)="saveBudget()" id="budget-form">
+    <label class="nx-field">
+      <span>Proyecto</span>
+      <select class="nx-select" formControlName="proyectoId">
+        <option value="">Seleccione…</option>
+        @for (p of projects(); track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+      </select>
+    </label>
+    <label class="nx-field">
+      <span>Categoría</span>
+      <select class="nx-select" formControlName="categoriaCostoId">
+        <option value="">Seleccione…</option>
+        @for (c of activeCategories(); track c.id) { <option [value]="c.id">{{ c.nombre }}</option> }
+      </select>
+    </label>
+    <div class="nx-grid nx-grid--2">
+      <label class="nx-field"><span>Desde</span><input class="nx-input" type="date" formControlName="periodoDesde" /></label>
+      <label class="nx-field"><span>Hasta</span><input class="nx-input" type="date" formControlName="periodoHasta" /></label>
+    </div>
+    <label class="nx-field"><span>Valor presupuestado</span><input class="nx-input" nexoraMoney formControlName="valorPresupuestado" placeholder="$ 0" /></label>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="budgetOpen.set(false)" [disabled]="busy()">Cancelar</button>
+    <button type="submit" form="budget-form" class="nx-btn nx-btn--primary" [disabled]="busy()">Guardar</button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [(open)]="costOpen" title="Registrar costo" subtitle="Queda pendiente hasta que se apruebe." [dismissible]="!busy()">
+  <form class="nx-stack" [formGroup]="costForm" (ngSubmit)="saveCost()" id="cost-form">
+    <div class="nx-grid nx-grid--2">
+      <label class="nx-field">
+        <span>Proyecto</span>
+        <select class="nx-select" formControlName="proyectoId">
+          <option value="">Seleccione…</option>
+          @for (p of projects(); track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+        </select>
+      </label>
+      <label class="nx-field">
+        <span>Categoría</span>
+        <select class="nx-select" formControlName="categoriaCostoId">
+          <option value="">Seleccione…</option>
+          @for (c of activeCategories(); track c.id) { <option [value]="c.id">{{ c.nombre }}</option> }
+        </select>
+      </label>
+    </div>
+    <label class="nx-field"><span>Concepto</span><input class="nx-input" formControlName="concepto" placeholder="Pavimentación vía interna" /></label>
+    <div class="nx-grid nx-grid--2">
+      <label class="nx-field"><span>Proveedor</span><input class="nx-input" formControlName="proveedor" /></label>
+      <label class="nx-field"><span>Factura o referencia</span><input class="nx-input" formControlName="referencia" /></label>
+    </div>
+    <div class="nx-grid nx-grid--2">
+      <label class="nx-field"><span>Fecha</span><input class="nx-input" type="date" formControlName="fechaCosto" /></label>
+      <label class="nx-field"><span>Valor</span><input class="nx-input" nexoraMoney formControlName="valor" placeholder="$ 0" /></label>
+    </div>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="costOpen.set(false)" [disabled]="busy()">Cancelar</button>
+    <button type="submit" form="cost-form" class="nx-btn nx-btn--primary" [disabled]="busy()">Registrar</button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [(open)]="categoriesOpen" title="Categorías de costo" subtitle="Agrupan presupuestos y costos." [dismissible]="!busy()">
+  <div class="nx-stack">
+    <div class="nx-list">
+      @for (c of categories(); track c.id) {
+        <div class="nx-list-row">
+          <span><b>{{ c.nombre }}</b> <span class="nx-mono nx-muted">{{ c.codigo }}</span></span>
+          <span class="nx-row">
+            <nx-badge [tone]="c.tipo === 'DIRECTO' ? 'info' : 'neutral'">{{ c.tipo === 'DIRECTO' ? 'Directo' : 'Indirecto' }}</nx-badge>
+            @if (c.activo) {
+              <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="deactivateCategory(c)" [disabled]="busy()">Inactivar</button>
+            } @else {
+              <nx-badge>Inactiva</nx-badge>
+            }
+          </span>
+        </div>
+      }
+    </div>
+    <hr class="nx-divider" />
+    <form class="nx-stack" [formGroup]="categoryForm" (ngSubmit)="saveCategory()">
+      <h3 class="nx-section-title" style="font-size: 16px">Nueva categoría</h3>
+      <div class="nx-grid nx-grid--2">
+        <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" placeholder="URBANISMO" /></label>
+        <label class="nx-field">
+          <span>Tipo</span>
+          <select class="nx-select" formControlName="tipo"><option value="DIRECTO">Directo</option><option value="INDIRECTO">Indirecto</option></select>
+        </label>
+      </div>
+      <label class="nx-field"><span>Nombre</span><input class="nx-input" formControlName="nombre" placeholder="Obras de urbanismo" /></label>
+      <button type="submit" class="nx-btn nx-btn--primary" [disabled]="busy()">Agregar categoría</button>
+    </form>
+  </div>
+</nx-drawer>

@@ -12,6 +12,19 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   indicador, insignia con tono por estado, pestañas, filtros en píldoras, panel lateral y diálogo,
   estados de carga/error/vacío, formatos de pesos y fechas de Colombia) y clases globales `nx-`
   en `frontend/src/styles/_nx.scss` (tarjetas, botones, campos, tablas, avisos).
+- **Rediseño, fase 1: Gerencia y Auditoría** reemplazan la vista provisional.
+  - Gerencia (`/gerencia`), con pestañas según permisos: **Metas** (cumplimiento por asesor con
+    barra y marca del 100 %, proyección de cierre del mes, asignar, editar, aprobar y cerrar
+    metas), **Comisiones** (totales por estado, aprobación en lote, causar y pagar con fecha,
+    anular, proyectar desde un contrato y reglas de comisión), **Presupuesto y costos**
+    (presupuesto contra ejecutado por categoría, costos por aprobar, presupuestos, categorías y
+    registro de costos) y **Rentabilidad** (ventas, recaudo, costos, utilidad y margen por rango).
+  - Auditoría (`/auditoria`): alertas de anomalías (asignar, cerrar como atendida o descartar),
+    bitácora filtrable por módulo, usuario, acción y rango con el antes y el después de cada
+    cambio, exportación a CSV con motivo (queda registrada en la API) y tareas vencidas.
+- `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
+  usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
+- Mensajes de resultado (`nx-toaster`) en todas las pantallas.
 - Capturas de pantalla de las rutas principales en escritorio y celular en cada PR (artefacto
   `capturas` de la Prueba de humo E2E, `scripts/capturas.mjs`), con los errores de la consola.
 - Prueba de humo de punta a punta en el CI (`Prueba de humo E2E`): levanta el stack completo con

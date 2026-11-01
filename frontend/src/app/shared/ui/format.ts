@@ -104,3 +104,27 @@ export class PorcentajePipe implements PipeTransform {
     return formatPercent(value, digits);
   }
 }
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** Fecha local de hoy como AAAA-MM-DD (lo que esperan los LocalDate de la API). */
+export function todayIso(date = new Date()): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Fecha y hora local como AAAA-MM-DDTHH:mm:ss (LocalDateTime de la API). */
+export function localDateTimeIso(date: Date): string {
+  return `${todayIso(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+/** Mes actual como AAAA-MM. */
+export function currentPeriod(date = new Date()): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+}
+
+/** "2026-10" → "octubre 2026". */
+export function periodLabel(period: string | null | undefined): string {
+  if (!period || !/^\d{4}-\d{2}$/.test(period)) return period ?? '—';
+  const [y, m] = period.split('-').map(Number);
+  return new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1)).replace(' de ', ' ');
+}

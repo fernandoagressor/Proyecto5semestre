@@ -19,6 +19,7 @@ export * from './format';
 export * from './kpi-card.component';
 export * from './page-header.component';
 export * from './tabs.component';
+export * from './toast';
 
 export const NX_UI = [
   AppIconComponent,
