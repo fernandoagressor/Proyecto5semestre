@@ -52,6 +52,7 @@ export type KpiTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
     .label app-icon { width: 16px; height: 16px; color: var(--accent, var(--text-subtle)); }
     .value { overflow: hidden; color: var(--text-strong); font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
     .value-skeleton { width: 60%; height: 30px; }
+    @media (max-width: 560px) { :host { padding: 12px 14px; } .value { font-size: 21px; } .label { font-size: 12px; } }
     .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; }
     .hint { color: var(--text-muted); }
     .trend { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
