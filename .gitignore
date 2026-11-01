@@ -7,3 +7,5 @@ logs/
 storage/
 *.log
 .DS_Store
+/capturas/
+/node_modules/

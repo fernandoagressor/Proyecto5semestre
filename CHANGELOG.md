@@ -6,6 +6,14 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Rediseño, fase 0: sistema visual** del tablero "NEXORA CORE — Vistas propuestas". Manrope
+  para títulos, Inter para el texto y JetBrains Mono para bitácoras; acento índigo `#4f46e5` sobre
+  fondo `#f4f6fb`. Piezas reutilizables en `frontend/src/app/shared/ui` (encabezado de página,
+  indicador, insignia con tono por estado, pestañas, filtros en píldoras, panel lateral y diálogo,
+  estados de carga/error/vacío, formatos de pesos y fechas de Colombia) y clases globales `nx-`
+  en `frontend/src/styles/_nx.scss` (tarjetas, botones, campos, tablas, avisos).
+- Capturas de pantalla de las rutas principales en escritorio y celular en cada PR (artefacto
+  `capturas` de la Prueba de humo E2E, `scripts/capturas.mjs`), con los errores de la consola.
 - Prueba de humo de punta a punta en el CI (`Prueba de humo E2E`): levanta el stack completo con
   `docker compose` y recorre frontend, sesión, dashboards, MySQL, MongoDB, sincronización y
   auditoría con `scripts/prueba-humo.sh`, que también sirve contra staging.
@@ -46,6 +54,10 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   MongoDB, documentos, tablas espejo e inicio de sesión.
 
 ### Cambiado
+- Menú lateral claro con grupos Inventario, Ventas y Gestión, logotipo de la empresa y usuario con
+  cierre de sesión; barra superior con la ubicación (grupo y pantalla). Aparecen en el menú
+  Comercial y Nuevo cliente y lote, que solo se abrían por enlace. Cada enlace exige los mismos
+  permisos y módulo que su ruta (prueba en `navigation.config.spec.ts`).
 - nginx solo expone `/actuator/health`, toma la IP real del cliente detrás de Caddy, acepta
   subidas de hasta 16 MB (igual que la API) y agrega cabeceras de seguridad y gzip.
 - `.env` sale del repositorio: las contraseñas que estuvieron publicadas no se usan en ningún
