@@ -125,6 +125,12 @@ if [[ "$STATUS" == 200 ]] && jq -e --argjson id "$USUARIO_ID" 'any(.[]; .id == $
 else
   falla "Directorio del equipo respondió $STATUS o no incluye al usuario: $(head -c 300 "$TMP/cuerpo")"
 fi
+api GET /api/v1/seguridad/roles
+if [[ "$STATUS" == 200 ]] && jq -e 'length > 0' "$TMP/cuerpo" > /dev/null; then
+  paso "Roles de la empresa: $(jq length "$TMP/cuerpo")"
+else
+  falla "Roles de la empresa respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+fi
 
 echo "3. Dashboards (MySQL, tablas espejo, Redis)"
 for tablero in gerencial comercial cartera servicio; do

@@ -132,6 +132,15 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     module: 'PORTAL_SERVICIO',
   },
   {
+    label: 'Usuarios y roles',
+    caption: 'Cuentas, roles y permisos',
+    route: '/usuarios',
+    icon: 'users',
+    group: 'gestion',
+    permissions: ['USUARIOS_VER', 'ROLES_VER'],
+    module: 'ADMINISTRACION_SEGURIDAD',
+  },
+  {
     label: 'Auditoría',
     caption: 'Eventos y alertas',
     route: '/auditoria',
