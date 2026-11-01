@@ -156,6 +156,14 @@ public class PagoService {
         return respuesta(pago);
     }
 
+    /** Solicitudes de reversión de la empresa (para aprobarlas o rechazarlas desde Cartera). */
+    @Transactional(readOnly = true)
+    public List<ReversionResponse> reversiones(ContextoUsuario contexto, com.inmobiliaria.inmobiliaria_api.entity.cartera.EstadoReversion estado) {
+        return reversionRepository.findDeEmpresa(contexto.empresaId(), estado, PageRequest.of(0, 100)).stream()
+                .map(ReversionResponse::from)
+                .toList();
+    }
+
     @Transactional
     public ReversionResponse solicitarReversion(ContextoUsuario contexto, Long pagoId, ReversionCrearRequest request) {
         Pago pago = obtenerParaActualizar(contexto, pagoId);

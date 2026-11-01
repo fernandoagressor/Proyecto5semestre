@@ -56,6 +56,19 @@ jobs:
           COMPOSE: "1"
         run: bash scripts/prueba-humo.sh
 
+      # Datos de ejemplo para que las capturas muestren tablas y tableros con contenido
+      # (proyectos, lotes, prospectos, oportunidades, reservas, tareas y PQRS).
+      - uses: grafana/setup-k6-action@v1
+      - name: Datos de ejemplo para las capturas
+        continue-on-error: true
+        env:
+          BASE_URL: http://localhost:4200
+          ADMIN_USUARIO: SUPERADMIN
+          ADMIN_PASSWORD: HumoAdminNueva2026!
+          CARGA_PASSWORD: CargaPrueba2026!
+          VOLUMEN: pequeno
+        run: k6 run --quiet -e VUS=4 carga/semilla.js 2>&1 | tail -15
+
       # Capturas de las pantallas principales (escritorio y celular) para revisar el diseño en el
       # PR sin levantar nada: quedan en el artefacto "capturas". No bloquea el PR.
       - name: Capturas de pantalla

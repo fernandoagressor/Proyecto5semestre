@@ -39,6 +39,15 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   crear contrato), contratos en tabla, expediente del contrato con la ruta Borrador → Negociación
   → En firma → Vigente → Saldado, firmantes, participantes y documentos; todos los formularios en
   paneles laterales o diálogos.
+- **Rediseño, fase 2c: Cartera** (`/cartera`) con el sistema visual y secciones nuevas:
+  **Refinanciaciones** (proponer sobre el saldo, aprobar, rechazar, aplicar al plan y ver las
+  cuotas propuestas), **Conciliación bancaria** (crear por cuenta y rango, cargar movimientos del
+  extracto, cruzarlos con pagos confirmados sugiriendo los de igual valor, ignorar y cerrar),
+  **reversiones pendientes** con aprobar o rechazar (solo otro usuario) y **Cierre de mes**.
+- `GET /api/v1/pagos/reversiones?estado=`: solicitudes de reversión de la empresa (antes no había
+  forma de encontrarlas para aprobarlas).
+- La Prueba de humo E2E carga datos de ejemplo (`carga/semilla.js`, volumen pequeño) antes de las
+  capturas, para que muestren tablas y tableros con contenido.
 - `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
   usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
 - Mensajes de resultado (`nx-toaster`) en todas las pantallas.
