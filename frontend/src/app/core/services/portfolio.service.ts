@@ -17,6 +17,13 @@ import {
   PortfolioContract,
   PortfolioPayment,
   PortfolioSummary,
+  PaymentReversal,
+  PortfolioClosing,
+  Reconciliation,
+  BankMovement,
+  Refinancing,
+  RefinancingRequest,
+  ReversalStatus,
 } from '../models/portfolio.models';
 
 @Injectable({ providedIn: 'root' })
@@ -139,5 +146,57 @@ export class PortfolioService {
 
   updateConfiguration(payload: Omit<PortfolioConfiguration, 'id' | 'empresaId' | 'version'>): Observable<PortfolioConfiguration> {
     return this.http.put<PortfolioConfiguration>(`${API_BASE_URL}/cartera/configuracion`, payload);
+  }
+
+  // ---------- Refinanciaciones ----------
+  refinancings(): Observable<Refinancing[]> {
+    return this.http.get<Refinancing[]>(`${API_BASE_URL}/cartera/refinanciaciones`);
+  }
+
+  proposeRefinancing(request: RefinancingRequest): Observable<Refinancing> {
+    return this.http.post<Refinancing>(`${API_BASE_URL}/cartera/refinanciaciones`, request);
+  }
+
+  refinancingAction(id: number, action: 'aprobar' | 'rechazar' | 'aplicar', motivo?: string): Observable<Refinancing> {
+    return this.http.patch<Refinancing>(`${API_BASE_URL}/cartera/refinanciaciones/${id}/${action}`, action === 'rechazar' ? { motivo } : {});
+  }
+
+  // ---------- Conciliación bancaria ----------
+  reconciliations(): Observable<Reconciliation[]> {
+    return this.http.get<Reconciliation[]>(`${API_BASE_URL}/conciliaciones-bancarias`);
+  }
+
+  createReconciliation(payload: { cuentaBancaria: string; fechaDesde: string; fechaHasta: string; saldoExtracto: number }): Observable<Reconciliation> {
+    return this.http.post<Reconciliation>(`${API_BASE_URL}/conciliaciones-bancarias`, payload);
+  }
+
+  addMovement(id: number, payload: { fechaMovimiento: string; referencia: string; descripcion: string | null; valor: number }): Observable<BankMovement> {
+    return this.http.post<BankMovement>(`${API_BASE_URL}/conciliaciones-bancarias/${id}/movimientos`, payload);
+  }
+
+  matchMovement(id: number, movementId: number, pagoId: number): Observable<BankMovement> {
+    return this.http.patch<BankMovement>(`${API_BASE_URL}/conciliaciones-bancarias/${id}/movimientos/${movementId}/conciliar`, { pagoId });
+  }
+
+  ignoreMovement(id: number, movementId: number): Observable<BankMovement> {
+    return this.http.patch<BankMovement>(`${API_BASE_URL}/conciliaciones-bancarias/${id}/movimientos/${movementId}/ignorar`, {});
+  }
+
+  closeReconciliation(id: number): Observable<Reconciliation> {
+    return this.http.patch<Reconciliation>(`${API_BASE_URL}/conciliaciones-bancarias/${id}/cerrar`, {});
+  }
+
+  // ---------- Reversiones y cierre ----------
+  reversals(estado: ReversalStatus | '' = 'SOLICITADA'): Observable<PaymentReversal[]> {
+    const params = estado ? new HttpParams().set('estado', estado) : undefined;
+    return this.http.get<PaymentReversal[]>(`${API_BASE_URL}/pagos/reversiones`, { params });
+  }
+
+  reversalAction(paymentId: number, reversalId: number, action: 'aprobar' | 'rechazar'): Observable<unknown> {
+    return this.http.patch(`${API_BASE_URL}/pagos/${paymentId}/reversiones/${reversalId}/${action}`, {});
+  }
+
+  closePeriod(periodo: string): Observable<PortfolioClosing> {
+    return this.http.post<PortfolioClosing>(`${API_BASE_URL}/cartera/cierres`, { periodo });
   }
 }

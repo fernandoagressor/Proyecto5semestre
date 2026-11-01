@@ -84,7 +84,7 @@ describe('PortfolioPage', () => {
     expect(component.feedback()).toBe('La gestión preventiva quedó registrada.');
     expect(component.selectedCollections().length).toBe(1);
     expect(fixture.nativeElement.textContent).toContain('Acuerdo preventivo');
-    expect(fixture.nativeElement.textContent).toContain('$500,000');
+    expect(fixture.nativeElement.textContent).toContain('500.000');
   });
 
   it('loads and displays the persisted history for the selected installment', async () => {
@@ -134,7 +134,7 @@ describe('PortfolioPage', () => {
     expect(component.collectionView()).toBe('historial');
     expect(fixture.nativeElement.textContent).toContain('Promesa acordada');
     expect(fixture.nativeElement.textContent).toContain('Cliente confirma transferencia.');
-    expect(fixture.nativeElement.textContent).toContain('$750,000');
+    expect(fixture.nativeElement.textContent).toContain('750.000');
   });
 });
 

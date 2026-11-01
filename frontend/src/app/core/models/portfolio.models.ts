@@ -163,3 +163,83 @@ export interface PortfolioConfiguration {
   autoGenerarPlan: boolean;
   version: number;
 }
+
+// ---------- Rediseño fase 2c: refinanciaciones, conciliación, reversiones y cierres ----------
+export type RefinancingStatus = 'SOLICITADA' | 'EN_ESTUDIO' | 'APROBADA' | 'RECHAZADA' | 'APLICADA';
+
+export interface Refinancing {
+  id: number;
+  codigo: string;
+  contratoId: number;
+  saldoRefinanciado: number;
+  numeroCuotas: number;
+  tasaNueva: number;
+  fechaPrimeraCuota: string;
+  motivo: string;
+  solicitadoPor: number | null;
+  aprobadoPor: number | null;
+  estado: RefinancingStatus;
+  fechaDecision: string | null;
+  planPagoGeneradoId: number | null;
+  cuotas: { numero: number; fecha: string; capital: number; interes: number; total: number }[];
+}
+
+export interface RefinancingRequest {
+  contratoId: number;
+  numeroCuotas: number;
+  /** Fracción: 0,12 = 12 % EA. */
+  tasaEfectivaAnual: number;
+  fechaPrimeraCuota: string;
+  motivo: string;
+}
+
+export type ReconciliationStatus = 'BORRADOR' | 'EN_PROCESO' | 'CERRADA' | 'ANULADA';
+export type MovementStatus = 'PENDIENTE' | 'CONCILIADO' | 'DIFERENCIA' | 'IGNORADO';
+
+export interface BankMovement {
+  id: number;
+  fecha: string;
+  referencia: string;
+  descripcion: string | null;
+  valor: number;
+  pagoId: number | null;
+  estado: MovementStatus;
+  diferencia: number | null;
+}
+
+export interface Reconciliation {
+  id: number;
+  codigo: string;
+  cuentaBancaria: string;
+  fechaDesde: string;
+  fechaHasta: string;
+  saldoExtracto: number;
+  totalConciliado: number;
+  estado: ReconciliationStatus;
+  responsableId: number | null;
+  cerradaEn: string | null;
+  movimientos: BankMovement[];
+}
+
+export type ReversalStatus = 'SOLICITADA' | 'APROBADA' | 'RECHAZADA' | 'EJECUTADA';
+
+export interface PaymentReversal {
+  id: number;
+  pagoId: number;
+  valor: number;
+  motivo: string;
+  solicitadoPor: number | null;
+  aprobadoPor: number | null;
+  estado: ReversalStatus;
+  ejecutadaEn: string | null;
+}
+
+export interface PortfolioClosing {
+  id: number;
+  periodo: string;
+  saldoTotal: number;
+  saldoVencido: number;
+  recaudoPeriodo: number;
+  indiceMora: number;
+  cerradoEn: string;
+}
