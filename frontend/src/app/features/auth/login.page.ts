@@ -1,10 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
@@ -15,15 +11,7 @@ import { BrandMarkComponent } from '../../shared/components/brand-mark.component
 
 @Component({
   selector: 'app-login-page',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatProgressSpinnerModule,
-    AppIconComponent,
-    BrandMarkComponent,
-  ],
+  imports: [ReactiveFormsModule, AppIconComponent, BrandMarkComponent],
   templateUrl: './login.page.html',
   styleUrl: './login.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +22,13 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  /** Mensajes rotativos del panel de la izquierda (cada 6 s). */
+  readonly slides = [
+    { tag: 'Inventario', title: 'Cada lote con su estado, precio e historia.' },
+    { tag: 'Ventas', title: 'De la reserva a la firma del contrato, sin papeles sueltos.' },
+    { tag: 'Cartera', title: 'Cuotas, pagos y mora al día, con alertas a tiempo.' },
+  ];
+  readonly slide = signal(0);
   readonly loading = signal(false);
   readonly showPassword = signal(false);
   readonly apiError = signal<string | null>(null);
@@ -44,6 +39,11 @@ export class LoginPage {
     identificador: ['', [Validators.required, Validators.maxLength(180)]],
     password: ['', [Validators.required, Validators.maxLength(200)]],
   });
+
+  constructor() {
+    const timer = setInterval(() => this.slide.update((i) => (i + 1) % this.slides.length), 6000);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
 
   submit(): void {
     this.apiError.set(null);

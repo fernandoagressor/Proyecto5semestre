@@ -1,117 +1,162 @@
-<section class="dashboard">
-  <header class="dashboard-hero">
-    <div class="hero-copy">
-      <span class="eyebrow">CENTRO DE INTELIGENCIA · {{ today }}</span>
-      <h2>{{ greeting() }}, <span>{{ auth.user()?.nombreUsuario }}</span>.</h2>
-      <p>{{ title() }} con información real y exclusiva de tu empresa.</p>
-      <div class="hero-context"><i></i> Espacio empresarial protegido <span>·</span> {{ periodDescription() }}</div>
-    </div>
-    <div class="dashboard-controls">
-      @if (supportsPeriodFilter()) {
-        <label>
-          <span>PERIODO ANALIZADO</span>
-          <select #periodSelect [value]="period()" (change)="selectPeriod(periodSelect.value)">
-            @for (option of periodOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
-          </select>
-        </label>
-      }
-      @if (projects().length > 0 && kind() !== 'cliente') {
-        <label>
-          <span>PROYECTO ANALIZADO</span>
-          <select #projectSelect [value]="selectedProjectId() ?? ''" (change)="selectProject(projectSelect.value)">
-            <option value="">Todos los proyectos de mi empresa</option>
-            @for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }
-          </select>
-        </label>
-      }
-      <button class="refresh-button" type="button" (click)="load()" [disabled]="loading()"><app-icon name="refresh" /> Actualizar datos</button>
-    </div>
-  </header>
+<div class="nx-page">
+  <nx-page-header [eyebrow]="greeting() + ', ' + (auth.user()?.nombreUsuario ?? '')" [title]="title()" [description]="'Corte al ' + today + ' · ' + periodDescription()">
+    @if (supportsPeriodFilter()) {
+      <div class="periods" role="group" aria-label="Periodo">
+        @for (option of periodOptions; track option.value) {
+          <button type="button" [class.on]="period() === option.value" [attr.aria-pressed]="period() === option.value" (click)="selectPeriod(option.value)">{{ option.label }}</button>
+        }
+      </div>
+    }
+    @if (projects().length > 0 && kind() !== 'cliente') {
+      <label class="nx-field">
+        <span>Proyecto</span>
+        <select class="nx-select" [value]="selectedProjectId() ?? ''" (change)="selectProject($any($event.target).value)">
+          <option value="">Todos los proyectos</option>
+          @for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }
+        </select>
+      </label>
+    }
+    <button class="nx-btn nx-btn--ghost nx-btn--icon" type="button" (click)="load()" [disabled]="loading()" aria-label="Actualizar" title="Actualizar"><app-icon name="refresh" /></button>
+  </nx-page-header>
 
   @if (availableViews().length > 1) {
-    <nav class="insight-navigation" aria-label="Vistas analíticas disponibles">
+    <nav class="views" aria-label="Vistas del tablero">
       @for (view of availableViews(); track view.kind) {
-        <button type="button" [class.active]="kind() === view.kind" (click)="selectKind(view.kind)"><app-icon [name]="view.icon" /> {{ view.label }}</button>
+        <button type="button" [class.on]="kind() === view.kind" (click)="selectKind(view.kind)"><app-icon [name]="view.icon" /> {{ view.label }}</button>
       }
-      @if (relatedLoading()) { <span class="sync-indicator"><i></i> Integrando indicadores</span> }
+      @if (relatedLoading()) { <span class="sync"><span class="nx-spinner"></span> Integrando indicadores</span> }
     </nav>
   }
 
   @if (!loading() && kind() !== 'cliente' && projects().length === 0 && auth.hasAuthority('PROYECTOS_CREAR')) {
-    <section class="workspace-onboarding">
-      <div class="onboarding-copy"><span class="eyebrow">PRIMEROS PASOS</span><h3>Tu empresa está lista para comenzar</h3><p>La configuración de seguridad ya está activa. Crea el primer proyecto para habilitar inventario, clientes y reservas.</p></div>
+    <section class="nx-card nx-card--pad onboarding">
+      <div><span class="nx-eyebrow">Primeros pasos</span><h2 class="nx-section-title">Su empresa está lista para comenzar</h2><p class="nx-muted">Cree el primer proyecto para habilitar inventario, clientes y reservas.</p></div>
       <ol>
-        <li class="active"><span>1</span><div><strong>Crear proyecto</strong><small>Datos generales y capacidad</small></div><a routerLink="/proyectos">Comenzar <app-icon name="chevron" /></a></li>
-        <li><span>2</span><div><strong>Cargar inventario</strong><small>Etapas, manzanas y lotes</small></div></li>
-        <li><span>3</span><div><strong>Crear cliente</strong><small>Seleccionar lote y reservar</small></div></li>
+        <li class="on"><span>1</span><div><b>Crear proyecto</b><small>Datos generales y capacidad</small></div><a class="nx-btn nx-btn--sm nx-btn--primary" routerLink="/proyectos">Comenzar</a></li>
+        <li><span>2</span><div><b>Cargar inventario</b><small>Etapas, manzanas y lotes</small></div></li>
+        <li><span>3</span><div><b>Crear cliente</b><small>Elegir lote y reservar</small></div></li>
       </ol>
     </section>
   }
 
   @if (error()) {
-    <div class="error-state" role="alert"><app-icon name="warning" /><div><strong>{{ error() }}</strong><span>Verifica la conexión con la API y vuelve a intentarlo.</span></div><button type="button" (click)="load()">Reintentar</button></div>
-  } @else if (loading()) {
-    <div class="metric-grid skeleton-grid">@for (item of [1,2,3,4]; track item) { <div class="metric-card skeleton"></div> }</div>
-    <div class="dashboard-grid"><div class="panel skeleton skeleton--large"></div><div class="panel skeleton skeleton--large"></div></div>
+    <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span style="flex: 1">{{ error() }}</span><button type="button" class="nx-btn nx-btn--sm" (click)="load()">Reintentar</button></div>
   } @else {
-    <div class="metric-grid">
-      @for (metric of metrics(); track metric.label) {
-        <article class="metric-card" [class]="'metric-card tone-' + metric.tone">
-          <div class="metric-card__heading"><span class="metric-icon"><app-icon [name]="metric.icon" /></span><span class="live-indicator"><i></i> Actualizado</span></div>
-          <span class="metric-label">{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.detail }}</small>
-          <span class="metric-spark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-        </article>
+    <section class="nx-grid nx-grid--kpi" aria-label="Indicadores clave">
+      @if (loading()) {
+        @for (item of [1, 2, 3, 4]; track item) { <nx-kpi label="Cargando" [loading]="true" /> }
+      } @else {
+        @for (metric of metrics(); track metric.label) {
+          <nx-kpi [label]="metric.label" [value]="metric.value" [hint]="metric.detail" [icon]="metric.icon" [tone]="kpiTone(metric.tone)" />
+        }
       }
-    </div>
+    </section>
 
-    <div class="analytics-grid">
-      <article class="panel analysis-featured">
-        <header class="panel__header"><div><span>ANÁLISIS PRINCIPAL</span><h3>{{ chartTitle() }}</h3><p>Comparación construida a partir de registros reales.</p></div><span class="data-source">Tu empresa</span></header>
-        <app-insight-chart [points]="chartSeries()" variant="bars" [format]="kind() === 'servicio' ? 'number' : 'currency'" />
-      </article>
-
-      <article class="panel distribution-panel">
-        <header class="panel__header"><div><span>COMPOSICIÓN</span><h3>Distribución operativa</h3><p>Participación por categoría.</p></div></header>
-        <app-insight-chart [points]="distributionSeries()" variant="donut" totalLabel="registros" />
-      </article>
-
-      <article class="panel finance-panel">
-        <header class="panel__header"><div><span>FLUJO DE VALOR</span><h3>Relación financiera</h3><p>Ventas, recaudo y cartera disponibles.</p></div><span class="data-source">COP</span></header>
-        <app-insight-chart [points]="financeSeries()" variant="line" format="currency" />
-      </article>
-
-      <article class="panel performance-panel">
-        <header class="panel__header"><div><span>EFICIENCIA</span><h3>Salud del negocio</h3><p>Indicadores calculados sobre datos autorizados.</p></div></header>
-        @if (performance().length > 0) {
-          <div class="performance-list">
-            @for (indicator of performance(); track indicator.label) {
-              <div class="performance-item" [class]="'performance-item tone-' + indicator.tone"><div><strong>{{ indicator.label }}</strong><span>{{ indicator.display }}</span></div><i><b [style.width.%]="indicator.value"></b></i><small>{{ indicator.detail }}</small></div>
+    @if (!loading()) {
+      <div class="grid-main">
+        <section class="nx-card nx-card--pad nx-card--stack" aria-label="Análisis principal">
+          <div class="nx-section-head"><h2 class="nx-section-title">{{ chartTitle() }}</h2><span class="nx-muted small">{{ kind() === 'servicio' ? 'Cantidad' : 'Pesos' }}</span></div>
+          <app-insight-chart [points]="chartSeries()" variant="bars" [format]="kind() === 'servicio' ? 'number' : 'currency'" />
+        </section>
+        <section class="nx-card nx-card--pad nx-card--stack" aria-label="Requiere atención hoy">
+          <h2 class="nx-section-title">Requiere atención hoy</h2>
+          <div class="alerts">
+            @for (alert of alerts(); track alert.title) {
+              <div class="alert" [attr.data-tone]="alert.tone"><span><app-icon [name]="alert.icon" /></span><div><b>{{ alert.title }}</b><small>{{ alert.description }}</small></div></div>
             }
           </div>
-        } @else { <div class="panel-empty">Los indicadores aparecerán cuando existan datos registrados.</div> }
-      </article>
+          @if (performance().length > 0) {
+            <h3 class="nx-section-title small">Salud del negocio</h3>
+            @for (indicator of performance(); track indicator.label) {
+              <div class="health">
+                <div><span>{{ indicator.label }}</span><b>{{ indicator.display }}</b></div>
+                <div class="nx-progress" [class.nx-progress--success]="indicator.tone === 'green'" [class.nx-progress--warning]="indicator.tone === 'orange'"><span [style.width.%]="indicator.value"></span></div>
+              </div>
+            }
+          }
+        </section>
+      </div>
 
-      <article class="panel operations-panel">
-        <header class="panel__header"><div><span>ACTIVIDAD</span><h3>Pulso de la operación</h3><p>Movimientos agrupados por proceso.</p></div></header>
-        <app-insight-chart [points]="operationsSeries()" variant="bars" />
-      </article>
+      <div class="nx-grid nx-grid--2">
+        @if (aging().length > 0) {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Cartera vencida por edades">
+            <div class="nx-section-head"><h2 class="nx-section-title">Cartera vencida por edades</h2><a class="nx-btn nx-btn--link" routerLink="/cartera">Ir a cartera</a></div>
+            <div class="stack-bar" role="img" aria-label="Distribución de la cartera vencida por edades">
+              @for (a of aging(); track a.label) { <span [style.width.%]="a.pct" [style.background]="a.color" [title]="a.label + ': ' + a.value"></span> }
+            </div>
+            <div class="aging">
+              @for (a of aging(); track a.label) {
+                <div><span><i [style.background]="a.color"></i>{{ a.label }}</span><b>{{ a.value }}</b><small>{{ a.count }} cuotas</small></div>
+              }
+            </div>
+          </section>
+        } @else {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Distribución">
+            <h2 class="nx-section-title">Distribución operativa</h2>
+            <app-insight-chart [points]="distributionSeries()" variant="donut" totalLabel="registros" />
+          </section>
+        }
 
-      @if (advisorSeries().length > 0) {
-        <article class="panel advisor-panel"><header class="panel__header"><div><span>EQUIPO COMERCIAL</span><h3>Ventas por asesor</h3><p>Resultados confirmados por responsable.</p></div></header><app-insight-chart [points]="advisorSeries()" variant="bars" format="currency" /></article>
-      } @else if (projectSeries().length > 0) {
-        <article class="panel advisor-panel"><header class="panel__header"><div><span>PORTAFOLIO</span><h3>Avance por proyecto</h3><p>Porcentaje operativo registrado.</p></div></header><app-insight-chart [points]="projectSeries()" variant="bars" /></article>
-      }
+        @if (funnel().length > 0) {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Embudo comercial">
+            <div class="nx-section-head"><h2 class="nx-section-title">Embudo comercial</h2><a class="nx-btn nx-btn--link" routerLink="/crm">Ir a comercial</a></div>
+            @for (f of funnel(); track f.label) {
+              <div class="funnel-row">
+                <span>{{ f.label }}</span>
+                <div class="funnel-bar"><span [style.width.%]="f.width">{{ f.count }}</span></div>
+                <small>{{ f.conv }}</small>
+              </div>
+            }
+            <p class="nx-section-subtitle">El porcentaje es la conversión desde la etapa anterior.</p>
+          </section>
+        } @else {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Pulso de la operación">
+            <h2 class="nx-section-title">Pulso de la operación</h2>
+            <app-insight-chart [points]="operationsSeries()" variant="bars" />
+          </section>
+        }
+      </div>
 
-      <article class="panel alerts-panel">
-        <header class="panel__header"><div><span>SEGUIMIENTO</span><h3>Prioridades del día</h3><p>Eventos que merecen atención.</p></div></header>
-        <div class="alerts-list">@for (alert of alerts(); track alert.title) { <div [class]="'alert-item alert-item--' + alert.tone"><span><app-icon [name]="alert.icon" /></span><div><strong>{{ alert.title }}</strong><small>{{ alert.description }}</small></div></div> }</div>
-      </article>
+      <div class="nx-grid nx-grid--2">
+        @if (inventory().length > 0) {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Inventario por proyecto">
+            <div class="nx-section-head"><h2 class="nx-section-title">Inventario de lotes por proyecto</h2><a class="nx-btn nx-btn--link" routerLink="/inventario">Ver lotes</a></div>
+            @for (i of inventory(); track i.project.id) {
+              <div class="inv">
+                <div class="inv__head"><b>{{ i.project.nombre }}</b><span>{{ i.summary.total }} lotes · {{ i.pctSold }} % vendido</span></div>
+                <div class="inv__bar">
+                  <span class="sold" [style.flex]="i.summary.vendidos"></span>
+                  <span class="res" [style.flex]="i.summary.reservados"></span>
+                  <span class="free" [style.flex]="i.summary.disponibles"></span>
+                  <span class="blocked" [style.flex]="i.summary.bloqueados"></span>
+                </div>
+                <div class="inv__legend"><span>Vendidos {{ i.summary.vendidos }}</span><span>Reservados {{ i.summary.reservados }}</span><span>Disponibles {{ i.summary.disponibles }}</span>@if (i.summary.bloqueados) { <span>Bloqueados {{ i.summary.bloqueados }}</span> }</div>
+              </div>
+            }
+            <div class="legend"><span><i class="sold"></i>Vendido</span><span><i class="res"></i>Reservado</span><span><i class="free"></i>Disponible</span></div>
+          </section>
+        } @else {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Relación financiera">
+            <h2 class="nx-section-title">Relación financiera</h2>
+            <app-insight-chart [points]="financeSeries()" variant="line" format="currency" />
+          </section>
+        }
 
-      <article class="panel actions-panel">
-        <header class="panel__header"><div><span>ACCESOS DIRECTOS</span><h3>Continúa tu operación</h3><p>Acciones disponibles para tu rol.</p></div></header>
-        <div class="quick-actions">@for (action of quickActions; track action.route) { @if (isQuickActionVisible(action)) { <a [routerLink]="action.route"><span><app-icon [name]="action.icon" /></span><div><strong>{{ action.label }}</strong><small>{{ action.caption }}</small></div><app-icon name="chevron" /></a> } }</div>
-        <div class="security-note"><span class="shield"><app-icon name="audit" /></span><div><strong>Datos privados de tu empresa</strong><small>Los permisos y el contexto mantienen aislada cada organización.</small></div></div>
-      </article>
-    </div>
+        <section class="nx-card nx-card--pad nx-card--stack" aria-label="Accesos directos">
+          <h2 class="nx-section-title">Continúe su operación</h2>
+          <div class="actions">
+            @for (action of quickActions; track action.route) {
+              @if (isQuickActionVisible(action)) {
+                <a [routerLink]="action.route"><span><app-icon [name]="action.icon" /></span><div><b>{{ action.label }}</b><small>{{ action.caption }}</small></div><app-icon name="chevron" /></a>
+              }
+            }
+          </div>
+          @if (advisorSeries().length > 0) {
+            <h3 class="nx-section-title small">Ventas por asesor</h3>
+            <app-insight-chart [points]="advisorSeries()" variant="bars" format="currency" />
+          }
+        </section>
+      </div>
+    }
   }
-</section>
+</div>
