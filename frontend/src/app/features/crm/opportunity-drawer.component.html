@@ -1,0 +1,205 @@
+<nx-drawer [(open)]="open" [title]="title()" [subtitle]="subtitle()" width="620px" [dismissible]="!busy()">
+  @if (loading() && !opportunity()) {
+    <nx-state [loading]="true" />
+  } @else if (opportunity(); as o) {
+    <div class="opp">
+      <div class="nx-row">
+        <span class="stage-pill" [style.--stage]="stage()?.color">{{ stage()?.label }}</span>
+        <nx-badge [status]="o.estado" />
+        @if (temperature(); as t) { <nx-badge [tone]="t.tone" [dot]="true">{{ t.label }}</nx-badge> }
+      </div>
+
+      <ol class="stepper" aria-label="Avance en el embudo">
+        @for (s of stages; track s.value; let i = $index) {
+          <li [class.done]="i < stageIndex()" [class.current]="i === stageIndex()" [title]="s.label"><span></span><small>{{ s.label }}</small></li>
+        }
+      </ol>
+
+      <dl class="facts">
+        <div><dt>Valor estimado</dt><dd>{{ o.valorEstimado | cop }}</dd></div>
+        <div><dt>Asesor</dt><dd>{{ team.name(o.asesorId) }}</dd></div>
+        <div><dt>Origen</dt><dd>{{ source() }}</dd></div>
+        <div><dt>Contacto</dt><dd>{{ prospect()?.telefono || prospect()?.correo || '—' }}</dd></div>
+        <div><dt>Última actividad</dt><dd>{{ o.fechaUltimaActividad ? (o.fechaUltimaActividad | fecha: 'relativa') : '—' }}</dd></div>
+        <div><dt>Próxima acción</dt><dd [class.late]="isLate()">{{ o.fechaProximaAccion ? (o.fechaProximaAccion | fecha: 'hora') : 'Sin agendar' }}</dd></div>
+      </dl>
+
+      <div class="prob">
+        <span>Probabilidad de cierre</span>
+        <div class="nx-progress"><span [style.width.%]="o.probabilidadCierre"></span></div>
+        <b>{{ o.probabilidadCierre | porcentaje: 0 }}</b>
+      </div>
+
+      @if (o.motivoPerdida) {
+        <div class="nx-alert nx-alert--danger"><app-icon name="info" /><span><b>Motivo de pérdida:</b> {{ o.motivoPerdida }}</span></div>
+      }
+
+      <div class="actions">
+        @if (isOpen()) {
+          @if (can.advance && next()) {
+            <button type="button" class="nx-btn nx-btn--sm nx-btn--primary" (click)="setMode('avanzar')" [class.on]="mode() === 'avanzar'">Avanzar a {{ next()!.label }}</button>
+          } @else if (can.advance) {
+            <button type="button" class="nx-btn nx-btn--sm" (click)="setMode('avanzar')">Cambiar etapa</button>
+          }
+          @if (can.agenda) {
+            <button type="button" class="nx-btn nx-btn--sm" (click)="setMode('actividad')"><app-icon name="edit" /> Actividad</button>
+            <button type="button" class="nx-btn nx-btn--sm" (click)="setMode('cita')"><app-icon name="calendar" /> Cita</button>
+          }
+          @if (can.simulate) {
+            <a class="nx-btn nx-btn--sm" routerLink="/simulador" [queryParams]="{ oportunidad: o.id }"><app-icon name="calculator" /> Simular</a>
+          }
+          @if (can.edit) {
+            <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="setMode('editar')">Editar</button>
+          }
+          @if (can.lose) {
+            <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost danger" (click)="setMode('perdida')">Perdida</button>
+          }
+        } @else if (can.reopen && (o.estado === 'PERDIDA' || o.estado === 'CANCELADA')) {
+          <button type="button" class="nx-btn nx-btn--sm" (click)="reopen()" [disabled]="busy()"><app-icon name="refresh" /> Reabrir</button>
+        }
+      </div>
+
+      @switch (mode()) {
+        @case ('avanzar') {
+          <form class="inline-form" [formGroup]="advanceForm" (ngSubmit)="submitAdvance()">
+            <div class="nx-grid nx-grid--2">
+              <label class="nx-field">
+                <span>Etapa</span>
+                <select class="nx-select" formControlName="etapa" (change)="pickStage($any($event.target).value)">
+                  @for (s of stages; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+                </select>
+              </label>
+              <label class="nx-field"><span>Probabilidad (%)</span><input class="nx-input" type="number" min="0" max="100" formControlName="probabilidad" /></label>
+            </div>
+            <label class="nx-field"><span>Observación</span><input class="nx-input" formControlName="observacion" placeholder="Cliente aceptó visitar el proyecto el sábado" /></label>
+            <div class="nx-row nx-row--end">
+              <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="mode.set(null)">Cancelar</button>
+              <button type="submit" class="nx-btn nx-btn--sm nx-btn--primary" [disabled]="busy()">Guardar etapa</button>
+            </div>
+          </form>
+        }
+        @case ('actividad') {
+          <form class="inline-form" [formGroup]="activityForm" (ngSubmit)="submitActivity()">
+            <div class="nx-grid nx-grid--2">
+              <label class="nx-field">
+                <span>Tipo</span>
+                <select class="nx-select" formControlName="tipo">
+                  @for (t of activityTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+                </select>
+              </label>
+              <label class="nx-field"><span>Cuándo</span><input class="nx-input" type="datetime-local" formControlName="fechaActividad" /></label>
+            </div>
+            <label class="nx-field"><span>Resultado</span><input class="nx-input" formControlName="resultado" placeholder="Interesado, pide simulación a 36 cuotas" /></label>
+            <label class="nx-field"><span>Descripción</span><textarea class="nx-textarea" formControlName="descripcion"></textarea></label>
+            <div class="nx-grid nx-grid--2">
+              <label class="nx-field"><span>Próximo paso</span><input class="nx-input" formControlName="proximaAccion" placeholder="Enviar simulación" /></label>
+              <label class="nx-field"><span>Para cuándo</span><input class="nx-input" type="datetime-local" formControlName="fechaProximaAccion" /></label>
+            </div>
+            <div class="nx-row nx-row--end">
+              <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="mode.set(null)">Cancelar</button>
+              <button type="submit" class="nx-btn nx-btn--sm nx-btn--primary" [disabled]="busy()">Registrar</button>
+            </div>
+          </form>
+        }
+        @case ('cita') {
+          <form class="inline-form" [formGroup]="appointmentForm" (ngSubmit)="submitAppointment()">
+            <div class="nx-grid nx-grid--2">
+              <label class="nx-field">
+                <span>Tipo</span>
+                <select class="nx-select" formControlName="tipo">
+                  @for (t of appointmentTypes; track t) { <option [value]="t">{{ t.charAt(0) + t.slice(1).toLowerCase() }}</option> }
+                </select>
+              </label>
+              <label class="nx-field"><span>Inicio</span><input class="nx-input" type="datetime-local" formControlName="fechaInicio" /></label>
+            </div>
+            <div class="nx-grid nx-grid--2">
+              <label class="nx-field">
+                <span>Duración</span>
+                <select class="nx-select" formControlName="duracion">
+                  <option [ngValue]="30">30 min</option><option [ngValue]="60">1 hora</option><option [ngValue]="90">1 h 30</option><option [ngValue]="120">2 horas</option>
+                </select>
+              </label>
+              <label class="nx-field"><span>Lugar</span><input class="nx-input" formControlName="lugar" /></label>
+            </div>
+            <div class="nx-row nx-row--end">
+              <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="mode.set(null)">Cancelar</button>
+              <button type="submit" class="nx-btn nx-btn--sm nx-btn--primary" [disabled]="busy()">Agendar</button>
+            </div>
+          </form>
+        }
+        @case ('perdida') {
+          <form class="inline-form" [formGroup]="loseForm" (ngSubmit)="submitLose()">
+            <label class="nx-field"><span>Motivo</span><input class="nx-input" formControlName="motivo" placeholder="Compró en otro proyecto" /></label>
+            <div class="nx-row nx-row--end">
+              <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="mode.set(null)">Cancelar</button>
+              <button type="submit" class="nx-btn nx-btn--sm nx-btn--danger" [disabled]="busy() || loseForm.invalid">Cerrar como perdida</button>
+            </div>
+          </form>
+        }
+        @case ('editar') {
+          <form class="inline-form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
+            <div class="nx-grid nx-grid--2">
+              <label class="nx-field"><span>Valor estimado</span><input class="nx-input" nexoraMoney formControlName="valorEstimado" /></label>
+              <label class="nx-field"><span>Próxima acción</span><input class="nx-input" type="datetime-local" formControlName="fechaProximaAccion" /></label>
+            </div>
+            <div class="nx-row nx-row--end">
+              <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="mode.set(null)">Cancelar</button>
+              <button type="submit" class="nx-btn nx-btn--sm nx-btn--primary" [disabled]="busy()">Guardar</button>
+            </div>
+          </form>
+        }
+      }
+
+      <nx-tabs [items]="sections" [(active)]="section" label="Detalle de la oportunidad" />
+      @if (section() === 'actividad') {
+        <nx-state [loading]="loading()" [empty]="timeline().length === 0" emptyIcon="history" emptyTitle="Sin actividad registrada">
+          <ol class="timeline">
+            @for (item of timeline(); track $index) {
+              <li [attr.data-tone]="item.tone">
+                <span class="timeline__icon"><app-icon [name]="item.icon" /></span>
+                <div>
+                  <b>{{ item.title }}</b>
+                  @if (item.detail) { <p>{{ item.detail }}</p> }
+                  <small>{{ when(item.at) }} · {{ item.who }}</small>
+                </div>
+              </li>
+            }
+          </ol>
+        </nx-state>
+      } @else {
+        <div class="nx-stack">
+          @for (row of lotsWithInfo(); track row.relation.id) {
+            <div class="lot-row" [class.chosen]="row.relation.seleccionado">
+              <div>
+                <b>{{ row.lot?.codigo ?? 'Lote #' + row.relation.loteId }}</b>
+                <small>{{ row.lot ? (row.lot.areaM2 + ' m² · ' + (row.lot.valorLista | cop)) : '' }}</small>
+              </div>
+              @if (row.relation.seleccionado) {
+                <nx-badge tone="success">Elegido</nx-badge>
+              } @else if (can.edit && isOpen()) {
+                <button type="button" class="nx-btn nx-btn--xs" (click)="selectLot(row.relation)" [disabled]="busy()">Elegir</button>
+              }
+              @if (can.edit && isOpen()) {
+                <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="removeLot(row.relation)" [disabled]="busy()" aria-label="Quitar lote"><app-icon name="close" /></button>
+              }
+            </div>
+          } @empty {
+            <p class="nx-muted">Sin lotes vinculados.</p>
+          }
+          @if (can.edit && isOpen()) {
+            <div class="nx-toolbar">
+              <label class="nx-field" style="flex: 1">
+                <span>Vincular lote disponible</span>
+                <select class="nx-select nx-select--sm" [value]="lotToAdd()" (change)="lotToAdd.set($any($event.target).value)">
+                  <option value="">Seleccione…</option>
+                  @for (l of availableLots(); track l.id) { <option [value]="l.id">{{ l.codigo }} · {{ l.areaM2 }} m² · {{ l.valorLista | cop: 'compact' }}</option> }
+                </select>
+              </label>
+              <button type="button" class="nx-btn nx-btn--sm" (click)="addLot()" [disabled]="busy() || !lotToAdd()">Vincular</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</nx-drawer>

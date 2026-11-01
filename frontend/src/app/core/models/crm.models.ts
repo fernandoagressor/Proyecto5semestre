@@ -125,3 +125,43 @@ export interface CreateSimulationPayload {
   fechaPrimeraCuota: string;
   vigenteHasta: string;
 }
+
+export type ActivityType = 'LLAMADA' | 'MENSAJE' | 'CORREO' | 'VISITA' | 'NOTA' | 'PROPUESTA';
+
+export interface CommercialActivity {
+  id: number;
+  oportunidadId: number;
+  asesorId: number | null;
+  tipo: ActivityType;
+  resultado: string | null;
+  descripcion: string;
+  fechaActividad: string;
+  proximaAccion: string | null;
+  fechaProximaAccion: string | null;
+  creadoEn: string;
+}
+
+export interface ActivityPayload {
+  tipo: ActivityType;
+  resultado: string | null;
+  descripcion: string;
+  fechaActividad: string;
+  proximaAccion: string | null;
+  fechaProximaAccion: string | null;
+}
+
+export interface StageHistory {
+  id: number;
+  etapaAnterior: OpportunityStage | null;
+  etapaNueva: OpportunityStage;
+  usuarioId: number | null;
+  observacion: string | null;
+  creadoEn: string;
+}
+
+export interface AppointmentPayload {
+  tipo: string;
+  fechaInicio: string;
+  fechaFin: string;
+  lugar: string | null;
+}

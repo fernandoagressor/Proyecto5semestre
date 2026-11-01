@@ -22,6 +22,18 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   - Auditoría (`/auditoria`): alertas de anomalías (asignar, cerrar como atendida o descartar),
     bitácora filtrable por módulo, usuario, acción y rango con el antes y el después de cada
     cambio, exportación a CSV con motivo (queda registrada en la API) y tareas vencidas.
+- **Rediseño, fase 2a: Comercial y Simulador.**
+  - Comercial (`/crm`): indicadores (valor del embudo, abiertas, ganadas y tasa de cierre del
+    mes, días al cierre), embudo en **tablero** por etapa (con el total real de cada etapa) o en
+    **tabla** paginada, y un **panel de la oportunidad** con avance por etapas, datos del cliente,
+    probabilidad, línea de tiempo (actividades, cambios de etapa y citas), registrar actividad,
+    agendar cita, editar valor y próxima acción, cerrar como perdida, reabrir y lotes de interés.
+    Prospectos con filtros, editar, calificar, reasignar y crear oportunidad; agenda con
+    confirmar, realizada, reprogramar, no asistió y cancelar.
+  - Simulador (`/simulador`, nuevo en el menú): condiciones con deslizadores (cuota inicial,
+    plazo, interés, periodicidad, día de pago), vista previa inmediata con cuota fija, gráfica de
+    capital e intereses por año, cronograma, y al guardar el plan oficial calculado por la API;
+    historial de simulaciones de la oportunidad con enviar y cancelar.
 - `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
   usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
 - Mensajes de resultado (`nx-toaster`) en todas las pantallas.

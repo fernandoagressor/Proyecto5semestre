@@ -1,0 +1,35 @@
+:host { display: block; }
+
+.picker { max-width: 720px; }
+.pick { width: 100%; border: 0; border-bottom: 1px solid var(--border-faint); color: var(--text-strong); background: transparent; text-align: left; cursor: pointer; }
+.pick:hover { background: var(--surface-muted); }
+
+.layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); align-items: start; gap: 18px; }
+.results { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.conditions { position: sticky; top: 84px; }
+.fact { display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: var(--surface-muted); font-size: 14px; }
+.fact span { color: var(--text-muted); font-weight: 600; }
+.slider { display: flex; flex-direction: column; gap: 8px; }
+.slider label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.slider label span { color: var(--text-muted); font-weight: 600; }
+.slider input { width: 100%; accent-color: var(--color-primary); }
+.date { width: auto; flex: 1; min-width: 140px; }
+
+.chart { display: flex; align-items: flex-end; gap: 12px; height: 200px; padding-top: 8px; }
+.chart__col { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 6px; height: 100%; min-width: 0; }
+.chart__value { color: var(--text-muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.chart__bar { display: flex; flex: 1; flex-direction: column; justify-content: flex-end; width: min(48px, 100%); }
+.chart__bar span { display: block; width: 100%; }
+.chart__bar .int { border-radius: 6px 6px 0 0; background: #f59e0b; }
+.chart__bar .cap { background: var(--color-primary); }
+.chart__year { color: var(--text-muted); font-size: 12px; font-weight: 700; }
+.legend { display: flex; gap: 16px; color: var(--text-muted); font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; }
+.legend .cap { background: var(--color-primary); }
+.legend .int { background: #f59e0b; }
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; }
+  .conditions { position: static; }
+}
