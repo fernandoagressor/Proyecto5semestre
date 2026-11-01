@@ -1,0 +1,15 @@
+// Pestañas de tickets y base de conocimiento.
+:host { display: flex; flex-direction: column; gap: 14px; }
+.kb-search { flex: 1; max-width: 480px; }
+.kb-card { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; }
+.kb-card b { font-size: 15px; }
+.kb-card p { flex: 1; margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.45; }
+.content { min-height: 260px; }
+.thread { display: flex; flex-direction: column; gap: 10px; }
+.thread article { padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-card); }
+.thread article.origin { background: var(--surface-muted); }
+.thread article.internal { border-style: dashed; background: var(--tone-warning-bg); }
+.thread article > span { color: var(--text-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+.thread header { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.thread header span { color: var(--text-subtle); font-size: 12px; }
+.thread p { margin: 6px 0 0; font-size: 14px; white-space: pre-line; }
