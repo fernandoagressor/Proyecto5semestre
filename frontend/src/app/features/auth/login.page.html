@@ -1,109 +1,64 @@
-<main class="login-page">
-  <section class="brand-panel" aria-label="Nexora Core">
-    <div class="brand-panel__grid"></div>
-    <div class="brand-panel__glow brand-panel__glow--one"></div>
-    <div class="brand-panel__glow brand-panel__glow--two"></div>
-
-    <a class="brand-panel__logo" aria-label="Nexora Core"><app-brand-mark /></a>
-
-    <div class="brand-panel__content">
-      <span class="eyebrow">PLATAFORMA INMOBILIARIA MULTIEMPRESA</span>
-      <h1>Gestión inmobiliaria,<br /><em>sin límites.</em></h1>
-      <p>Controla empresas, proyectos, clientes y operaciones desde un solo lugar.</p>
-
-      <div class="trust-features" aria-label="Características de seguridad">
-        <span><app-icon name="projects" /> Multiempresa</span>
-        <span><app-icon name="audit" /> Seguridad avanzada</span>
-        <span><app-icon name="admin" /> Control por roles</span>
+<main class="login">
+  <section class="hero" aria-label="NEXORA CORE">
+    <div class="hero__pattern" aria-hidden="true"></div>
+    <div class="hero__brand"><app-brand-mark /></div>
+    <div class="hero__copy">
+      <span class="tag">{{ slides[slide()].tag }}</span>
+      <h1>{{ slides[slide()].title }}</h1>
+      <p>Lotes, ventas y cartera de su inmobiliaria en un solo lugar.</p>
+      <div class="dots" role="group" aria-label="Mensajes">
+        @for (s of slides; track s.tag; let i = $index) {
+          <button type="button" [class.on]="slide() === i" (click)="slide.set(i)" [attr.aria-label]="'Ver mensaje ' + (i + 1)" [attr.aria-pressed]="slide() === i"></button>
+        }
       </div>
     </div>
-
-    <div class="city" aria-hidden="true">
-      <i></i><i></i><i></i><i></i><i></i><i></i>
-    </div>
-
-    <div class="brand-panel__footer"><span></span> Acceso protegido y auditable</div>
+    <small class="hero__foot"><app-icon name="audit" /> Acceso protegido y auditado</small>
   </section>
 
-  <section class="form-panel">
-    <div class="login-card">
+  <section class="panel">
+    <div class="card">
       <div class="mobile-brand"><app-brand-mark /></div>
-      <span class="form-eyebrow">ACCESO SEGURO</span>
-      <h2>Bienvenido de nuevo</h2>
-      <p class="form-intro">Ingresa a tu espacio de trabajo.</p>
+      <div class="heading">
+        <h2>Iniciar sesión</h2>
+        <p>Ingrese con su usuario o correo.</p>
+      </div>
 
       @if (sessionExpired()) {
-        <div class="message message--info" role="status">
-          Tu sesión finalizó por seguridad. Ingresa nuevamente para continuar.
-        </div>
+        <div class="nx-alert nx-alert--info" role="status"><app-icon name="info" /><span>Su sesión terminó por seguridad. Ingrese de nuevo para continuar.</span></div>
       }
       @if (passwordUpdated()) {
-        <div class="message message--success" role="status">
-          Contraseña actualizada. Inicia sesión nuevamente con tu clave nueva.
-        </div>
+        <div class="nx-alert nx-alert--success" role="status"><app-icon name="check" /><span>Contraseña actualizada. Ingrese con su clave nueva.</span></div>
       }
       @if (apiError()) {
-        <div class="message message--error" role="alert">
-          <app-icon name="warning" />
-          <span>{{ apiError() }}</span>
-        </div>
+        <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ apiError() }}</span></div>
       }
 
-      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <label class="field-label" for="identificador">Correo o usuario</label>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <input
-            id="identificador"
-            matInput
-            formControlName="identificador"
-            autocomplete="username"
-            placeholder="nombre@empresa.com"
-          />
+      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <label class="nx-field" for="identificador">
+          <span>Usuario o correo</span>
+          <input id="identificador" class="nx-input big" formControlName="identificador" autocomplete="username" placeholder="nombre@empresa.com" />
           @if (form.controls.identificador.touched && form.controls.identificador.hasError('required')) {
-            <mat-error>Ingresa tu correo o nombre de usuario.</mat-error>
+            <span class="nx-field__error">Escriba su usuario o correo.</span>
           }
-        </mat-form-field>
+        </label>
 
-        <label class="field-label" for="password">Contraseña</label>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <input
-            id="password"
-            matInput
-            formControlName="password"
-            [type]="showPassword() ? 'text' : 'password'"
-            autocomplete="current-password"
-            placeholder="Ingresa tu contraseña"
-          />
-          <button
-            type="button"
-            mat-icon-button
-            matSuffix
-            class="password-toggle"
-            (click)="showPassword.set(!showPassword())"
-            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-          >
-            <span>{{ showPassword() ? 'Ocultar' : 'Ver' }}</span>
-          </button>
+        <label class="nx-field" for="password">
+          <span>Contraseña</span>
+          <span class="pw">
+            <input id="password" class="nx-input big" formControlName="password" [type]="showPassword() ? 'text' : 'password'" autocomplete="current-password" />
+            <button type="button" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"><app-icon [name]="showPassword() ? 'close' : 'eye'" /></button>
+          </span>
           @if (form.controls.password.touched && form.controls.password.hasError('required')) {
-            <mat-error>Ingresa tu contraseña.</mat-error>
+            <span class="nx-field__error">Escriba su contraseña.</span>
           }
-        </mat-form-field>
+        </label>
 
-        <button mat-flat-button class="submit-button" type="submit" [disabled]="loading()">
-          @if (loading()) {
-            <mat-spinner diameter="20" />
-            <span>Validando acceso…</span>
-          } @else {
-            <span>Iniciar sesión</span>
-            <app-icon name="chevron" />
-          }
+        <button class="nx-btn nx-btn--primary nx-btn--block big" type="submit" [disabled]="loading()">
+          @if (loading()) { <span class="nx-spinner"></span> Validando acceso… } @else { Ingresar }
         </button>
       </form>
 
-      <div class="access-note">
-        <app-icon name="audit" />
-        El acceso se asigna según tu empresa, rol y permisos.
-      </div>
+      <p class="note">¿Olvidó su contraseña? Pídale al administrador de su empresa que la restablezca.</p>
     </div>
     <small class="copyright">© 2026 NEXORA CORE</small>
   </section>

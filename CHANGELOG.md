@@ -54,6 +54,11 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   tarjetas; pestañas nuevas de **Tickets internos** (crear, asignar, cambiar estado, conversación
   con notas internas) y **Base de conocimiento** (buscar, crear y editar artículos, publicar,
   archivar, categorías).
+- **Rediseño, fase 3a: Dashboard e inicio de sesión.** El dashboard sigue la vista
+  "Dashboard-Gerencia": periodo en botones, indicadores, análisis principal con lo que requiere
+  atención y la salud del negocio, cartera vencida por edades, embudo comercial con conversión
+  entre etapas e inventario de lotes por proyecto (vendidos, reservados, disponibles). El inicio de
+  sesión pasa a dos paneles: mensajes rotativos sobre fondo índigo y formulario sin Material.
 - `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
   usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
 - Mensajes de resultado (`nx-toaster`) en todas las pantallas.
