@@ -3,18 +3,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, filter, finalize, of } from 'rxjs';
 
-import { NAVIGATION_ITEMS } from '../core/navigation/navigation.config';
+import { NAVIGATION_GROUPS, NAVIGATION_ITEMS, NavigationItem } from '../core/navigation/navigation.config';
 import { CompanyModuleCode } from '../core/models/company-module.models';
+import { Company } from '../core/models/empresa.models';
 import { AuthService } from '../core/services/auth.service';
 import { CompanyService } from '../core/services/company.service';
 import { AppNotification, NotificationService } from '../core/services/notification.service';
 import { ThemeService } from '../core/services/theme.service';
 import { AppIconComponent } from '../shared/components/app-icon.component';
 import { BrandMarkComponent } from '../shared/components/brand-mark.component';
+import { FechaPipe, statusLabel } from '../shared/ui';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, BrandMarkComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, BrandMarkComponent, FechaPipe],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,20 +32,44 @@ export class AppShellComponent {
   readonly mobileMenuOpen = signal(false);
   readonly profileOpen = signal(false);
   readonly notificationOpen = signal(false);
-  readonly companyName = signal('Nexora Core');
-  readonly companyModules = signal<readonly CompanyModuleCode[] | null>(null);
+  readonly company = signal<Company | null>(null);
+  readonly logoFailed = signal(false);
+  readonly companyName = computed(() => this.company()?.nombre ?? 'Nexora Core');
+  readonly companyInitial = computed(() => this.companyName().charAt(0).toUpperCase());
+  readonly companyModules = computed<readonly CompanyModuleCode[] | null>(() => this.company()?.modulos ?? null);
+  readonly isGlobalScope = computed(() => this.auth.hasAuthority('ROLE_SUPER_ADMIN') && !this.auth.user()?.empresaId);
+  readonly roleLabel = computed(() => {
+    const role = this.auth.user()?.roles?.[0];
+    return role ? statusLabel(role.replace(/^ROLE_/, '')) : 'Usuario';
+  });
   readonly unreadNotifications = signal(0);
   readonly recentNotifications = signal<AppNotification[]>([]);
   readonly notificationsLoading = signal(false);
   readonly pageTitle = signal('Dashboard');
+  readonly currentUrl = signal(this.router.url);
   readonly loggingOut = signal(false);
   readonly navigation = computed(() =>
     NAVIGATION_ITEMS.filter((item) => {
-      if (!this.auth.hasAny(item.permissions)) return false;
+      const allowed = item.permissionMode === 'all' ? this.auth.hasAll(item.permissions) : this.auth.hasAny(item.permissions);
+      if (!allowed) return false;
       const modules = this.companyModules();
       return !item.module || modules === null || modules.includes(item.module);
     }),
   );
+  readonly navigationGroups = computed(() => {
+    const items = this.navigation();
+    return NAVIGATION_GROUPS.map((group) => ({ ...group, items: items.filter((item) => item.group === group.id) })).filter(
+      (group) => group.items.length > 0,
+    );
+  });
+  readonly activeItem = computed<NavigationItem | undefined>(() => {
+    const path = this.currentUrl().split(/[?#]/)[0];
+    return NAVIGATION_ITEMS.find((item) => path === item.route || path.startsWith(item.route + '/'));
+  });
+  readonly activeGroupLabel = computed(() => {
+    const group = this.activeItem()?.group;
+    return NAVIGATION_GROUPS.find((g) => g.id === group)?.label ?? '';
+  });
 
   constructor() {
     this.router.events
@@ -52,23 +78,21 @@ export class AppShellComponent {
         this.mobileMenuOpen.set(false);
         this.profileOpen.set(false);
         this.notificationOpen.set(false);
+        this.currentUrl.set(this.router.url);
         this.updatePageTitle();
       });
 
     effect((onCleanup) => {
       const companyId = this.auth.user()?.empresaId;
+      this.logoFailed.set(false);
       if (!companyId) {
-        this.companyName.set('Nexora Core');
-        this.companyModules.set(null);
+        this.company.set(null);
         return;
       }
       const subscription = this.companyService
         .current()
         .pipe(catchError(() => of(null)))
-        .subscribe((company) => {
-          this.companyName.set(company?.nombre ?? 'Nexora Core');
-          this.companyModules.set(company?.modulos ?? null);
-        });
+        .subscribe((company) => this.company.set(company));
       onCleanup(() => subscription.unsubscribe());
     });
 
