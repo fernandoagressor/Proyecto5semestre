@@ -71,6 +71,13 @@ export const routes: Routes = [
         title: 'CRM comercial | Nexora Core',
       },
       {
+        path: 'simulador',
+        canActivate: [permissionGuard, companyModuleGuard],
+        data: { permissions: ['SIMULACIONES_VER'], module: 'CLIENTES_VENTAS', title: 'Simulador' },
+        loadComponent: () => import('./features/simulator/simulator.page').then((m) => m.SimulatorPage),
+        title: 'Simulador | Nexora Core',
+      },
+      {
         path: 'clientes/nuevo',
         canActivate: [permissionGuard, companyModuleGuard],
         data: {

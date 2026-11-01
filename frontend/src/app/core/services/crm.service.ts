@@ -5,7 +5,11 @@ import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
 import { PageResponse } from '../models/api.models';
 import {
+  ActivityPayload,
   Appointment,
+  AppointmentPayload,
+  AppointmentStatus,
+  CommercialActivity,
   CreateSimulationPayload,
   Opportunity,
   OpportunityLot,
@@ -15,6 +19,7 @@ import {
   ProspectStatus,
   ProspectTemperature,
   Simulation,
+  StageHistory,
 } from '../models/crm.models';
 
 @Injectable({ providedIn: 'root' })
@@ -165,8 +170,69 @@ export class CrmService {
     return this.http.post<Simulation>(`${API_BASE_URL}/simulaciones`, payload);
   }
 
+  simulation(id: number): Observable<Simulation> {
+    return this.http.get<Simulation>(`${API_BASE_URL}/simulaciones/${id}`);
+  }
+
+  cancelSimulation(id: number): Observable<Simulation> {
+    return this.http.patch<Simulation>(`${API_BASE_URL}/simulaciones/${id}/cancelar`, {});
+  }
+
   sendSimulation(id: number): Observable<Simulation> {
     return this.http.patch<Simulation>(`${API_BASE_URL}/simulaciones/${id}/enviar`, {});
+  }
+
+  // ---------- Detalle de prospecto y oportunidad (rediseño fase 2) ----------
+  prospect(id: number): Observable<Prospect> {
+    return this.http.get<Prospect>(`${API_BASE_URL}/prospectos/${id}`);
+  }
+
+  updateProspect(id: number, payload: ProspectPayload): Observable<Prospect> {
+    return this.http.put<Prospect>(`${API_BASE_URL}/prospectos/${id}`, payload);
+  }
+
+  reassignProspect(id: number, asesorId: number): Observable<Prospect> {
+    return this.http.patch<Prospect>(`${API_BASE_URL}/prospectos/${id}/asesor`, { asesorId });
+  }
+
+  opportunity(id: number): Observable<Opportunity> {
+    return this.http.get<Opportunity>(`${API_BASE_URL}/oportunidades/${id}`);
+  }
+
+  updateOpportunity(id: number, valorEstimado: number | null, fechaProximaAccion: string | null): Observable<Opportunity> {
+    return this.http.put<Opportunity>(`${API_BASE_URL}/oportunidades/${id}`, { valorEstimado, fechaProximaAccion });
+  }
+
+  loseOpportunity(id: number, motivo: string): Observable<Opportunity> {
+    return this.http.patch<Opportunity>(`${API_BASE_URL}/oportunidades/${id}/cerrar-perdida`, { motivo });
+  }
+
+  reopenOpportunity(id: number): Observable<Opportunity> {
+    return this.http.patch<Opportunity>(`${API_BASE_URL}/oportunidades/${id}/reabrir`, {});
+  }
+
+  stageHistory(id: number): Observable<StageHistory[]> {
+    return this.http.get<StageHistory[]>(`${API_BASE_URL}/oportunidades/${id}/historial-etapas`);
+  }
+
+  activities(id: number): Observable<CommercialActivity[]> {
+    return this.http.get<CommercialActivity[]>(`${API_BASE_URL}/oportunidades/${id}/actividades`);
+  }
+
+  addActivity(id: number, payload: ActivityPayload): Observable<CommercialActivity> {
+    return this.http.post<CommercialActivity>(`${API_BASE_URL}/oportunidades/${id}/actividades`, payload);
+  }
+
+  opportunityAppointments(id: number): Observable<Appointment[]> {
+    return this.http.get<Appointment[]>(`${API_BASE_URL}/oportunidades/${id}/citas`);
+  }
+
+  rescheduleAppointment(opportunityId: number, appointmentId: number, payload: AppointmentPayload): Observable<Appointment> {
+    return this.http.put<Appointment>(`${API_BASE_URL}/oportunidades/${opportunityId}/citas/${appointmentId}/programacion`, payload);
+  }
+
+  changeAppointmentStatus(opportunityId: number, appointmentId: number, estado: AppointmentStatus, resultado: string | null): Observable<Appointment> {
+    return this.http.patch<Appointment>(`${API_BASE_URL}/oportunidades/${opportunityId}/citas/${appointmentId}/estado`, { estado, resultado });
   }
 
   private pageParams(page = 0, size = 20): HttpParams {

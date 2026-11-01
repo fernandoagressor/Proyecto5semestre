@@ -1,0 +1,134 @@
+<section class="nx-card nx-card--pad nx-card--stack" aria-label="Prospectos">
+  <div class="nx-section-head">
+    <nx-filter-chips [options]="statusOptions" [value]="status()" (valueChange)="setStatus($event)" label="Estado del prospecto" />
+    <label class="nx-field">
+      <span class="nx-sr-only">Temperatura</span>
+      <select class="nx-select nx-select--sm" [value]="temperature()" (change)="setTemperature($any($event.target).value)" aria-label="Temperatura">
+        <option value="">Toda temperatura</option>
+        @for (t of temperatures; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+      </select>
+    </label>
+  </div>
+
+  <nx-state [loading]="loading()" [error]="error()" [empty]="rows().length === 0" (retry)="load()"
+    emptyIcon="users" emptyTitle="Sin prospectos" emptyText="Cree un prospecto o cambie los filtros.">
+    <div class="nx-table-wrap">
+      <table class="nx-table">
+        <thead>
+          <tr><th>Prospecto</th><th>Contacto</th><th>Fuente</th><th>Interés</th><th>Asesor</th><th>Temperatura</th><th>Estado</th><th class="nx-actions"></th></tr>
+        </thead>
+        <tbody>
+          @for (p of rows(); track p.id) {
+            <tr>
+              <td>
+                <b>{{ p.nombres }}</b>
+                <div class="nx-subtle" style="font-size: 12px">Desde {{ p.creadoEn | fecha }}</div>
+              </td>
+              <td class="contact">
+                @if (p.telefono) { <a [href]="'tel:' + p.telefono">{{ p.telefono }}</a> }
+                @if (p.correo) { <a [href]="'mailto:' + p.correo">{{ p.correo }}</a> }
+                @if (!p.telefono && !p.correo) { <span class="nx-subtle">—</span> }
+              </td>
+              <td>{{ source(p) }}</td>
+              <td>
+                {{ projectName(p.proyectoId) }}
+                @if (p.presupuesto) { <div class="nx-subtle" style="font-size: 12px">{{ p.presupuesto | cop: 'compact' }}</div> }
+              </td>
+              <td>{{ team.name(p.asesorId) }}</td>
+              <td>@if (temp(p); as t) { <nx-badge [tone]="t.tone" [dot]="true">{{ t.label }}</nx-badge> }</td>
+              <td><nx-badge [status]="p.estado" /></td>
+              <td class="nx-actions">
+                @if (can.opportunity && p.estado === 'CALIFICADO') {
+                  <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="ask(p, 'oportunidad')">Oportunidad</button>
+                }
+                @if (can.qualify && p.estado !== 'CONVERTIDO') {
+                  <button type="button" class="nx-btn nx-btn--xs" (click)="ask(p, 'calificar')">Calificar</button>
+                }
+                @if (can.edit) {
+                  <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="edit(p)" aria-label="Editar"><app-icon name="edit" /></button>
+                }
+                @if (can.reassign) {
+                  <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="ask(p, 'reasignar')" aria-label="Reasignar asesor"><app-icon name="user" /></button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (data(); as d) {
+      @if (d.totalPaginas > 1) {
+        <div class="pager">
+          <span>{{ d.totalElementos }} prospectos · página {{ d.pagina + 1 }} de {{ d.totalPaginas }}</span>
+          <button type="button" class="nx-btn nx-btn--sm" [disabled]="d.primera" (click)="page.set(d.pagina - 1)">Anterior</button>
+          <button type="button" class="nx-btn nx-btn--sm" [disabled]="d.ultima" (click)="page.set(d.pagina + 1)">Siguiente</button>
+        </div>
+      }
+    }
+  </nx-state>
+</section>
+
+<app-prospect-form [(open)]="editOpen" [prospect]="target()" [projects]="projects()" (saved)="load()" />
+
+<nx-drawer [(open)]="dialogOpen" variant="dialog" [title]="dialogTitle()" [subtitle]="target()?.nombres ?? ''" [dismissible]="!busy()">
+  @switch (dialog()) {
+    @case ('calificar') {
+      <form class="nx-stack" [formGroup]="qualifyForm" (ngSubmit)="confirm()" id="dialog-form">
+        <div class="nx-grid nx-grid--2">
+          <label class="nx-field">
+            <span>Estado</span>
+            <select class="nx-select" formControlName="estado">
+              @for (s of statuses; track s.value) { @if (s.value !== 'CONVERTIDO') { <option [value]="s.value">{{ s.label }}</option> } }
+            </select>
+          </label>
+          <label class="nx-field">
+            <span>Temperatura</span>
+            <select class="nx-select" formControlName="temperatura">
+              @for (t of temperatures; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+            </select>
+          </label>
+        </div>
+        <label class="nx-field"><span>Justificación</span><textarea class="nx-textarea" formControlName="justificacion" placeholder="Tiene presupuesto aprobado y quiere visitar el proyecto"></textarea></label>
+      </form>
+    }
+    @case ('oportunidad') {
+      <form class="nx-stack" [formGroup]="opportunityForm" (ngSubmit)="confirm()" id="dialog-form">
+        <label class="nx-field">
+          <span>Proyecto</span>
+          <select class="nx-select" formControlName="proyectoId">
+            <option value="">Seleccione…</option>
+            @for (p of projects(); track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+          </select>
+        </label>
+        <div class="nx-grid nx-grid--2">
+          <label class="nx-field"><span>Valor estimado</span><input class="nx-input" nexoraMoney formControlName="valorEstimado" /></label>
+          <label class="nx-field"><span>Próxima acción</span><input class="nx-input" type="datetime-local" formControlName="fechaProximaAccion" /></label>
+        </div>
+        @if (can.reassign) {
+          <label class="nx-field">
+            <span>Asesor</span>
+            <select class="nx-select" formControlName="asesorId">
+              <option value="">El del prospecto</option>
+              @for (m of team.advisors(); track m.id) { <option [value]="m.id">{{ m.nombre }}</option> }
+            </select>
+          </label>
+        }
+      </form>
+    }
+    @case ('reasignar') {
+      <label class="nx-field">
+        <span>Nuevo asesor</span>
+        <select class="nx-select" [value]="reassignTo()" (change)="reassignTo.set($any($event.target).value)">
+          <option value="">Seleccione…</option>
+          @for (m of team.advisors(); track m.id) { <option [value]="m.id">{{ m.nombre }}</option> }
+        </select>
+      </label>
+    }
+  }
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="dialogOpen.set(false)" [disabled]="busy()">Cancelar</button>
+    <button type="button" class="nx-btn nx-btn--primary" (click)="confirm()" [disabled]="busy() || (dialog() === 'reasignar' && !reassignTo())">
+      @if (busy()) { <span class="nx-spinner"></span> } Confirmar
+    </button>
+  </ng-container>
+</nx-drawer>

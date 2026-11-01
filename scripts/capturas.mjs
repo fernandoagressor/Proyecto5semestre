@@ -21,6 +21,7 @@ const RUTAS = [
   'inventario',
   'crm',
   'clientes/nuevo',
+  'simulador',
   'ventas',
   'cartera',
   'servicio',
@@ -72,7 +73,7 @@ async function iniciarSesion(page, vista) {
 }
 
 async function recorrer(browser, vista, viewport, rutas) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'es-CO' });
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'es-CO', timezoneId: 'America/Bogota' });
   const page = await context.newPage();
   await vigilar(page, vista);
   await iniciarSesion(page, vista);

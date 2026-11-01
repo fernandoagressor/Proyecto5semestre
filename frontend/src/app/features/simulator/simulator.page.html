@@ -1,0 +1,169 @@
+<div class="nx-page">
+  <nx-page-header eyebrow="Simulación comercial" title="Simulador de plan de pagos" [description]="subtitle() || 'Elija la oportunidad del cliente para simular su plan.'">
+    @if (opportunity()) {
+      <button type="button" class="nx-btn nx-btn--ghost" (click)="changeOpportunity()">Cambiar cliente</button>
+      <a class="nx-btn" routerLink="/crm" [queryParams]="{ oportunidad: opportunity()!.id }"><app-icon name="crm" /> Ver oportunidad</a>
+      @if (canCreate) {
+        <button type="button" class="nx-btn nx-btn--primary" (click)="save()" [disabled]="saving() || !lot() || !!saved()">
+          @if (saving()) { <span class="nx-spinner"></span> } {{ saved() ? 'Guardada · ' + saved()!.codigo : 'Guardar simulación' }}
+        </button>
+      }
+      @if (canSend && saved() && saved()!.estado === 'BORRADOR') {
+        <button type="button" class="nx-btn" (click)="send(saved()!)" [disabled]="saving()"><app-icon name="send" /> Enviar al cliente</button>
+      }
+    }
+  </nx-page-header>
+
+  @if (!opportunityId()) {
+    <section class="nx-card nx-card--pad nx-card--stack picker" aria-label="Elegir oportunidad">
+      <h2 class="nx-section-title">¿Para qué cliente es la simulación?</h2>
+      <span class="nx-search"><app-icon name="search" /><input class="nx-input" type="search" placeholder="Nombre del cliente o código de la oportunidad" [value]="searchText()" (input)="searchOpportunities($any($event.target).value)" /></span>
+      <div class="nx-list">
+        @for (r of results(); track r.o.id) {
+          <button type="button" class="nx-list-row pick" (click)="pick(r.o.id)">
+            <span><b>{{ r.name }}</b> · <span class="nx-mono nx-muted">{{ r.o.codigo }}</span></span>
+            <span class="nx-muted">{{ r.o.valorEstimado | cop: 'compact' }}</span>
+          </button>
+        } @empty {
+          <p class="nx-muted">No hay oportunidades abiertas con ese texto.</p>
+        }
+      </div>
+    </section>
+  } @else if (loading() && !opportunity()) {
+    <div class="nx-card nx-card--pad"><nx-state [loading]="true" /></div>
+  } @else {
+    <div class="layout">
+      <section class="nx-card nx-card--pad nx-card--stack conditions" aria-label="Condiciones">
+        <h2 class="nx-section-title">Condiciones</h2>
+        <label class="nx-field">
+          <span>Lote</span>
+          <select class="nx-select" [ngModel]="lotId()" (ngModelChange)="lotId.set($event)">
+            @for (o of lotOptions(); track o.lot.id) {
+              <option [ngValue]="o.lot.id">{{ o.lot.codigo }} · {{ o.lot.areaM2 }} m² · {{ o.lot.valorLista | cop: 'compact' }}{{ o.linked ? ' · de interés' : '' }}</option>
+            }
+          </select>
+        </label>
+        <div class="fact"><span>Valor del lote</span><b>{{ price() | cop }}</b></div>
+        <label class="nx-field">
+          <span>Descuento</span>
+          <input class="nx-input" nexoraMoney [ngModel]="discount()" (ngModelChange)="discount.set($event)" />
+        </label>
+        <div class="slider">
+          <label for="ci"><span>Cuota inicial</span><b>{{ downPct() }} % · {{ money(downPayment()) }}</b></label>
+          <input id="ci" type="range" min="0" max="60" step="5" [value]="downPct()" (input)="downPct.set(+$any($event.target).value)" />
+        </div>
+        <div class="slider">
+          <label for="pl"><span>Plazo</span><b>{{ installments() }} cuotas · {{ summary().years }} años</b></label>
+          <input id="pl" type="range" min="1" max="120" step="1" [value]="installments()" (input)="installments.set(+$any($event.target).value)" />
+        </div>
+        <div class="slider">
+          <label for="ta"><span>Interés efectivo anual</span><b>{{ ratePct() | porcentaje: 1 }}</b></label>
+          <input id="ta" type="range" min="0" max="24" step="0.5" [value]="ratePct()" (input)="ratePct.set(+$any($event.target).value)" />
+        </div>
+        <div class="nx-grid nx-grid--2">
+          <label class="nx-field">
+            <span>Periodicidad</span>
+            <select class="nx-select" [ngModel]="periodicity()" (ngModelChange)="periodicity.set($event)">
+              @for (p of periodicities; track p.value) { <option [ngValue]="p.value">{{ p.label }}</option> }
+            </select>
+          </label>
+          <label class="nx-field">
+            <span>Vigencia de la oferta</span>
+            <select class="nx-select" [ngModel]="validDays()" (ngModelChange)="validDays.set($event)">
+              <option [ngValue]="8">8 días</option><option [ngValue]="15">15 días</option><option [ngValue]="30">30 días</option>
+            </select>
+          </label>
+        </div>
+        <div class="nx-field">
+          <span>Día de pago</span>
+          <div class="nx-row">
+            @for (d of [5, 15, 30]; track d) {
+              <button type="button" class="nx-btn nx-btn--sm" [class.nx-btn--soft]="payDay() === d" (click)="setPayDay(d)">Día {{ d }}</button>
+            }
+            <input class="nx-input nx-input--sm date" type="date" [value]="firstDate()" (change)="firstDate.set($any($event.target).value)" aria-label="Fecha de la primera cuota" />
+          </div>
+        </div>
+        @if (!lot()) {
+          <div class="nx-alert nx-alert--warning"><app-icon name="warning" /><span>El proyecto no tiene lotes disponibles para simular.</span></div>
+        }
+      </section>
+
+      <div class="results">
+        <section class="nx-grid nx-grid--kpi" aria-label="Resumen del plan">
+          <nx-kpi [label]="summary().title" [value]="summary().installment" icon="calendar" tone="primary" [hint]="saved() ? 'Plan calculado por el sistema' : 'Vista previa'" />
+          <nx-kpi label="Cuota inicial" [value]="summary().down" icon="money" />
+          <nx-kpi label="Total intereses" [value]="summary().interest" icon="percent" />
+          <nx-kpi label="Total a pagar" [value]="summary().total" icon="wallet" />
+        </section>
+
+        @if (years().length > 0) {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Pagos por año">
+            <h2 class="nx-section-title">Pagos por año</h2>
+            <div class="chart" role="img" aria-label="Capital e intereses por año">
+              @for (y of years(); track y.year) {
+                <div class="chart__col">
+                  <span class="chart__value">{{ y.label }}</span>
+                  <div class="chart__bar"><span class="int" [style.height.%]="y.intH"></span><span class="cap" [style.height.%]="y.capH"></span></div>
+                  <span class="chart__year">{{ y.year }}</span>
+                </div>
+              }
+            </div>
+            <div class="legend"><span><i class="cap"></i>Capital</span><span><i class="int"></i>Intereses</span></div>
+          </section>
+        }
+
+        <section class="nx-card nx-card--pad nx-card--stack" aria-label="Cronograma">
+          <div class="nx-section-head">
+            <h2 class="nx-section-title">Cronograma</h2>
+            @if (rows().length > 12) {
+              <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="showAll.set(!showAll())">{{ showAll() ? 'Ver las primeras 12' : 'Ver las ' + rows().length + ' cuotas' }}</button>
+            }
+          </div>
+          <div class="nx-table-wrap">
+            <table class="nx-table nx-table--compact">
+              <thead><tr><th>Cuota</th><th>Fecha</th><th class="nx-right">Capital</th><th class="nx-right">Interés</th><th class="nx-right">Cuota</th><th class="nx-right">Saldo</th></tr></thead>
+              <tbody>
+                @for (r of visibleRows(); track r.numero) {
+                  <tr>
+                    <td><b>{{ r.numero }}</b></td>
+                    <td class="nx-nowrap">{{ r.fecha | fecha }}</td>
+                    <td class="nx-right nx-num">{{ r.capital | cop }}</td>
+                    <td class="nx-right nx-num">{{ r.interes | cop }}</td>
+                    <td class="nx-right nx-num"><b>{{ r.cuota | cop }}</b></td>
+                    <td class="nx-right nx-num">{{ r.saldo | cop }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        @if (history().length > 0) {
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Simulaciones de esta oportunidad">
+            <h2 class="nx-section-title">Simulaciones de esta oportunidad</h2>
+            <div class="nx-list">
+              @for (s of history(); track s.id) {
+                <div class="nx-list-row">
+                  <span>
+                    <b class="nx-mono">{{ s.codigo }}</b> · {{ s.numeroCuotas }} cuotas · inicial {{ s.cuotaInicial | cop: 'compact' }} · {{ s.tasaEfectivaAnual * 100 | porcentaje: 1 }} EA
+                    <div class="nx-subtle" style="font-size: 12px">Creada {{ s.creadoEn | fecha: 'relativa' }} · vigente hasta {{ s.vigenteHasta | fecha }}</div>
+                  </span>
+                  <span class="nx-row">
+                    <nx-badge [status]="s.estado" />
+                    <button type="button" class="nx-btn nx-btn--xs" (click)="open(s)">Ver</button>
+                    @if (canSend && s.estado === 'BORRADOR') {
+                      <button type="button" class="nx-btn nx-btn--xs" (click)="send(s)" [disabled]="saving()">Enviar</button>
+                    }
+                    @if (canCreate && (s.estado === 'BORRADOR' || s.estado === 'ENVIADA')) {
+                      <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="cancel(s)" [disabled]="saving()">Cancelar</button>
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    </div>
+  }
+</div>

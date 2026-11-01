@@ -87,6 +87,15 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     module: 'CLIENTES_VENTAS',
   },
   {
+    label: 'Simulador',
+    caption: 'Plan de pagos para el cliente',
+    route: '/simulador',
+    icon: 'calculator',
+    group: 'ventas',
+    permissions: ['SIMULACIONES_VER'],
+    module: 'CLIENTES_VENTAS',
+  },
+  {
     label: 'Reservas y contratos',
     caption: 'Clientes, reservas, contratos y desistimientos',
     route: '/ventas',
