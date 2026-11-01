@@ -34,6 +34,11 @@ y [Versionado Semántico](https://semver.org/lang/es/).
     plazo, interés, periodicidad, día de pago), vista previa inmediata con cuota fija, gráfica de
     capital e intereses por año, cronograma, y al guardar el plan oficial calculado por la API;
     historial de simulaciones de la oportunidad con enviar y cancelar.
+- **Rediseño, fase 2b: Reservas y contratos** (`/ventas`) con el estilo del diseño: indicadores,
+  pestañas con conteo, reservas con días para el vencimiento y acciones directas (confirmar pago,
+  crear contrato), contratos en tabla, expediente del contrato con la ruta Borrador → Negociación
+  → En firma → Vigente → Saldado, firmantes, participantes y documentos; todos los formularios en
+  paneles laterales o diálogos.
 - `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
   usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
 - Mensajes de resultado (`nx-toaster`) en todas las pantallas.

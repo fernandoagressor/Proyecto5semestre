@@ -19,7 +19,7 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   // Lotes
   DISPONIBLE: 'success', RESERVADO: 'warning', VENDIDO: 'info', BLOQUEADO_LOTE: 'danger', ESCRITURADO: 'primary',
   // Ventas
-  BORRADOR: 'neutral', ENVIADO_FIRMA: 'info', FIRMADO: 'success', DESISTIDO: 'danger', EN_DESISTIMIENTO: 'warning',
+  BORRADOR: 'neutral', ENVIADO_FIRMA: 'info', PENDIENTE_FIRMA: 'info', NEGOCIACION: 'info', FIRMADA: 'success', PENDIENTE_PAGO: 'warning', FIRMADO: 'success', DESISTIDO: 'danger', EN_DESISTIMIENTO: 'warning',
   VENCIDA: 'danger', CONVERTIDA: 'success', LIBERADA: 'neutral',
   // Cartera
   PAGADA: 'success', PAGADO: 'success', PARCIAL: 'warning', EN_MORA: 'danger', MORA: 'danger', VENCIDO: 'danger',
@@ -66,8 +66,10 @@ export class BadgeComponent {
   readonly tone = input<BadgeTone | null>(null);
   readonly status = input<string | null | undefined>(null);
   readonly dot = input(false);
+  /** Texto propio en lugar de la etiqueta derivada del estado. */
+  readonly text = input<string | null>(null);
 
-  readonly label = computed(() => statusLabel(this.status()));
+  readonly label = computed(() => this.text() ?? statusLabel(this.status()));
   readonly classes = computed(() => {
     const tone = this.tone() ?? statusTone(this.status());
     return `nx-badge nx-badge--${tone}${this.dot() ? ' nx-badge--dot' : ''}`;
