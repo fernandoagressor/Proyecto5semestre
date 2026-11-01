@@ -33,15 +33,19 @@ import { AuthService } from '../../core/services/auth.service';
 import { CustomerServiceService } from '../../core/services/customer-service.service';
 import { ProjectService } from '../../core/services/project.service';
 import { SalesService } from '../../core/services/sales.service';
-import { AppIconComponent } from '../../shared/components/app-icon.component';
+import { TeamService } from '../../core/services/team.service';
+import { KnowledgeArticle } from '../../core/services/support.service';
+import { apiErrorMessage, NX_UI, ToastService } from '../../shared/ui';
+import { KnowledgeTabComponent } from './knowledge-tab.component';
+import { TicketsTabComponent } from './tickets-tab.component';
 
-type ServiceTab = 'resumen' | 'solicitudes' | 'citas' | 'portal';
+type ServiceTab = 'resumen' | 'solicitudes' | 'citas' | 'tickets' | 'conocimiento' | 'portal';
 type ServiceModal = 'solicitud' | 'detalle' | 'cita' | 'reprogramar' | 'datos' | null;
 type DetailView = 'conversacion' | 'adjuntos' | 'historial';
 
 @Component({
   selector: 'app-customer-service-page',
-  imports: [CommonModule, ReactiveFormsModule, AppIconComponent],
+  imports: [CommonModule, ReactiveFormsModule, ...NX_UI, TicketsTabComponent, KnowledgeTabComponent],
   templateUrl: './customer-service.page.html',
   styleUrl: './customer-service.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,6 +59,13 @@ export class CustomerServicePage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<ServiceTab>('resumen');
+  readonly team = inject(TeamService);
+  private readonly toast = inject(ToastService);
+  /** Selector de artículos de la base de conocimiento para la respuesta. */
+  readonly kbPickerOpen = signal(false);
+  /** Borrador de ticket al escalar una PQRS. */
+  readonly ticketDraft = signal<{ asunto: string; descripcion: string; proyectoId: number | null; key: number } | null>(null);
+  readonly assigning = signal(false);
   readonly modal = signal<ServiceModal>(null);
   readonly detailView = signal<DetailView>('conversacion');
   readonly requests = signal<ServiceRequest[]>([]);
@@ -512,6 +523,52 @@ export class CustomerServicePage implements OnInit {
         },
         error: (error) => this.error.set(this.errorDetail(error)),
       });
+  }
+
+  /** Abre la solicitud en la bandeja (desde el resumen). */
+  openFromSummary(request: ServiceRequest): void {
+    this.setTab('solicitudes');
+    this.openRequest(request);
+  }
+
+  /** Cierra un diálogo sin perder la solicitud abierta en la bandeja. */
+  closeDialog(): void {
+    if (this.saving() || this.uploading()) return;
+    this.modal.set(this.selectedRequest() ? 'detalle' : null);
+    this.selectedAppointment.set(null);
+  }
+
+  assignRequest(request: ServiceRequest, userId: number): void {
+    this.assigning.set(true);
+    this.service.assignRequest(request.id, userId).subscribe({
+      next: (updated) => {
+        this.assigning.set(false);
+        this.selectedRequest.set(updated);
+        this.requests.update((list) => list.map((r) => (r.id === updated.id ? updated : r)));
+        this.toast.success(`Solicitud asignada a ${this.team.name(userId)}.`);
+      },
+      error: (e) => {
+        this.assigning.set(false);
+        this.toast.error(apiErrorMessage(e));
+      },
+    });
+  }
+
+  useArticle(article: KnowledgeArticle): void {
+    const plain = article.contenido.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const current = this.messageForm.controls.message.value;
+    this.messageForm.controls.message.setValue((current ? current + '\n\n' : '') + `${article.titulo}: ${plain}`);
+    this.kbPickerOpen.set(false);
+  }
+
+  escalate(request: ServiceRequest): void {
+    this.ticketDraft.set({
+      asunto: `${request.codigo} · ${request.asunto}`,
+      descripcion: `Escalado desde la solicitud ${request.codigo} (${this.customerName(request.clienteId)}).\n\n${request.descripcion}`,
+      proyectoId: request.proyectoId ?? null,
+      key: Date.now(),
+    });
+    this.setTab('tickets');
   }
 
   closeModal(): void {

@@ -71,6 +71,10 @@ export class CustomerServiceService {
     });
   }
 
+  assignRequest(id: number, usuarioId: number, motivo: string | null = null): Observable<ServiceRequest> {
+    return this.http.patch<ServiceRequest>(`${API_BASE_URL}/solicitudes/${id}/asignacion`, { usuarioId, motivo });
+  }
+
   closeRequest(id: number, reason: string | null): Observable<ServiceRequest> {
     return this.http.patch<ServiceRequest>(`${API_BASE_URL}/solicitudes/${id}/cerrar`, {
       motivo: reason,

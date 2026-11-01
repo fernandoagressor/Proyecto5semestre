@@ -48,6 +48,12 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   forma de encontrarlas para aprobarlas).
 - La Prueba de humo E2E carga datos de ejemplo (`carga/semilla.js`, volumen pequeño) antes de las
   capturas, para que muestren tablas y tableros con contenido.
+- **Rediseño, fase 2d: Servicio** (`/servicio`): indicadores, bandeja de PQRS con lista y detalle
+  lado a lado (conversación, adjuntos, historial, cambio de estado), **asignar responsable**,
+  **usar un artículo** de la base de conocimiento en la respuesta y **escalar a ticket**; citas en
+  tarjetas; pestañas nuevas de **Tickets internos** (crear, asignar, cambiar estado, conversación
+  con notas internas) y **Base de conocimiento** (buscar, crear y editar artículos, publicar,
+  archivar, categorías).
 - `GET /api/v1/empresas/actual/usuarios`: directorio del equipo de la empresa del token (nombre,
   usuario, estado y roles; sin correo ni documento) para mostrar nombres en lugar de ids.
 - Mensajes de resultado (`nx-toaster`) en todas las pantallas.

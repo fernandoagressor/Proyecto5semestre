@@ -14,7 +14,7 @@ describe('CustomerServicePage', () => {
 
     expect(component.requests()).toHaveLength(1);
     expect(component.appointments()).toHaveLength(1);
-    expect(fixture.nativeElement.textContent).toContain('Solicitudes abiertas');
+    expect(fixture.nativeElement.textContent).toContain('PQRS abiertas');
     expect(fixture.nativeElement.textContent).toContain('Problema con escritura');
   });
 

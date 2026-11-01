@@ -1,311 +1,341 @@
-<section class="service-page">
-  <header class="page-heading">
-    <div>
-      <span class="eyebrow">PORTAL Y SERVICIO AL CLIENTE</span>
-      <h1>{{ isClient() ? 'Mi experiencia con Nexora' : 'Centro de atención' }}</h1>
-      <p>
-        {{
-          isClient()
-            ? 'Consulta tus solicitudes, citas, documentos y actualizaciones desde un solo lugar.'
-            : 'Gestiona PQRS, conversaciones, compromisos y agenda con trazabilidad completa.'
-        }}
-      </p>
-    </div>
-    <div class="heading-actions">
-      <button class="icon-button" type="button" title="Actualizar" (click)="refresh()">
-        <app-icon name="refresh" />
-      </button>
-      @if (auth.hasAuthority('SOLICITUDES_CREAR')) {
-        <button class="primary-button" type="button" (click)="openRequestForm()">
-          <app-icon name="plus" /> Nueva solicitud
-        </button>
-      }
-    </div>
-  </header>
+<div class="nx-page">
+  <nx-page-header [eyebrow]="isClient() ? 'Mi portal' : 'Servicio y soporte'" [title]="isClient() ? 'Mis solicitudes y citas' : 'Atención al cliente'"
+    [description]="isClient() ? 'Sus solicitudes, citas, documentos y datos en un solo lugar.' : 'PQRS con tiempos de respuesta, agenda de servicio, soporte interno y base de conocimiento.'">
+    <button class="nx-btn nx-btn--ghost" type="button" (click)="refresh()"><app-icon name="refresh" /> Actualizar</button>
+    @if (auth.hasAuthority('SOLICITUDES_CREAR')) {
+      <button class="nx-btn nx-btn--primary" type="button" (click)="openRequestForm()"><app-icon name="plus" /> Nueva solicitud</button>
+    }
+  </nx-page-header>
 
   @if (feedback()) {
-    <div class="alert success"><span>✓</span>{{ feedback() }}</div>
+    <div class="nx-alert nx-alert--success" role="status"><app-icon name="check" /><span>{{ feedback() }}</span></div>
   }
   @if (error()) {
-    <div class="alert error"><app-icon name="warning" />{{ error() }}</div>
+    <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ error() }}</span></div>
   }
 
-  <nav class="tabs" aria-label="Secciones de servicio al cliente">
-    @if (!isClient()) {
-      <button type="button" [class.active]="activeTab() === 'resumen'" (click)="setTab('resumen')">
-        Resumen
-      </button>
-    }
-    <button type="button" [class.active]="activeTab() === 'solicitudes'" (click)="setTab('solicitudes')">
-      Solicitudes <span>{{ requests().length }}</span>
-    </button>
-    <button type="button" [class.active]="activeTab() === 'citas'" (click)="setTab('citas')">
-      Citas <span>{{ appointments().length }}</span>
-    </button>
-    @if (isClient()) {
-      <button type="button" [class.active]="activeTab() === 'portal'" (click)="setTab('portal')">
-        Mi portal
-      </button>
-    }
+  @if (!isClient()) {
+    <section class="nx-grid nx-grid--kpi" aria-label="Indicadores de servicio">
+      <nx-kpi label="PQRS abiertas" [value]="openRequests()" [hint]="requests().length + ' en la bandeja'" icon="service" tone="primary" [loading]="loading()" />
+      <nx-kpi label="Fuera de tiempo (SLA)" [value]="overdueRequests()" hint="Requieren atención prioritaria" icon="clock" [tone]="overdueRequests() ? 'danger' : 'neutral'" [loading]="loading()" />
+      <nx-kpi label="Prioridad crítica" [value]="unresolvedCritical()" hint="Sin cierre" icon="warning" [tone]="unresolvedCritical() ? 'warning' : 'neutral'" [loading]="loading()" />
+      <nx-kpi label="Próximas citas" [value]="upcomingAppointments()" hint="Agenda de servicio" icon="calendar" [loading]="loading()" />
+    </section>
+  }
+
+  <nav class="tabs" role="tablist" aria-label="Secciones de servicio">
+    @if (!isClient()) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'resumen'" [class.on]="activeTab() === 'resumen'" (click)="setTab('resumen')">Resumen</button> }
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'solicitudes'" [class.on]="activeTab() === 'solicitudes'" (click)="setTab('solicitudes')">PQRS <span>{{ requests().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'citas'" [class.on]="activeTab() === 'citas'" (click)="setTab('citas')">Citas <span>{{ appointments().length }}</span></button>
+    @if (!isClient() && auth.hasAuthority('SOPORTE_VER')) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'tickets'" [class.on]="activeTab() === 'tickets'" (click)="setTab('tickets')">Tickets internos</button> }
+    @if (!isClient() && auth.hasAuthority('BASE_CONOCIMIENTO_VER')) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'conocimiento'" [class.on]="activeTab() === 'conocimiento'" (click)="setTab('conocimiento')">Base de conocimiento</button> }
+    @if (isClient()) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'portal'" [class.on]="activeTab() === 'portal'" (click)="setTab('portal')">Mi portal</button> }
   </nav>
 
   @if (loading()) {
-    <div class="loading-state"><span></span><p>Cargando la operación de servicio…</p></div>
+    <div class="nx-card nx-card--pad"><nx-state [loading]="true" /></div>
   } @else {
     @switch (activeTab()) {
       @case ('resumen') {
-        <div class="metric-grid">
-          <article class="metric-card blue">
-            <div class="metric-icon"><app-icon name="service" /></div>
-            <span>Solicitudes abiertas</span>
-            <strong>{{ openRequests() }}</strong>
-            <small>{{ requests().length }} radicadas en la bandeja actual</small>
-          </article>
-          <article class="metric-card red">
-            <div class="metric-icon"><app-icon name="warning" /></div>
-            <span>Fuera de SLA</span>
-            <strong>{{ overdueRequests() }}</strong>
-            <small>Requieren atención prioritaria</small>
-          </article>
-          <article class="metric-card orange">
-            <div class="metric-icon"><app-icon name="calendar" /></div>
-            <span>Próximas citas</span>
-            <strong>{{ upcomingAppointments() }}</strong>
-            <small>En los siguientes 180 días</small>
-          </article>
-          <article class="metric-card violet">
-            <div class="metric-icon"><app-icon name="warning" /></div>
-            <span>Prioridad crítica</span>
-            <strong>{{ unresolvedCritical() }}</strong>
-            <small>Casos aún sin cierre</small>
-          </article>
-        </div>
-
-        <div class="dashboard-grid">
-          <article class="panel attention-panel">
-            <header><div><span>ATENCIÓN PRIORITARIA</span><h2>Casos que requieren seguimiento</h2></div></header>
-            @for (request of requests().slice(0, 6); track request.id) {
-              <button class="attention-row" type="button" (click)="openRequest(request)">
-                <span class="priority-dot" [class]="priorityClass(request.prioridad)"></span>
-                <span class="attention-copy">
-                  <strong>{{ request.asunto }}</strong>
-                  <small>{{ request.codigo }} · {{ customerName(request.clienteId) }}</small>
-                </span>
-                <span class="status-badge" [class]="statusClass(request.estado)">{{ label(request.estado) }}</span>
-                <app-icon name="chevron" />
-              </button>
-            } @empty {
-              <div class="empty-compact"><app-icon name="service" /><p>No hay solicitudes en la bandeja.</p></div>
-            }
-          </article>
-
-          <article class="panel agenda-panel">
-            <header><div><span>AGENDA</span><h2>Próximas citas</h2></div></header>
-            @for (appointment of appointments().slice(0, 5); track appointment.id) {
-              <div class="agenda-row">
-                <time><strong>{{ appointment.fechaInicio | date: 'dd' }}</strong><span>{{ appointment.fechaInicio | date: 'MMM' }}</span></time>
-                <div><strong>{{ label(appointment.tipo) }}</strong><small>{{ appointment.fechaInicio | date: 'h:mm a' }} · {{ appointment.lugar || 'Por definir' }}</small></div>
-                <span class="status-badge" [class]="statusClass(appointment.estado)">{{ label(appointment.estado) }}</span>
-              </div>
-            } @empty {
-              <div class="empty-compact"><app-icon name="calendar" /><p>No hay citas próximas.</p></div>
-            }
-          </article>
+        <div class="nx-grid nx-grid--main-aside">
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Casos prioritarios">
+            <h2 class="nx-section-title">Casos que requieren seguimiento</h2>
+            <div class="nx-list">
+              @for (request of requests().slice(0, 8); track request.id) {
+                <button class="case-row" type="button" (click)="openFromSummary(request)">
+                  <span class="dot" [attr.data-priority]="request.prioridad"></span>
+                  <span class="case-row__copy"><b>{{ request.asunto }}</b><small>{{ request.codigo }} · {{ customerName(request.clienteId) }}</small></span>
+                  <span class="sla" [class.late]="isOverdue(request)">{{ isOverdue(request) ? 'Vencida' : (request.fechaLimite | fecha: 'relativa') }}</span>
+                  <nx-badge [status]="request.estado" [text]="label(request.estado)" />
+                </button>
+              } @empty {
+                <nx-state [empty]="true" emptyIcon="service" emptyTitle="Bandeja vacía" />
+              }
+            </div>
+          </section>
+          <section class="nx-card nx-card--pad nx-card--stack" aria-label="Próximas citas">
+            <h2 class="nx-section-title">Próximas citas</h2>
+            <div class="nx-list">
+              @for (appointment of appointments().slice(0, 6); track appointment.id) {
+                <div class="nx-list-row">
+                  <span><b>{{ label(appointment.tipo) }}</b><div class="sub">{{ appointment.fechaInicio | fecha: 'hora' }} · {{ appointment.lugar || 'Por definir' }}</div></span>
+                  <nx-badge [status]="appointment.estado" [text]="label(appointment.estado)" />
+                </div>
+              } @empty {
+                <p class="nx-muted">No hay citas próximas.</p>
+              }
+            </div>
+          </section>
         </div>
       }
 
       @case ('solicitudes') {
-        <article class="panel data-panel">
-          <header class="panel-toolbar">
-            <div><span>BANDEJA DE PQRS</span><h2>Solicitudes y conversaciones</h2></div>
-            <div class="toolbar-controls">
-              <label class="search-control"><app-icon name="search" /><input #requestSearch type="search" placeholder="Código, asunto o cliente" [value]="search()" (input)="searchRequests(requestSearch.value)" /></label>
-              <select #typeFilter [value]="requestType()" (change)="filterRequestType(typeFilter.value)">
-                <option value="">Todos los tipos</option>
-                <option value="PETICION">Petición</option><option value="QUEJA">Queja</option>
-                <option value="RECLAMO">Reclamo</option><option value="SUGERENCIA">Sugerencia</option>
-                <option value="SOLICITUD">Solicitud</option>
-              </select>
-              <select #statusFilter [value]="requestStatus()" (change)="filterRequests(statusFilter.value)">
-                <option value="">Todos los estados</option>
-                <option value="ABIERTA">Abierta</option><option value="EN_PROCESO">En proceso</option>
-                <option value="PENDIENTE_CLIENTE">Pendiente cliente</option><option value="PENDIENTE_TERCERO">Pendiente tercero</option>
-                <option value="RESUELTA">Resuelta</option><option value="CERRADA">Cerrada</option>
-              </select>
+        <div class="inbox" [class.inbox--open]="!!selectedRequest()">
+          <section class="nx-card nx-card--pad nx-card--stack inbox__list" aria-label="Bandeja de PQRS">
+            <div class="nx-stack" style="gap: 8px">
+              <span class="nx-search"><app-icon name="search" /><input class="nx-input nx-input--sm" type="search" placeholder="Código, asunto o cliente" [value]="search()" (input)="searchRequests($any($event.target).value)" /></span>
+              <div class="nx-grid nx-grid--2">
+                <select class="nx-select nx-select--sm" [value]="requestType()" (change)="filterRequestType($any($event.target).value)" aria-label="Tipo">
+                  <option value="">Todos los tipos</option><option value="PETICION">Petición</option><option value="QUEJA">Queja</option><option value="RECLAMO">Reclamo</option><option value="SUGERENCIA">Sugerencia</option><option value="SOLICITUD">Solicitud</option>
+                </select>
+                <select class="nx-select nx-select--sm" [value]="requestStatus()" (change)="filterRequests($any($event.target).value)" aria-label="Estado">
+                  <option value="">Todos los estados</option><option value="ABIERTA">Abierta</option><option value="EN_PROCESO">En proceso</option><option value="PENDIENTE_CLIENTE">Pendiente cliente</option><option value="PENDIENTE_TERCERO">Pendiente tercero</option><option value="RESUELTA">Resuelta</option><option value="CERRADA">Cerrada</option>
+                </select>
+              </div>
             </div>
-          </header>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Solicitud</th><th>Cliente / proyecto</th><th>Tipo</th><th>Prioridad</th><th>SLA</th><th>Estado</th><th></th></tr></thead>
-              <tbody>
-                @for (request of filteredRequests(); track request.id) {
-                  <tr [class.overdue-row]="isOverdue(request)">
-                    <td><strong>{{ request.asunto }}</strong><small>{{ request.codigo }} · {{ request.creadoEn | date: 'dd MMM y, h:mm a' }}</small></td>
-                    <td><strong>{{ customerName(request.clienteId) }}</strong><small>{{ projectName(request.proyectoId) }}</small></td>
-                    <td>{{ label(request.tipo) }}<small>{{ request.categoria }}</small></td>
-                    <td><span class="priority-badge" [class]="priorityClass(request.prioridad)">{{ label(request.prioridad) }}</span></td>
-                    <td [class.overdue-text]="isOverdue(request)">{{ request.fechaLimite | date: 'dd MMM, h:mm a' }}<small>{{ isOverdue(request) ? 'Fuera de plazo' : 'Dentro del plazo' }}</small></td>
-                    <td><span class="status-badge" [class]="statusClass(request.estado)">{{ label(request.estado) }}</span></td>
-                    <td><button class="text-button" type="button" (click)="openRequest(request)">Abrir <app-icon name="chevron" /></button></td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="7"><div class="empty-state"><app-icon name="service" /><h3>No hay solicitudes</h3><p>Ajusta los filtros o crea una nueva radicación.</p></div></td></tr>
+            <div class="inbox__items">
+              @for (request of filteredRequests(); track request.id) {
+                <button type="button" class="inbox-item" [class.on]="selectedRequest()?.id === request.id" (click)="openRequest(request)">
+                  <span class="inbox-item__top"><nx-badge [status]="request.prioridad" [text]="label(request.tipo)" /><span class="sla" [class.late]="isOverdue(request)">{{ isOverdue(request) ? 'Fuera de plazo' : 'Vence ' + (request.fechaLimite | fecha: 'relativa') }}</span></span>
+                  <b>{{ request.asunto }}</b>
+                  <small>{{ customerName(request.clienteId) }} · {{ request.codigo }}</small>
+                </button>
+              } @empty {
+                <nx-state [empty]="true" emptyIcon="service" emptyTitle="No hay solicitudes" emptyText="Ajuste los filtros o radique una nueva." />
+              }
+            </div>
+          </section>
+
+          @if (selectedRequest(); as request) {
+            <section class="nx-card nx-card--pad nx-card--stack inbox__detail" aria-label="Detalle de la solicitud">
+              <div class="nx-section-head">
+                <div>
+                  <span class="nx-eyebrow">{{ request.codigo }} · {{ label(request.tipo) }}</span>
+                  <h2 class="nx-section-title">{{ request.asunto }}</h2>
+                </div>
+                <div class="nx-row">
+                  <nx-badge [status]="request.prioridad" [text]="label(request.prioridad)" />
+                  <nx-badge [status]="request.estado" [text]="label(request.estado)" />
+                  <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost nx-btn--icon" (click)="closeModal()" aria-label="Cerrar detalle"><app-icon name="close" /></button>
+                </div>
+              </div>
+              <div class="meta">
+                <span>Cliente: <b>{{ customerName(request.clienteId) }}</b></span>
+                <span>Proyecto: <b>{{ projectName(request.proyectoId) }}</b></span>
+                <span [class.late]="isOverdue(request)">Vence: <b>{{ request.fechaLimite | fecha: 'hora' }}</b></span>
+                @if (auth.hasAuthority('SOLICITUDES_ASIGNAR')) {
+                  <label class="assign">Responsable
+                    <select class="nx-select nx-select--sm" [value]="request.asignadoA ?? ''" (change)="assignRequest(request, +$any($event.target).value)" [disabled]="assigning()">
+                      <option value="" disabled>Sin asignar</option>
+                      @for (m of team.active(); track m.id) { <option [value]="m.id">{{ m.nombre }}</option> }
+                    </select>
+                  </label>
+                } @else {
+                  <span>Responsable: <b>{{ request.asignadoA ? team.name(request.asignadoA) : 'Sin asignar' }}</b></span>
                 }
-              </tbody>
-            </table>
-          </div>
-        </article>
+              </div>
+
+              <nav class="subtabs">
+                <button type="button" [class.on]="detailView() === 'conversacion'" (click)="showDetail('conversacion')">Conversación <span>{{ messages().length }}</span></button>
+                <button type="button" [class.on]="detailView() === 'adjuntos'" (click)="showDetail('adjuntos')">Adjuntos <span>{{ attachments().length }}</span></button>
+                @if (auth.hasAuthority('SOLICITUDES_ASIGNAR')) { <button type="button" [class.on]="detailView() === 'historial'" (click)="showDetail('historial')">Historial <span>{{ history().length }}</span></button> }
+              </nav>
+
+              @if (detailLoading()) { <nx-state [loading]="true" /> }
+              @if (detailView() === 'conversacion') {
+                <div class="thread">
+                  <article class="origin"><span>SOLICITUD ORIGINAL · {{ request.creadoEn | fecha: 'hora' }}</span><p>{{ request.descripcion }}</p></article>
+                  @for (message of messages(); track message.id) {
+                    <article [class.internal]="message.interno" [class.mine]="message.usuarioId === auth.user()?.id">
+                      <header><b>{{ message.interno ? 'Nota interna' : (message.usuarioId === auth.user()?.id ? 'Usted' : team.name(message.usuarioId)) }}</b><span>{{ message.canal }} · {{ message.creadoEn | fecha: 'hora' }}</span></header>
+                      <p>{{ message.mensaje }}</p>
+                    </article>
+                  }
+                </div>
+                @if (auth.hasAuthority('SOLICITUDES_RESPONDER') && !['CERRADA', 'CANCELADA'].includes(request.estado)) {
+                  <div class="composer" [formGroup]="messageForm">
+                    <label class="nx-field"><span>Responder al cliente</span><textarea class="nx-textarea" formControlName="message" placeholder="Respuesta clara para continuar la atención"></textarea></label>
+                    <div class="nx-row nx-row--between">
+                      <div class="nx-row">
+                        @if (!isClient()) { <label class="nx-check"><input type="checkbox" formControlName="internal" /> Nota interna</label> }
+                        @if (!isClient() && auth.hasAuthority('BASE_CONOCIMIENTO_VER')) { <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="kbPickerOpen.set(true)"><app-icon name="book" /> Usar artículo</button> }
+                        @if (!isClient() && auth.hasAuthority('SOPORTE_CREAR')) { <button type="button" class="nx-btn nx-btn--sm nx-btn--ghost" (click)="escalate(request)"><app-icon name="ticket" /> Escalar a ticket</button> }
+                      </div>
+                      <button class="nx-btn nx-btn--sm nx-btn--primary" type="button" [disabled]="saving()" (click)="sendMessage()">{{ saving() ? 'Enviando…' : 'Enviar respuesta' }}</button>
+                    </div>
+                  </div>
+                }
+              } @else if (detailView() === 'adjuntos') {
+                @if (auth.hasAuthority('SOLICITUDES_RESPONDER')) {
+                  <div class="upload">
+                    <label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="selectFile($event)" /><app-icon name="upload" /><span>{{ selectedFile()?.name || 'Seleccionar archivo' }}</span><small>PDF, PNG o JPG · máximo 15 MB</small></label>
+                    <button class="nx-btn nx-btn--sm nx-btn--primary" type="button" [disabled]="uploading() || !selectedFile()" (click)="uploadAttachment()">{{ uploading() ? 'Cargando…' : 'Adjuntar' }}</button>
+                  </div>
+                }
+                <div class="nx-list">
+                  @for (attachment of attachments(); track attachment.id) {
+                    <div class="nx-list-row">
+                      <span><b>{{ attachment.nombreArchivo || ('Archivo #' + attachment.archivoId) }}</b><div class="sub">{{ attachment.tamanoBytes ? ((attachment.tamanoBytes / 1024) | number: '1.0-0') + ' KB · ' : '' }}{{ attachment.creadoEn | fecha: 'hora' }}</div></span>
+                      @if (auth.hasAuthority('DOCUMENTOS_DESCARGAR')) { <button type="button" class="nx-btn nx-btn--xs" (click)="downloadAttachment(attachment)"><app-icon name="download" /> Descargar</button> }
+                    </div>
+                  } @empty { <p class="nx-muted">Sin adjuntos.</p> }
+                </div>
+              } @else {
+                <ol class="timeline">
+                  @for (event of history(); track event.id) {
+                    <li><span class="tl-dot"></span><div><b>{{ label(event.campo) }}</b><p>{{ event.valorAnterior || '—' }} → {{ event.valorNuevo || '—' }}</p>@if (event.motivo) { <p>{{ event.motivo }}</p> }<small>{{ event.creadoEn | fecha: 'hora' }}</small></div></li>
+                  } @empty { <p class="nx-muted">Sin cambios registrados.</p> }
+                </ol>
+              }
+
+              <div class="detail-foot">
+                @if (auth.hasAuthority('SOLICITUDES_CAMBIAR_ESTADO')) {
+                  <div class="status-form" [formGroup]="statusForm">
+                    <select class="nx-select nx-select--sm" formControlName="status" aria-label="Nuevo estado">
+                      <option value="EN_PROCESO">En proceso</option><option value="PENDIENTE_CLIENTE">Pendiente cliente</option><option value="PENDIENTE_TERCERO">Pendiente tercero</option><option value="RESUELTA">Resuelta</option><option value="REABIERTA">Reabierta</option><option value="CANCELADA">Cancelada</option>@if (auth.hasAuthority('SOLICITUDES_CERRAR')) { <option value="CERRADA">Cerrada</option> }
+                    </select>
+                    <input class="nx-input nx-input--sm" formControlName="reason" placeholder="Motivo del cambio" />
+                    <button class="nx-btn nx-btn--sm" type="button" [disabled]="saving()" (click)="changeStatus()">Cambiar estado</button>
+                  </div>
+                }
+                @if (auth.hasAuthority('CITAS_CREAR')) { <button class="nx-btn nx-btn--sm nx-btn--ghost" type="button" (click)="openAppointmentForm(request)"><app-icon name="calendar" /> Programar cita</button> }
+              </div>
+            </section>
+          }
+        </div>
       }
 
       @case ('citas') {
-        <article class="panel data-panel">
-          <header class="panel-toolbar">
-            <div><span>AGENDA DE SERVICIO</span><h2>Citas, visitas y entregas</h2></div>
-            <div class="toolbar-controls">
-              <select #appointmentFilter [value]="appointmentStatus()" (change)="filterAppointments(appointmentFilter.value)">
-                <option value="">Todos los estados</option><option value="PROGRAMADA">Programada</option>
-                <option value="CONFIRMADA">Confirmada</option><option value="REPROGRAMADA">Reprogramada</option>
-                <option value="REALIZADA">Realizada</option><option value="CANCELADA">Cancelada</option>
+        <section class="nx-card nx-card--pad nx-card--stack" aria-label="Agenda de servicio">
+          <div class="nx-section-head">
+            <div><h2 class="nx-section-title">Citas, visitas y entregas</h2></div>
+            <div class="nx-row">
+              <select class="nx-select nx-select--sm" [value]="appointmentStatus()" (change)="filterAppointments($any($event.target).value)" aria-label="Estado">
+                <option value="">Todos los estados</option><option value="PROGRAMADA">Programada</option><option value="CONFIRMADA">Confirmada</option><option value="REPROGRAMADA">Reprogramada</option><option value="REALIZADA">Realizada</option><option value="CANCELADA">Cancelada</option>
               </select>
-              @if (auth.hasAuthority('CITAS_CREAR')) {
-                <button class="primary-button" type="button" (click)="openAppointmentForm()"><app-icon name="plus" /> Programar cita</button>
+              @if (auth.hasAuthority('CITAS_CREAR')) { <button class="nx-btn nx-btn--sm nx-btn--primary" type="button" (click)="openAppointmentForm()"><app-icon name="plus" /> Programar cita</button> }
+            </div>
+          </div>
+          <nx-state [empty]="appointments().length === 0" emptyIcon="calendar" emptyTitle="No hay citas en el periodo">
+            <div class="nx-grid nx-grid--cards">
+              @for (appointment of appointments(); track appointment.id) {
+                <article class="nx-card appointment">
+                  <div class="nx-row nx-row--between">
+                    <span class="day"><b>{{ appointment.fechaInicio | date: 'dd' }}</b><small>{{ appointment.fechaInicio | date: 'MMM' }}</small></span>
+                    <nx-badge [status]="appointment.estado" [text]="label(appointment.estado)" />
+                  </div>
+                  <b>{{ label(appointment.tipo) }}</b>
+                  <span class="sub">{{ appointment.fechaInicio | fecha: 'hora' }} – {{ appointment.fechaFin | date: 'HH:mm' }}</span>
+                  <span class="sub">{{ appointment.lugar || 'Lugar por definir' }}</span>
+                  <span class="sub">{{ customerName(appointment.clienteId) }} · {{ projectName(appointment.proyectoId) }}</span>
+                  @if (auth.hasAuthority('CITAS_REPROGRAMAR') && !['REALIZADA', 'CANCELADA'].includes(appointment.estado)) {
+                    <div class="nx-row">
+                      @if (!isClient() && appointment.estado === 'PROGRAMADA') { <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="updateAppointmentStatus(appointment, 'CONFIRMADA')">Confirmar</button> }
+                      <button type="button" class="nx-btn nx-btn--xs" (click)="openReschedule(appointment)">Reprogramar</button>
+                      <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="updateAppointmentStatus(appointment, 'CANCELADA')">Cancelar</button>
+                    </div>
+                  }
+                </article>
               }
             </div>
-          </header>
-          <div class="appointment-grid">
-            @for (appointment of appointments(); track appointment.id) {
-              <article class="appointment-card">
-                <header>
-                  <time><strong>{{ appointment.fechaInicio | date: 'dd' }}</strong><span>{{ appointment.fechaInicio | date: 'MMM' }}</span></time>
-                  <div><span class="status-badge" [class]="statusClass(appointment.estado)">{{ label(appointment.estado) }}</span></div>
-                </header>
-                <h3>{{ label(appointment.tipo) }}</h3>
-                <p><app-icon name="calendar" />{{ appointment.fechaInicio | date: 'EEEE, d MMMM · h:mm a' }} – {{ appointment.fechaFin | date: 'h:mm a' }}</p>
-                <p><app-icon name="location" />{{ appointment.lugar || 'Lugar por definir' }}</p>
-                <p><app-icon name="service" />{{ customerName(appointment.clienteId) }} · {{ projectName(appointment.proyectoId) }}</p>
-                <footer>
-                  @if (auth.hasAuthority('CITAS_REPROGRAMAR') && !['REALIZADA', 'CANCELADA'].includes(appointment.estado)) {
-                    <button type="button" (click)="openReschedule(appointment)">Reprogramar</button>
-                    @if (!isClient() && appointment.estado === 'PROGRAMADA') { <button type="button" (click)="updateAppointmentStatus(appointment, 'CONFIRMADA')">Confirmar</button> }
-                    <button class="danger-link" type="button" (click)="updateAppointmentStatus(appointment, 'CANCELADA')">Cancelar</button>
-                  }
-                </footer>
-              </article>
-            } @empty {
-              <div class="empty-state wide"><app-icon name="calendar" /><h3>No hay citas en el periodo</h3><p>Programa una cita para iniciar el seguimiento.</p></div>
-            }
-          </div>
-        </article>
+          </nx-state>
+        </section>
+      }
+
+      @case ('tickets') {
+        <section class="nx-card nx-card--pad nx-card--stack"><app-tickets-tab [projects]="projects()" [draft]="ticketDraft()" /></section>
+      }
+
+      @case ('conocimiento') {
+        <section class="nx-card nx-card--pad nx-card--stack"><app-knowledge-tab /></section>
       }
 
       @case ('portal') {
         @if (portalSummary(); as summary) {
-          <section class="portal-hero">
-            <div><span>CLIENTE {{ summary.codigoCliente }}</span><h2>Todo al día, en un solo lugar</h2><p>Consulta tu relación contractual y solicita atención cuando la necesites.</p></div>
-            <div class="portal-next"><span>Próxima cita</span><strong>{{ summary.proximaCita ? (summary.proximaCita | date: 'd MMM, h:mm a') : 'Sin citas programadas' }}</strong></div>
+          <section class="nx-grid nx-grid--kpi">
+            <nx-kpi label="Contratos vigentes" [value]="summary.contratosVigentes" icon="file" tone="primary" />
+            <nx-kpi label="Cuotas pendientes" [value]="summary.cuotasPendientes" [hint]="'Saldo ' + (summary.saldoPendiente | cop)" icon="wallet" />
+            <nx-kpi label="Documentos" [value]="summary.documentosDisponibles" icon="file" />
+            <nx-kpi label="Solicitudes abiertas" [value]="summary.solicitudesAbiertas" [hint]="summary.proximaCita ? 'Próxima cita ' + (summary.proximaCita | fecha: 'hora') : 'Sin citas'" icon="service" />
           </section>
-          <div class="metric-grid portal-metrics">
-            <article class="metric-card blue"><span>Contratos vigentes</span><strong>{{ summary.contratosVigentes }}</strong><small>Activos en tu cuenta</small></article>
-            <article class="metric-card orange"><span>Cuotas pendientes</span><strong>{{ summary.cuotasPendientes }}</strong><small>Saldo {{ summary.saldoPendiente | currency: 'COP':'symbol-narrow':'1.0-0' }}</small></article>
-            <article class="metric-card violet"><span>Documentos</span><strong>{{ summary.documentosDisponibles }}</strong><small>Disponibles para descarga</small></article>
-            <article class="metric-card green"><span>Solicitudes abiertas</span><strong>{{ summary.solicitudesAbiertas }}</strong><small>En seguimiento</small></article>
-          </div>
         }
-        <div class="portal-grid">
-          <article class="panel">
-            <header class="portal-panel-title"><div><span>MIS DOCUMENTOS</span><h2>Archivos disponibles</h2></div></header>
-            @for (document of portalDocuments(); track document.id) {
-              <div class="document-row"><span class="file-icon">PDF</span><div><strong>{{ document.nombre }}</strong><small>{{ document.nombreArchivo }} · Versión {{ document.numeroVersion }}</small></div><button type="button" (click)="downloadPortalDocument(document)">Descargar</button></div>
-            } @empty {
-              <div class="empty-compact"><app-icon name="sales" /><p>Aún no hay documentos visibles.</p></div>
-            }
-          </article>
-          <article class="panel">
-            <header class="portal-panel-title"><div><span>MIS DATOS</span><h2>Solicitudes de actualización</h2></div>@if (auth.hasAuthority('DATOS_CLIENTE_SOLICITAR_CAMBIO')) { <button class="secondary-button" type="button" (click)="openDataChange()">Solicitar cambio</button> }</header>
-            @for (change of dataChanges(); track change.id) {
-              <div class="change-row"><div><strong>{{ label(change.campo) }}</strong><small>{{ change.valorAnterior || 'Sin dato' }} → {{ change.valorSolicitado }}</small></div><span class="status-badge" [class]="statusClass(change.estado)">{{ label(change.estado) }}</span>@if (change.estado === 'PENDIENTE') { <button class="danger-link" type="button" (click)="cancelDataChange(change)">Cancelar</button> }</div>
-            } @empty {
-              <div class="empty-compact"><app-icon name="admin" /><p>No tienes cambios de datos pendientes.</p></div>
-            }
-          </article>
+        <div class="nx-grid nx-grid--2">
+          <section class="nx-card nx-card--pad nx-card--stack">
+            <h2 class="nx-section-title">Mis documentos</h2>
+            <div class="nx-list">
+              @for (document of portalDocuments(); track document.id) {
+                <div class="nx-list-row"><span><b>{{ document.nombre }}</b><div class="sub">{{ document.nombreArchivo }} · versión {{ document.numeroVersion }}</div></span><button type="button" class="nx-btn nx-btn--xs" (click)="downloadPortalDocument(document)"><app-icon name="download" /> Descargar</button></div>
+              } @empty { <p class="nx-muted">Aún no hay documentos.</p> }
+            </div>
+          </section>
+          <section class="nx-card nx-card--pad nx-card--stack">
+            <div class="nx-section-head"><h2 class="nx-section-title">Mis datos</h2>@if (auth.hasAuthority('DATOS_CLIENTE_SOLICITAR_CAMBIO')) { <button class="nx-btn nx-btn--sm" type="button" (click)="openDataChange()">Solicitar cambio</button> }</div>
+            <div class="nx-list">
+              @for (change of dataChanges(); track change.id) {
+                <div class="nx-list-row"><span><b>{{ label(change.campo) }}</b><div class="sub">{{ change.valorAnterior || 'Sin dato' }} → {{ change.valorSolicitado }}</div></span><span class="nx-row"><nx-badge [status]="change.estado" [text]="label(change.estado)" />@if (change.estado === 'PENDIENTE') { <button class="nx-btn nx-btn--xs nx-btn--ghost" type="button" (click)="cancelDataChange(change)">Cancelar</button> }</span></div>
+              } @empty { <p class="nx-muted">Sin cambios pendientes.</p> }
+            </div>
+          </section>
         </div>
       }
     }
   }
-</section>
+</div>
 
-@if (modal()) {
-  <div class="modal-backdrop" (click)="closeModal()">
-    <section class="modal-card" [class.detail-modal]="modal() === 'detalle'" (click)="$event.stopPropagation()">
-      @if (modal() === 'solicitud') {
-        <header><div><span>NUEVA RADICACIÓN</span><h2>Crear solicitud</h2><p>La fecha límite se calcula automáticamente según la prioridad.</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
-        <div class="modal-body" [formGroup]="requestForm">
-          @if (!isClient()) {
-            <label class="full"><span>Cliente *</span><select formControlName="customerId"><option [ngValue]="0">Selecciona un cliente</option>@for (customer of customers(); track customer.id) { <option [ngValue]="customer.id">{{ customer.nombreCompleto }} · {{ customer.numeroDocumento }}</option> }</select></label>
-            <label><span>Proyecto</span><select formControlName="projectId"><option [ngValue]="0">Atención general</option>@for (project of projects(); track project.id) { <option [ngValue]="project.id">{{ project.nombre }}</option> }</select></label>
-          }
-          <label><span>Tipo *</span><select formControlName="type"><option value="PETICION">Petición</option><option value="QUEJA">Queja</option><option value="RECLAMO">Reclamo</option><option value="SUGERENCIA">Sugerencia</option><option value="SOLICITUD">Solicitud</option></select></label>
-          <label><span>Prioridad *</span><select formControlName="priority"><option value="BAJA">Baja · 120 horas</option><option value="MEDIA">Media · 72 horas</option><option value="ALTA">Alta · 24 horas</option><option value="CRITICA">Crítica · 4 horas</option></select></label>
-          <label class="full"><span>Categoría *</span><input type="text" formControlName="category" placeholder="Ej. Escrituración, pagos, entrega" /></label>
-          <label class="full"><span>Asunto *</span><input type="text" formControlName="subject" placeholder="Resume la solicitud" /></label>
-          <label class="full"><span>Descripción *</span><textarea rows="6" formControlName="description" placeholder="Describe lo ocurrido y el resultado esperado"></textarea></label>
-        </div>
-        <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" [disabled]="saving()" (click)="saveRequest()">{{ saving() ? 'Radicando…' : 'Radicar solicitud' }}</button></footer>
-      } @else if (modal() === 'detalle' && selectedRequest(); as request) {
-        <header class="detail-header"><div><span>{{ request.codigo }} · {{ label(request.tipo) }}</span><h2>{{ request.asunto }}</h2><p>{{ customerName(request.clienteId) }} · {{ projectName(request.proyectoId) }}</p></div><div class="detail-header-status"><span class="priority-badge" [class]="priorityClass(request.prioridad)">{{ label(request.prioridad) }}</span><span class="status-badge" [class]="statusClass(request.estado)">{{ label(request.estado) }}</span><button type="button" (click)="closeModal()"><app-icon name="close" /></button></div></header>
-        <div class="detail-tabs"><button type="button" [class.active]="detailView() === 'conversacion'" (click)="showDetail('conversacion')">Conversación <span>{{ messages().length }}</span></button><button type="button" [class.active]="detailView() === 'adjuntos'" (click)="showDetail('adjuntos')">Adjuntos <span>{{ attachments().length }}</span></button>@if (auth.hasAuthority('SOLICITUDES_ASIGNAR')) { <button type="button" [class.active]="detailView() === 'historial'" (click)="showDetail('historial')">Historial <span>{{ history().length }}</span></button> }</div>
-        <div class="detail-layout">
-          <main class="detail-content">
-            @if (detailLoading()) { <div class="loading-state small"><span></span><p>Cargando trazabilidad…</p></div> }
-            @if (detailView() === 'conversacion') {
-              <div class="conversation">
-                <article class="request-origin"><span>SOLICITUD ORIGINAL</span><p>{{ request.descripcion }}</p><small>{{ request.creadoEn | date: 'dd MMM y, h:mm a' }}</small></article>
-                @for (message of messages(); track message.id) {
-                  <article class="message" [class.internal]="message.interno"><header><strong>{{ message.interno ? 'Nota interna' : (message.usuarioId === auth.user()?.id ? 'Tú' : 'Participante') }}</strong><span>{{ message.canal }} · {{ message.creadoEn | date: 'dd MMM, h:mm a' }}</span></header><p>{{ message.mensaje }}</p></article>
-                }
-              </div>
-              @if (auth.hasAuthority('SOLICITUDES_RESPONDER') && !['CERRADA', 'CANCELADA'].includes(request.estado)) {
-                <div class="composer" [formGroup]="messageForm"><textarea rows="4" formControlName="message" placeholder="Escribe una respuesta clara para continuar la atención"></textarea><footer>@if (!isClient()) { <label class="check"><input type="checkbox" formControlName="internal" /> Nota interna, no visible para el cliente</label> }<button class="primary-button" type="button" [disabled]="saving()" (click)="sendMessage()">{{ saving() ? 'Enviando…' : 'Enviar respuesta' }}</button></footer></div>
-              }
-            } @else if (detailView() === 'adjuntos') {
-              @if (auth.hasAuthority('SOLICITUDES_RESPONDER')) {
-                <div class="upload-zone"><app-icon name="sales" /><div><strong>Adjuntar evidencia</strong><p>PDF, PNG o JPG · máximo 15 MB</p><label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="selectFile($event)" /><span>{{ selectedFile()?.name || 'Seleccionar archivo' }}</span></label></div><button class="primary-button" type="button" [disabled]="uploading() || !selectedFile()" (click)="uploadAttachment()">{{ uploading() ? 'Cargando…' : 'Adjuntar' }}</button></div>
-              }
-              <div class="attachment-list">
-                @for (attachment of attachments(); track attachment.id) { <article><span class="file-icon">{{ attachment.mimeType?.includes('pdf') ? 'PDF' : 'IMG' }}</span><div><strong>{{ attachment.nombreArchivo || ('Archivo #' + attachment.archivoId) }}</strong><small>{{ attachment.tamanoBytes ? ((attachment.tamanoBytes / 1024) | number: '1.0-0') + ' KB' : 'Tamaño no disponible' }} · {{ attachment.creadoEn | date: 'dd MMM y, h:mm a' }}</small></div>@if (auth.hasAuthority('DOCUMENTOS_DESCARGAR')) { <button type="button" (click)="downloadAttachment(attachment)">Descargar</button> }</article> } @empty { <div class="empty-state"><app-icon name="sales" /><h3>Sin adjuntos</h3><p>Añade soportes para documentar la atención.</p></div> }
-              </div>
-            } @else {
-              <div class="timeline">
-                @for (event of history(); track event.id) { <article><span></span><div><header><strong>{{ label(event.campo) }}</strong><time>{{ event.creadoEn | date: 'dd MMM y, h:mm a' }}</time></header><p>{{ event.valorAnterior || 'Sin valor' }} → {{ event.valorNuevo || 'Sin valor' }}</p>@if (event.motivo) { <small>{{ event.motivo }}</small> }</div></article> } @empty { <div class="empty-state"><app-icon name="audit" /><h3>Sin cambios registrados</h3></div> }
-              </div>
-            }
-          </main>
-          <aside class="request-aside">
-            <section><span>DETALLES</span><dl><div><dt>Creada</dt><dd>{{ request.creadoEn | date: 'dd MMM y, h:mm a' }}</dd></div><div><dt>Fecha límite</dt><dd [class.overdue-text]="isOverdue(request)">{{ request.fechaLimite | date: 'dd MMM y, h:mm a' }}</dd></div><div><dt>Asignado</dt><dd>{{ request.asignadoA ? ('Usuario #' + request.asignadoA) : 'Sin asignar' }}</dd></div><div><dt>Categoría</dt><dd>{{ request.categoria }}</dd></div></dl></section>
-            @if (auth.hasAuthority('SOLICITUDES_CAMBIAR_ESTADO')) {
-              <section [formGroup]="statusForm"><span>ACTUALIZAR ESTADO</span><label><select formControlName="status"><option value="EN_PROCESO">En proceso</option><option value="PENDIENTE_CLIENTE">Pendiente cliente</option><option value="PENDIENTE_TERCERO">Pendiente tercero</option><option value="RESUELTA">Resuelta</option><option value="REABIERTA">Reabierta</option><option value="CANCELADA">Cancelada</option>@if (auth.hasAuthority('SOLICITUDES_CERRAR')) { <option value="CERRADA">Cerrada</option> }</select></label><label><textarea rows="3" formControlName="reason" placeholder="Motivo del cambio"></textarea></label><button class="secondary-button full-button" type="button" [disabled]="saving()" (click)="changeStatus()">Guardar estado</button></section>
-            }
-            @if (auth.hasAuthority('CITAS_CREAR')) { <button class="secondary-button full-button" type="button" (click)="openAppointmentForm(request)"><app-icon name="calendar" /> Programar cita relacionada</button> }
-          </aside>
-        </div>
-      } @else if (modal() === 'cita') {
-        <header><div><span>AGENDA DE SERVICIO</span><h2>Programar cita</h2><p>Evita cruces y relaciona la cita con la solicitud cuando aplique.</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
-        <div class="modal-body" [formGroup]="appointmentForm">
-          @if (!isClient()) { <label class="full"><span>Cliente *</span><select formControlName="customerId"><option [ngValue]="0">Selecciona un cliente</option>@for (customer of customers(); track customer.id) { <option [ngValue]="customer.id">{{ customer.nombreCompleto }}</option> }</select></label><label><span>Proyecto</span><select formControlName="projectId"><option [ngValue]="0">Atención general</option>@for (project of projects(); track project.id) { <option [ngValue]="project.id">{{ project.nombre }}</option> }</select></label> }
-          <label><span>Tipo *</span><select formControlName="type"><option value="ASESORIA">Asesoría</option><option value="VISITA_TECNICA">Visita técnica</option><option value="ENTREGA">Entrega</option><option value="FIRMA">Firma</option><option value="REUNION">Reunión</option></select></label>
-          <label><span>Inicio *</span><input type="datetime-local" formControlName="start" /></label><label><span>Finalización *</span><input type="datetime-local" formControlName="end" /></label>
-          <label class="full"><span>Lugar o enlace</span><input type="text" formControlName="place" placeholder="Sala, proyecto o enlace virtual" /></label>
-        </div>
-        <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" [disabled]="saving()" (click)="saveAppointment()">{{ saving() ? 'Programando…' : 'Programar cita' }}</button></footer>
-      } @else if (modal() === 'reprogramar' && selectedAppointment(); as appointment) {
-        <header><div><span>REPROGRAMAR</span><h2>{{ label(appointment.tipo) }}</h2><p>La nueva fecha será notificada al cliente y al responsable.</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
-        <div class="modal-body" [formGroup]="rescheduleForm"><label><span>Nuevo inicio *</span><input type="datetime-local" formControlName="start" /></label><label><span>Nueva finalización *</span><input type="datetime-local" formControlName="end" /></label><label class="full"><span>Lugar o enlace</span><input type="text" formControlName="place" /></label></div>
-        <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" [disabled]="saving()" (click)="saveReschedule()">{{ saving() ? 'Guardando…' : 'Confirmar reprogramación' }}</button></footer>
-      } @else if (modal() === 'datos') {
-        <header><div><span>ACTUALIZACIÓN SEGURA</span><h2>Solicitar cambio de datos</h2><p>Un usuario diferente revisará la solicitud antes de aplicarla.</p></div><button type="button" (click)="closeModal()"><app-icon name="close" /></button></header>
-        <div class="modal-body" [formGroup]="dataChangeForm"><label><span>Dato *</span><select formControlName="field"><option value="CORREO">Correo</option><option value="TELEFONO">Teléfono</option><option value="DIRECCION">Dirección</option><option value="NOMBRES">Nombres</option><option value="APELLIDOS">Apellidos</option><option value="DOCUMENTO">Documento</option></select></label><label><span>Nuevo valor *</span><input type="text" formControlName="value" /></label><label class="full"><span>Motivo *</span><textarea rows="4" formControlName="reason"></textarea></label></div>
-        <footer><button class="secondary-button" type="button" (click)="closeModal()">Cancelar</button><button class="primary-button" type="button" [disabled]="saving()" (click)="saveDataChange()">{{ saving() ? 'Enviando…' : 'Enviar a revisión' }}</button></footer>
-      }
-    </section>
+<!-- Nueva solicitud -->
+<nx-drawer [open]="modal() === 'solicitud'" (openChange)="$event || closeDialog()" title="Nueva solicitud" subtitle="La fecha límite se calcula según la prioridad." [dismissible]="!saving()">
+  <div class="nx-form-grid" [formGroup]="requestForm">
+    @if (!isClient()) {
+      <label class="nx-field nx-span-all"><span>Cliente</span><select class="nx-select" formControlName="customerId"><option [ngValue]="0">Seleccione…</option>@for (customer of customers(); track customer.id) { <option [ngValue]="customer.id">{{ customer.nombreCompleto }} · {{ customer.numeroDocumento }}</option> }</select></label>
+      <label class="nx-field nx-span-all"><span>Proyecto</span><select class="nx-select" formControlName="projectId"><option [ngValue]="0">Atención general</option>@for (project of projects(); track project.id) { <option [ngValue]="project.id">{{ project.nombre }}</option> }</select></label>
+    }
+    <label class="nx-field"><span>Tipo</span><select class="nx-select" formControlName="type"><option value="PETICION">Petición</option><option value="QUEJA">Queja</option><option value="RECLAMO">Reclamo</option><option value="SUGERENCIA">Sugerencia</option><option value="SOLICITUD">Solicitud</option></select></label>
+    <label class="nx-field"><span>Prioridad</span><select class="nx-select" formControlName="priority"><option value="BAJA">Baja · 120 h</option><option value="MEDIA">Media · 72 h</option><option value="ALTA">Alta · 24 h</option><option value="CRITICA">Crítica · 4 h</option></select></label>
+    <label class="nx-field nx-span-all"><span>Categoría</span><input class="nx-input" type="text" formControlName="category" placeholder="Escrituración, pagos, entrega…" /></label>
+    <label class="nx-field nx-span-all"><span>Asunto</span><input class="nx-input" type="text" formControlName="subject" /></label>
+    <label class="nx-field nx-span-all"><span>Descripción</span><textarea class="nx-textarea" formControlName="description" placeholder="Qué ocurrió y qué resultado espera"></textarea></label>
   </div>
-}
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closeDialog()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="button" [disabled]="saving()" (click)="saveRequest()">{{ saving() ? 'Radicando…' : 'Radicar solicitud' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Programar cita -->
+<nx-drawer [open]="modal() === 'cita'" (openChange)="$event || closeDialog()" title="Programar cita" subtitle="Se valida que no se cruce con otra." [dismissible]="!saving()">
+  <div class="nx-form-grid" [formGroup]="appointmentForm">
+    @if (!isClient()) {
+      <label class="nx-field nx-span-all"><span>Cliente</span><select class="nx-select" formControlName="customerId"><option [ngValue]="0">Seleccione…</option>@for (customer of customers(); track customer.id) { <option [ngValue]="customer.id">{{ customer.nombreCompleto }}</option> }</select></label>
+      <label class="nx-field nx-span-all"><span>Proyecto</span><select class="nx-select" formControlName="projectId"><option [ngValue]="0">Atención general</option>@for (project of projects(); track project.id) { <option [ngValue]="project.id">{{ project.nombre }}</option> }</select></label>
+    }
+    <label class="nx-field nx-span-all"><span>Tipo</span><select class="nx-select" formControlName="type"><option value="ASESORIA">Asesoría</option><option value="VISITA_TECNICA">Visita técnica</option><option value="ENTREGA">Entrega</option><option value="FIRMA">Firma</option><option value="REUNION">Reunión</option></select></label>
+    <label class="nx-field"><span>Inicio</span><input class="nx-input" type="datetime-local" formControlName="start" /></label>
+    <label class="nx-field"><span>Fin</span><input class="nx-input" type="datetime-local" formControlName="end" /></label>
+    <label class="nx-field nx-span-all"><span>Lugar o enlace</span><input class="nx-input" type="text" formControlName="place" /></label>
+  </div>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closeDialog()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="button" [disabled]="saving()" (click)="saveAppointment()">{{ saving() ? 'Programando…' : 'Programar' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Reprogramar -->
+<nx-drawer [open]="modal() === 'reprogramar'" (openChange)="$event || closeDialog()" variant="dialog" [title]="selectedAppointment() ? 'Reprogramar · ' + label(selectedAppointment()!.tipo) : 'Reprogramar'" subtitle="Se notifica al cliente y al responsable." [dismissible]="!saving()">
+  <div class="nx-form-grid" [formGroup]="rescheduleForm">
+    <label class="nx-field"><span>Nuevo inicio</span><input class="nx-input" type="datetime-local" formControlName="start" /></label>
+    <label class="nx-field"><span>Nuevo fin</span><input class="nx-input" type="datetime-local" formControlName="end" /></label>
+    <label class="nx-field nx-span-all"><span>Lugar o enlace</span><input class="nx-input" type="text" formControlName="place" /></label>
+  </div>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closeDialog()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="button" [disabled]="saving()" (click)="saveReschedule()">{{ saving() ? 'Guardando…' : 'Reprogramar' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Cambio de datos (cliente) -->
+<nx-drawer [open]="modal() === 'datos'" (openChange)="$event || closeDialog()" variant="dialog" title="Solicitar cambio de datos" subtitle="Otra persona lo revisa antes de aplicarlo." [dismissible]="!saving()">
+  <div class="nx-stack" [formGroup]="dataChangeForm">
+    <label class="nx-field"><span>Dato</span><select class="nx-select" formControlName="field"><option value="CORREO">Correo</option><option value="TELEFONO">Teléfono</option><option value="DIRECCION">Dirección</option><option value="NOMBRES">Nombres</option><option value="APELLIDOS">Apellidos</option><option value="DOCUMENTO">Documento</option></select></label>
+    <label class="nx-field"><span>Nuevo valor</span><input class="nx-input" type="text" formControlName="value" /></label>
+    <label class="nx-field"><span>Motivo</span><textarea class="nx-textarea" formControlName="reason"></textarea></label>
+  </div>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closeDialog()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="button" [disabled]="saving()" (click)="saveDataChange()">{{ saving() ? 'Enviando…' : 'Enviar a revisión' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- Selector de artículos -->
+<nx-drawer [open]="kbPickerOpen()" (openChange)="kbPickerOpen.set($event)" width="760px" title="Usar un artículo" subtitle="Se agrega a la respuesta; puede editarlo antes de enviar.">
+  <app-knowledge-tab [picker]="true" (picked)="useArticle($event)" />
+</nx-drawer>
