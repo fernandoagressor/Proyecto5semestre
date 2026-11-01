@@ -29,7 +29,7 @@ import { CrmService } from '../../core/services/crm.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
 import { SalesService } from '../../core/services/sales.service';
-import { AppIconComponent } from '../../shared/components/app-icon.component';
+import { NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 
 type SalesTab = 'reservas' | 'contratos' | 'clientes';
@@ -49,7 +49,7 @@ type SalesModal =
 
 @Component({
   selector: 'app-sales-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective],
   templateUrl: './sales.page.html',
   styleUrl: './sales.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -773,6 +773,34 @@ export class SalesPage implements OnInit {
         } as Record<string, string>
       )[status] ?? status
     );
+  }
+
+  readonly contractSteps = [
+    { value: 'BORRADOR', label: 'Borrador' },
+    { value: 'NEGOCIACION', label: 'Negociación' },
+    { value: 'PENDIENTE_FIRMA', label: 'En firma' },
+    { value: 'VIGENTE', label: 'Vigente' },
+    { value: 'FINALIZADO', label: 'Saldado' },
+  ];
+
+  contractStepIndex(status: string): number {
+    return this.contractSteps.findIndex((step) => step.value === status);
+  }
+
+  contractTypeLabel(type: string): string {
+    return ({ PROMESA_COMPRAVENTA: 'Promesa de compraventa', COMPRAVENTA: 'Compraventa', CESION: 'Cesión' } as Record<string, string>)[type] ?? type;
+  }
+
+  /** Días que faltan para el vencimiento (negativo si ya venció). */
+  daysLeft(date: string): number {
+    return Math.floor((new Date(date).getTime() - Date.now()) / 86_400_000);
+  }
+
+  daysLeftLabel(date: string): string {
+    const days = this.daysLeft(date);
+    if (days < 0) return 'Vencida';
+    if (days === 0) return 'Vence hoy';
+    return days === 1 ? 'Queda 1 día' : `Quedan ${days} días`;
   }
 
   canUseCustomerLotFlow(): boolean {
