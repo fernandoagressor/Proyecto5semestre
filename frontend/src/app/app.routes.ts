@@ -15,6 +15,16 @@ export const routes: Routes = [
     title: 'Iniciar sesión | Nexora Core',
   },
   {
+    path: 'catalogo/:empresa',
+    loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage),
+    title: 'Proyectos | Catálogo',
+  },
+  {
+    path: 'catalogo/:empresa/proyecto/:proyecto',
+    loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage),
+    title: 'Proyecto | Catálogo',
+  },
+  {
     path: 'portal',
     canActivate: [authGuard, clientPortalGuard],
     loadComponent: () => import('./features/portal/portal.page').then((m) => m.PortalPage),

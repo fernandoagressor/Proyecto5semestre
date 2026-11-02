@@ -72,6 +72,7 @@ public class PortalClienteService {
     @Transactional(readOnly = true)
     public PortalDtos.Resumen resumen(ContextoUsuario contexto) {
         Cliente cliente = clientePortal(contexto);
+        String nombres = personaRepository.findById(cliente.getPersonaId()).map(Persona::getNombres).orElse(null);
         // Las PQRS viven en MongoDB desde la rama 5; se cuentan aparte.
         long solicitudes = solicitudRepository.contarAbiertasDeCliente(contexto.empresaId(), cliente.getId());
         // Las citas de servicio viven en MongoDB desde la rama 10.
@@ -93,7 +94,7 @@ public class PortalClienteService {
                 """, (rs, rowNum) -> new PortalDtos.Resumen(cliente.getId(), cliente.getCodigoCliente(),
                 rs.getLong("contratos_vigentes"), rs.getLong("cuotas_pendientes"),
                 rs.getBigDecimal("saldo_pendiente"), rs.getLong("documentos"),
-                solicitudes, proximaCita),
+                solicitudes, proximaCita, nombres),
                 contexto.empresaId(), cliente.getId(),
                 contexto.empresaId(), cliente.getId(), cliente.getId());
     }
