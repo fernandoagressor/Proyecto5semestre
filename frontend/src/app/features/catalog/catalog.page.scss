@@ -9,7 +9,10 @@
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text-strong); text-decoration: none; }
 .brand img, .brand__mark { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; }
 .brand__mark { display: grid; place-items: center; color: #fff; background: var(--color-primary); font-family: var(--font-display); font-weight: 800; }
-.brand b { font-family: var(--font-display); font-size: 17px; }
+.brand b { overflow: hidden; font-family: var(--font-display); font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
+.brand { min-width: 0; }
+.nowrap { white-space: nowrap; }
+.show-sm { display: none; }
 .top__links { display: flex; align-items: center; gap: 14px; }
 .top__links > a:not(.nx-btn) { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 14px; font-weight: 600; text-decoration: none; }
 .top__links app-icon { width: 16px; height: 16px; }
@@ -83,5 +86,6 @@
   .facts { width: 100%; }
   .facts span { flex: 1; }
   .hide-sm { display: none; }
+  .show-sm { display: inline; }
   .narrow { width: 120px; }
 }

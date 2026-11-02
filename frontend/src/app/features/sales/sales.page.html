@@ -109,6 +109,8 @@
           </table>
         </div>
       </nx-state>
+    } @else if (activeTab() === 'desistimientos') {
+      <app-withdrawals-tab [contracts]="contracts()" [customerNames]="customerNames()" (changed)="refreshContracts()" />
     } @else {
       <div class="nx-section-head">
         <span class="nx-search search"><app-icon name="search" /><input class="nx-input" [formControl]="customerSearch" placeholder="Nombre, documento, teléfono, correo o código" /></span>
@@ -144,8 +146,6 @@
           </table>
         </div>
       </nx-state>
-    } @else if (activeTab() === 'desistimientos') {
-      <app-withdrawals-tab [contracts]="contracts()" [customerNames]="customerNames()" (changed)="refreshContracts()" />
     }
   </section>
 </div>
