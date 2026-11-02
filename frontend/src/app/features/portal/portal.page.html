@@ -18,7 +18,7 @@
         @if (menuOpen()) {
           <div class="me__menu" role="menu">
             <div class="me__who"><b>{{ auth.user()?.nombreUsuario }}</b><small>{{ auth.user()?.correo }}</small></div>
-            <a role="menuitem" routerLink="/seguridad/cambiar-password"><app-icon name="lock" /> Cambiar contraseña</a>
+            <a role="menuitem" routerLink="/portal/cambiar-password"><app-icon name="lock" /> Cambiar contraseña</a>
             <button type="button" role="menuitem" (click)="logout()"><app-icon name="logout" /> Cerrar sesión</button>
           </div>
         }
@@ -201,7 +201,7 @@
               <div><dt>Correo</dt><dd>{{ auth.user()?.correo }}</dd></div>
               <div><dt>Código de cliente</dt><dd>{{ summary()?.codigoCliente ?? '—' }}</dd></div>
             </dl>
-            <a class="nx-btn nx-btn--sm" routerLink="/seguridad/cambiar-password" style="align-self: flex-start"><app-icon name="lock" /> Cambiar contraseña</a>
+            <a class="nx-btn nx-btn--sm" routerLink="/portal/cambiar-password" style="align-self: flex-start"><app-icon name="lock" /> Cambiar contraseña</a>
           </section>
           @if (can.dataChange) {
             <section class="nx-card nx-card--pad nx-card--stack">

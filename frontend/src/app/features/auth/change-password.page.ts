@@ -6,11 +6,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { ApiProblem } from '../../core/models/api.models';
 import { AuthService } from '../../core/services/auth.service';
+import { isClient } from '../../core/guards/client-portal.guard';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 
 const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/;
@@ -40,9 +41,11 @@ export function passwordStrength(value: string): { score: number; label: string 
     MatInputModule,
     MatProgressSpinnerModule,
     AppIconComponent,
+    RouterLink,
   ],
   templateUrl: './change-password.page.html',
   styleUrl: './change-password.page.scss',
+  host: { '[class.is-client]': 'client' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChangePasswordPage {
@@ -50,6 +53,8 @@ export class ChangePasswordPage {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  /** Clientes: la misma pantalla con el diseño del portal (sin el menú del equipo). */
+  readonly client = isClient(this.auth);
   readonly loading = signal(false);
   readonly apiError = signal<string | null>(null);
   readonly showCurrent = signal(false);

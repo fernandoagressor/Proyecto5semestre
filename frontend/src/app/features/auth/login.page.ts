@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 
 import { ApiProblem } from '../../core/models/api.models';
 import { AuthService } from '../../core/services/auth.service';
+import { homeUrl } from '../../core/guards/client-portal.guard';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 import { BrandMarkComponent } from '../../shared/components/brand-mark.component';
 
@@ -60,7 +61,7 @@ export class LoginPage {
         next: () => {
           const user = this.auth.user();
           const target = user?.requiereCambioPassword
-            ? '/seguridad/cambiar-password'
+            ? homeUrl(this.auth)
             : user?.roles.includes('SUPER_ADMIN') && !user.empresaId
               ? '/superadmin'
               : user?.roles.includes('CLIENTE')
