@@ -5,7 +5,7 @@ import { guestGuard } from './core/guards/guest.guard';
 import { companyModuleGuard } from './core/guards/company-module.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { passwordChangeGuard } from './core/guards/password-change.guard';
-import { clientPortalGuard, internalAreaGuard } from './core/guards/client-portal.guard';
+import { clientAccountGuard, clientPortalGuard, internalAreaGuard } from './core/guards/client-portal.guard';
 
 export const routes: Routes = [
   {
@@ -23,6 +23,12 @@ export const routes: Routes = [
     path: 'catalogo/:empresa/proyecto/:proyecto',
     loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage),
     title: 'Proyecto | Catálogo',
+  },
+  {
+    path: 'portal/cambiar-password',
+    canActivate: [authGuard, clientAccountGuard],
+    loadComponent: () => import('./features/auth/change-password.page').then((m) => m.ChangePasswordPage),
+    title: 'Cambiar contraseña | Mi portal',
   },
   {
     path: 'portal',
