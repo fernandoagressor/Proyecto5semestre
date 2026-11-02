@@ -30,6 +30,10 @@ export class DownloadService {
     return this.save(`${API_BASE_URL}/contratos/${contractId}/documentos/${kind}`, new HttpParams(), `${kind}.pdf`);
   }
 
+  withdrawalAct(id: number): Observable<void> {
+    return this.save(`${API_BASE_URL}/desistimientos/${id}/acta`, new HttpParams(), `acta-desistimiento-${id}.pdf`);
+  }
+
   portalStatement(contractId: number): Observable<void> {
     return this.save(`${API_BASE_URL}/portal/contratos/${contractId}/estado-cuenta`, new HttpParams(), 'estado-de-cuenta.pdf');
   }

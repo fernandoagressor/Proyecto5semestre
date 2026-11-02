@@ -32,8 +32,9 @@ import { ProjectService } from '../../core/services/project.service';
 import { SalesService } from '../../core/services/sales.service';
 import { NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { WithdrawalsTabComponent } from './withdrawals-tab.component';
 
-type SalesTab = 'reservas' | 'contratos' | 'clientes';
+type SalesTab = 'reservas' | 'contratos' | 'clientes' | 'desistimientos';
 type SalesModal =
   | 'cliente'
   | 'reserva'
@@ -50,7 +51,7 @@ type SalesModal =
 
 @Component({
   selector: 'app-sales-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, WithdrawalsTabComponent],
   templateUrl: './sales.page.html',
   styleUrl: './sales.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,6 +80,7 @@ export class SalesPage implements OnInit {
   readonly saving = signal(false);
   readonly feedback = signal('');
   readonly portalAccess = signal<PortalAccess | null>(null);
+  readonly customerNames = computed(() => Object.fromEntries(this.customers().map((c) => [c.id, c.nombreCompleto])) as Record<number, string>);
   readonly portalBusy = signal(false);
   readonly error = signal('');
   readonly modal = signal<SalesModal>(null);
@@ -880,6 +882,10 @@ export class SalesPage implements OnInit {
         reservation.id === updatedReservation.id ? updatedReservation : reservation,
       ),
     );
+  }
+
+  refreshContracts(): void {
+    this.loadContracts();
   }
 
   private loadContracts(): void {

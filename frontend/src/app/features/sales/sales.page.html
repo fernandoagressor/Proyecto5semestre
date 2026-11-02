@@ -35,6 +35,7 @@
     @if (auth.hasAuthority('RESERVAS_VER')) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'reservas'" [class.on]="activeTab() === 'reservas'" (click)="setTab('reservas')">Reservas <span>{{ reservations().length }}</span></button> }
     @if (auth.hasAuthority('CONTRATOS_VER')) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'contratos'" [class.on]="activeTab() === 'contratos'" (click)="setTab('contratos')">Contratos <span>{{ contracts().length }}</span></button> }
     @if (auth.hasAuthority('CLIENTES_VER')) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'clientes'" [class.on]="activeTab() === 'clientes'" (click)="setTab('clientes')">Clientes <span>{{ customers().length }}</span></button> }
+    @if (auth.hasAuthority('DESISTIMIENTOS_VER')) { <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'desistimientos'" [class.on]="activeTab() === 'desistimientos'" (click)="setTab('desistimientos')">Desistimientos</button> }
   </nav>
 
   <section class="nx-card nx-card--pad nx-card--stack">
@@ -143,6 +144,8 @@
           </table>
         </div>
       </nx-state>
+    } @else if (activeTab() === 'desistimientos') {
+      <app-withdrawals-tab [contracts]="contracts()" [customerNames]="customerNames()" (changed)="refreshContracts()" />
     }
   </section>
 </div>
