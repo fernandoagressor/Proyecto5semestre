@@ -145,6 +145,27 @@ async function portal(browser, cliente) {
   }
 }
 
+// Catálogo público: lo publica por la API y lo fotografía sin sesión (lista y ficha de un proyecto).
+async function catalogo(browser) {
+  const admin = (await api('POST', '/auth/login', null, { identificador: USUARIO, password: PASSWORD })).json?.accessToken;
+  const estado = (await api('PUT', '/empresas/actual/catalogo', admin, { publico: true })).json;
+  if (!estado?.codigo) return;
+  const proyectos = (await api('GET', `/publico/catalogo/${estado.codigo}`)).json?.proyectos ?? [];
+  const rutas = [`catalogo/${estado.codigo}`, ...(proyectos[0] ? [`catalogo/${estado.codigo}/proyecto/${proyectos[0].id}`] : [])];
+  for (const [vista, viewport] of [['escritorio', { width: 1440, height: 900 }], ['movil', { width: 390, height: 844 }]]) {
+    const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'es-CO', timezoneId: 'America/Bogota' });
+    const page = await context.newPage();
+    await vigilar(page, `catalogo-${vista}`);
+    for (const [i, ruta] of rutas.entries()) {
+      await page.goto(`${BASE}/${ruta}`);
+      await esperar(page);
+      await capturar(page, `${vista}-catalogo-${i + 1}`);
+      console.log(`${vista}-catalogo-${i + 1}  (${page.url().replace(BASE, '')})`);
+    }
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch();
 try {
   await recorrer(browser, 'escritorio', { width: 1440, height: 900 }, RUTAS);
@@ -154,6 +175,7 @@ try {
     return null;
   });
   if (cliente) await portal(browser, cliente);
+  await catalogo(browser).catch((e) => errores.push(`[catalogo] ${e.message}`));
 } finally {
   await browser.close();
   writeFileSync(`${SALIDA}/errores.txt`, errores.length ? errores.join('\n') + '\n' : 'Sin errores\n');

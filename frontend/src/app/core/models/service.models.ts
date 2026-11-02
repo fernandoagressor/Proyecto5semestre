@@ -112,6 +112,7 @@ export interface ClientPortalSummary {
   documentosDisponibles: number;
   solicitudesAbiertas: number;
   proximaCita: string | null;
+  nombres?: string | null;
 }
 
 export interface ClientPortalDocument {

@@ -130,6 +130,27 @@ public class ProspectoService {
         return ProspectoResponse.from(prospectoRepository.insertar(prospecto));
     }
 
+    /**
+     * Prospecto que llega del catálogo público (sin sesión). Si ya existe uno activo con el mismo
+     * correo o teléfono no se crea otro, y se responde igual para no revelar quién está registrado.
+     *
+     * @return true si se registró un prospecto nuevo
+     */
+    @Transactional
+    public boolean registrarDesdeCatalogo(Long empresaId, Long proyectoId, Long asesorId, String nombres,
+                                          String telefono, String correo, String observaciones) {
+        validarContacto(telefono, correo);
+        if (prospectoRepository.contarContactosActivos(empresaId, correo(correo), normalizar(telefono), null) > 0) {
+            return false;
+        }
+        Prospecto prospecto = new Prospecto(empresaId, proyectoId, asesorId, requerido(nombres),
+                normalizar(telefono), correo(correo), com.inmobiliaria.inmobiliaria_api.entity.crm.FuenteProspecto.WEB,
+                null, TemperaturaProspecto.TIBIO, normalizar(observaciones));
+        prospecto.identificar(secuencias.siguiente(SecuenciasCrm.PROSPECTOS));
+        prospectoRepository.insertar(prospecto);
+        return true;
+    }
+
     @Transactional
     public ProspectoResponse actualizar(
             ContextoUsuario contexto,

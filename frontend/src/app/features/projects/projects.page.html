@@ -1,5 +1,15 @@
 <div class="nx-page">
   <nx-page-header eyebrow="Portafolio inmobiliario" title="Proyectos" [description]="limitLabel()">
+    @if (catalogStatus(); as cat) {
+      <span class="catalog">
+        @if (canConfigure) {
+          <label class="switch" title="Publicar los proyectos activos y sus lotes disponibles en una página abierta">
+            <input type="checkbox" [checked]="cat.publico" (change)="toggleCatalog()" /><span class="switch__ui"></span> Catálogo público
+          </label>
+        }
+        @if (cat.publico) { <a class="nx-btn nx-btn--sm nx-btn--soft" [href]="catalogUrl()" target="_blank" rel="noopener"><app-icon name="external" /> Ver catálogo</a> }
+      </span>
+    }
     @if (canCreate) {
       <button type="button" class="nx-btn nx-btn--primary" (click)="openForm(null)" [disabled]="atLimit()" [title]="atLimit() ? 'Alcanzó el límite de proyectos de su plan' : ''"><app-icon name="plus" /> Nuevo proyecto</button>
     }
@@ -72,6 +82,24 @@
         <div><dt>Inventario disponible</dt><dd>{{ summary(p.id) ? money(summary(p.id)!.valorDisponible) : '—' }}</dd></div>
       </dl>
       @if (p.descripcion) { <p class="nx-muted desc">{{ p.descripcion }}</p> }
+      <h3 class="nx-section-title small">Galería <span class="nx-muted">({{ images().length }})</span></h3>
+      <div class="gallery">
+        @for (img of images(); track img.id) {
+          <figure>
+            <img [src]="img.url" [alt]="img.titulo ?? 'Foto del proyecto'" loading="lazy" />
+            @if (canEdit) { <button type="button" class="gallery__del" (click)="removeImage(p, img)" aria-label="Quitar foto">×</button> }
+            @if (img.titulo) { <figcaption>{{ img.titulo }}</figcaption> }
+          </figure>
+        } @empty { <p class="nx-muted small">Sin fotos. Se muestran en la ficha y en el catálogo público.</p> }
+      </div>
+      @if (canEdit) {
+        <div class="gallery-add">
+          <input class="nx-input nx-input--sm" [formControl]="imageUrl" placeholder="Enlace https de la foto" aria-label="Enlace de la foto" />
+          <input class="nx-input nx-input--sm" [formControl]="imageTitle" placeholder="Título (opcional)" aria-label="Título de la foto" />
+          <button type="button" class="nx-btn nx-btn--sm" [disabled]="busy()" (click)="addImage(p)"><app-icon name="image" /> Agregar</button>
+        </div>
+        @if (imageUrl.touched && imageUrl.invalid) { <span class="err">Use un enlace que empiece por https://</span> }
+      }
       <h3 class="nx-section-title small">Etapas</h3>
       <div class="nx-list">
         @for (e of stages(); track e.id) {

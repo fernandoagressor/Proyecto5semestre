@@ -4,9 +4,11 @@ import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } 
 import { RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, from, map, mergeMap, of } from 'rxjs';
 
+import { CatalogImage, CatalogStatus } from '../../core/models/catalog.models';
 import { Company, Project } from '../../core/models/empresa.models';
 import { InventorySummary, ProjectStage } from '../../core/models/inventory.models';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogService } from '../../core/services/catalog.service';
 import { CompanyService } from '../../core/services/company.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectPayload, ProjectService } from '../../core/services/project.service';
@@ -40,12 +42,22 @@ export class ProjectsPage {
   private readonly inventory = inject(InventoryService);
   private readonly companyService = inject(CompanyService);
   private readonly toast = inject(ToastService);
+  private readonly catalog = inject(CatalogService);
   private readonly fb = inject(NonNullableFormBuilder);
   readonly auth = inject(AuthService);
 
   readonly canCreate = this.auth.hasAuthority('PROYECTOS_CREAR');
   readonly canEdit = this.auth.hasAuthority('PROYECTOS_EDITAR');
   readonly seesLots = this.auth.hasAuthority('LOTES_VER');
+  readonly canConfigure = this.auth.hasAuthority('CONFIGURACION_EMPRESA_EDITAR');
+  readonly catalogStatus = signal<CatalogStatus | null>(null);
+  readonly catalogUrl = computed(() => {
+    const c = this.catalogStatus();
+    return c ? `/catalogo/${c.codigo}` : '';
+  });
+  readonly images = signal<CatalogImage[]>([]);
+  readonly imageUrl = new FormControl('', { nonNullable: true, validators: [Validators.pattern(/^https:\/\/\S+$/), Validators.maxLength(500)] });
+  readonly imageTitle = new FormControl('', { nonNullable: true, validators: Validators.maxLength(160) });
   readonly filters = STATUS_FILTERS;
   readonly statuses = STATUSES;
 
@@ -90,6 +102,9 @@ export class ProjectsPage {
   constructor() {
     if (this.auth.user()?.empresaId) {
       this.companyService.current().pipe(catchError(() => of(null))).subscribe((c) => this.company.set(c));
+    }
+    if (this.auth.user()?.empresaId) {
+      this.catalog.status().pipe(catchError(() => of(null))).subscribe((st) => this.catalogStatus.set(st));
     }
     effect(() => {
       const text = this.text();
@@ -151,6 +166,49 @@ export class ProjectsPage {
     this.selected.set(project);
     this.stages.set([]);
     this.inventory.stages(project.id).pipe(catchError(() => of([] as ProjectStage[]))).subscribe((list) => this.stages.set(list));
+    this.images.set([]);
+    this.imageUrl.reset('');
+    this.imageTitle.reset('');
+    this.catalog.images(project.id).pipe(catchError(() => of([] as CatalogImage[]))).subscribe((list) => this.images.set(list));
+  }
+
+  toggleCatalog(): void {
+    const current = this.catalogStatus();
+    if (!current) return;
+    this.catalog.setPublic(!current.publico).subscribe({
+      next: (st) => {
+        this.catalogStatus.set(st);
+        this.toast.success(st.publico ? 'Catálogo público activado: comparta el enlace con sus clientes.' : 'Catálogo público desactivado.');
+      },
+      error: (e) => this.toast.error(apiErrorMessage(e, 'No se pudo cambiar el catálogo.')),
+    });
+  }
+
+  addImage(project: Project): void {
+    if (!this.imageUrl.value.trim() || this.imageUrl.invalid) {
+      this.imageUrl.markAsTouched();
+      return;
+    }
+    this.busy.set(true);
+    this.catalog.addImage(project.id, this.imageUrl.value.trim(), this.imageTitle.value.trim() || null).subscribe({
+      next: (img) => {
+        this.busy.set(false);
+        this.images.update((list) => [...list, img]);
+        this.imageUrl.reset('');
+        this.imageTitle.reset('');
+      },
+      error: (e) => {
+        this.busy.set(false);
+        this.toast.error(apiErrorMessage(e, 'No se pudo agregar la foto.'));
+      },
+    });
+  }
+
+  removeImage(project: Project, image: CatalogImage): void {
+    this.catalog.removeImage(project.id, image.id).subscribe({
+      next: () => this.images.update((list) => list.filter((i) => i.id !== image.id)),
+      error: (e) => this.toast.error(apiErrorMessage(e, 'No se pudo quitar la foto.')),
+    });
   }
 
   changeStatus(project: Project, estado: Project['estado']): void {

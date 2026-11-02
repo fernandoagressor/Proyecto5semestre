@@ -1,0 +1,160 @@
+<div class="cat">
+  <header class="top">
+    <div class="wrap top__in">
+      <a class="brand" [routerLink]="['/catalogo', code()]">
+        @if (company()?.logoUrl) { <img [src]="company()!.logoUrl" alt="" /> }
+        @else { <span class="brand__mark">{{ (company()?.nombre ?? '·').charAt(0) }}</span> }
+        <b>{{ company()?.nombre ?? 'Catálogo de proyectos' }}</b>
+      </a>
+      <nav class="top__links">
+        @if (company()?.telefono) { <a [href]="'tel:' + company()!.telefono"><app-icon name="phone" /> {{ company()!.telefono }}</a> }
+        <a href="#contacto" class="nx-btn nx-btn--primary nx-btn--sm">Quiero que me contacten</a>
+      </nav>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="wrap pad"><nx-state [loading]="true" /></div>
+  } @else if (error()) {
+    <div class="wrap pad"><nx-state [empty]="true" emptyIcon="projects" emptyTitle="Catálogo no disponible" [emptyText]="error()!" /></div>
+  } @else if (company(); as c) {
+    @if (!detail()) {
+      <section class="hero">
+        <div class="wrap">
+          <span class="hero__eyebrow">Lotes propios, financiados a su medida</span>
+          <h1>Encuentre su lote en {{ c.nombre }}</h1>
+          <p>{{ c.proyectos.length }} {{ c.proyectos.length === 1 ? 'proyecto disponible' : 'proyectos disponibles' }}{{ c.ciudad ? ' · ' + c.ciudad : '' }}. Precios y disponibilidad actualizados en línea.</p>
+        </div>
+      </section>
+      <main class="wrap list">
+        @if (cities().length > 1) {
+          <div class="nx-row filters">
+            <button type="button" class="chip" [class.on]="!city()" (click)="city.set('')">Todas las ciudades</button>
+            @for (ct of cities(); track ct) { <button type="button" class="chip" [class.on]="city() === ct" (click)="city.set(ct)">{{ ct }}</button> }
+          </div>
+        }
+        <div class="grid">
+          @for (p of projects(); track p.id) {
+            <button type="button" class="card" (click)="open(p)">
+              <span class="card__img">
+                @if (p.imagenUrl) { <img [src]="p.imagenUrl" [alt]="p.nombre" loading="lazy" /> }
+                @else { <span class="placeholder">{{ p.nombre.charAt(0) }}</span> }
+                <span class="card__tag">{{ p.lotesDisponibles }} lotes disponibles</span>
+              </span>
+              <span class="card__body">
+                <b>{{ p.nombre }}</b>
+                <small><app-icon name="location" /> {{ p.ciudad }}, {{ p.departamento }}</small>
+                @if (p.descripcion) { <span class="card__desc">{{ p.descripcion }}</span> }
+                <span class="card__foot">
+                  <span>Desde<b>{{ p.precioDesde ? (p.precioDesde | cop: 'compact') : 'Consultar' }}</b></span>
+                  <span>Áreas<b>{{ p.areaMinima ?? '—' }}–{{ p.areaMaxima ?? '—' }} m²</b></span>
+                  <span>Avance de obra<b>{{ p.porcentajeAvance }} %</b></span>
+                </span>
+              </span>
+            </button>
+          } @empty {
+            <nx-state [empty]="true" emptyIcon="projects" emptyTitle="Pronto tendremos proyectos" emptyText="Déjenos sus datos y le avisamos del próximo lanzamiento." />
+          }
+        </div>
+      </main>
+    } @else {
+      @if (detail(); as d) {
+        <main class="wrap detail">
+          <button type="button" class="nx-btn nx-btn--ghost nx-btn--sm" (click)="back()"><app-icon name="arrow" /> Todos los proyectos</button>
+          <div class="detail__head">
+            <div>
+              <h1>{{ d.proyecto.nombre }}</h1>
+              <p><app-icon name="location" /> {{ d.direccion ? d.direccion + ' · ' : '' }}{{ d.proyecto.ciudad }}, {{ d.proyecto.departamento }}</p>
+            </div>
+            <div class="facts">
+              <span><small>Lotes disponibles</small><b>{{ d.proyecto.lotesDisponibles }}</b></span>
+              <span><small>Desde</small><b>{{ d.proyecto.precioDesde ? (d.proyecto.precioDesde | cop: 'compact') : '—' }}</b></span>
+              <span><small>Avance de obra</small><b>{{ d.proyecto.porcentajeAvance }} %</b></span>
+            </div>
+          </div>
+
+          @if (photos().length) {
+            <section class="gallery" aria-label="Fotos del proyecto">
+              <img class="gallery__main" [src]="photos()[photo()].url" [alt]="photos()[photo()].titulo ?? d.proyecto.nombre" />
+              @if (photos().length > 1) {
+                <div class="gallery__thumbs">
+                  @for (ph of photos(); track ph.url; let i = $index) {
+                    <button type="button" [class.on]="i === photo()" (click)="photo.set(i)" [attr.aria-label]="'Foto ' + (i + 1)"><img [src]="ph.url" alt="" loading="lazy" /></button>
+                  }
+                </div>
+              }
+            </section>
+          }
+          @if (d.proyecto.descripcion) { <p class="desc">{{ d.proyecto.descripcion }}</p> }
+
+          <div class="split">
+            <section class="nx-card nx-card--pad nx-card--stack">
+              <div class="nx-section-head">
+                <h2 class="nx-section-title">Lotes disponibles <span class="nx-muted">({{ lots().length }})</span></h2>
+                <form class="nx-row" (ngSubmit)="applyFilters()">
+                  <input class="nx-input nx-input--sm narrow" type="number" min="0" [formControl]="minArea" placeholder="Área mínima m²" aria-label="Área mínima" />
+                  <input class="nx-input nx-input--sm narrow" type="number" min="0" [formControl]="maxPrice" placeholder="Precio máximo" aria-label="Precio máximo" />
+                  <button type="submit" class="nx-btn nx-btn--sm">Filtrar</button>
+                </form>
+              </div>
+              <div class="nx-table-wrap">
+                <table class="nx-table nx-table--compact nx-table--clickable">
+                  <thead><tr><th>Lote</th><th class="hide-sm">Etapa / manzana</th><th class="nx-right">Área</th><th class="nx-right hide-sm">Medidas</th><th class="nx-right">Precio</th><th></th></tr></thead>
+                  <tbody>
+                    @for (l of lots(); track l.id) {
+                      <tr (click)="chooseLot(l)" [class.is-selected]="selectedLot()?.id === l.id">
+                        <td><b>{{ l.numero }}</b><div class="sub">{{ l.ubicacion || l.codigo }}</div></td>
+                        <td class="hide-sm">{{ l.etapa }} · {{ l.manzana }}</td>
+                        <td class="nx-right nx-num">{{ l.areaM2 }} m²</td>
+                        <td class="nx-right nx-num hide-sm">{{ l.frenteM ?? '—' }} × {{ l.fondoM ?? '—' }} m</td>
+                        <td class="nx-right nx-num"><b>{{ l.valor | cop }}</b></td>
+                        <td class="nx-actions"><span class="nx-btn nx-btn--xs nx-btn--soft">Me interesa</span></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="6" class="nx-muted">No hay lotes con esos filtros.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            <ng-container *ngTemplateOutlet="contact" />
+          </div>
+        </main>
+      }
+    }
+
+    @if (!detail()) {
+      <div class="wrap contact-wrap"><ng-container *ngTemplateOutlet="contact" /></div>
+    }
+  }
+
+  <footer class="foot">
+    <div class="wrap">{{ company()?.nombre }}{{ company()?.correo ? ' · ' + company()!.correo : '' }} · Precios sujetos a disponibilidad · Con tecnología de NEXORA CORE</div>
+  </footer>
+</div>
+
+<ng-template #contact>
+  <section class="nx-card nx-card--pad nx-card--stack contact" id="contacto">
+    @if (sent()) {
+      <div class="done">
+        <span class="done__icon"><app-icon name="check" /></span>
+        <h2>¡Gracias! Recibimos sus datos</h2>
+        <p>Un asesor le contactará pronto{{ detail() ? ' para hablar de ' + detail()!.proyecto.nombre : '' }}.</p>
+      </div>
+    } @else {
+      <h2 class="nx-section-title">Quiero que me contacten</h2>
+      <p class="nx-muted small">{{ selectedLot() ? 'Lote ' + selectedLot()!.codigo + ' · ' : '' }}Le respondemos por teléfono o correo, sin compromiso.</p>
+      <form class="nx-stack" [formGroup]="form" (ngSubmit)="send()">
+        <label class="nx-field"><span>Nombre completo</span><input class="nx-input" formControlName="nombres" autocomplete="name" /></label>
+        <label class="nx-field"><span>Teléfono / WhatsApp</span><input class="nx-input" formControlName="telefono" inputmode="tel" autocomplete="tel" /></label>
+        <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" autocomplete="email" /></label>
+        <label class="nx-field"><span>Mensaje</span><textarea class="nx-textarea" rows="3" formControlName="mensaje"></textarea></label>
+        <label class="hp" aria-hidden="true">No llenar <input tabindex="-1" autocomplete="off" formControlName="sitioWeb" /></label>
+        <label class="nx-check consent"><input type="checkbox" formControlName="aceptaTratamiento" /> Autorizo el tratamiento de mis datos personales para que me contacten (Ley 1581 de 2012).</label>
+        @if (form.controls.aceptaTratamiento.touched && form.controls.aceptaTratamiento.invalid) { <span class="err">Necesitamos su autorización para contactarle.</span> }
+        @if (contactError()) { <div class="nx-alert nx-alert--danger">{{ contactError() }}</div> }
+        <button type="submit" class="nx-btn nx-btn--primary nx-btn--block" [disabled]="sending()">{{ sending() ? 'Enviando…' : 'Enviar' }}</button>
+      </form>
+    }
+  </section>
+</ng-template>

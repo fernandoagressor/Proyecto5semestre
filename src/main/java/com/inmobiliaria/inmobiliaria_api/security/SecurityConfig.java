@@ -57,6 +57,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh"
                         ).permitAll()
+                        // Catálogo público de proyectos: solo lectura y el formulario de contacto.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/publico/catalogo/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/publico/catalogo/*/contacto").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

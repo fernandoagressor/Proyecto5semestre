@@ -113,7 +113,7 @@ export class PortalPage {
     this.installments().filter((q) => ['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(q.estado)).slice(0, 3),
   );
   readonly firstName = computed(() => {
-    const name = this.auth.user()?.nombreUsuario ?? '';
+    const name = this.summary()?.nombres?.trim() || this.auth.user()?.nombreUsuario || '';
     const first = name.split(/[.\s_@]/)[0] ?? name;
     return first.charAt(0).toUpperCase() + first.slice(1);
   });

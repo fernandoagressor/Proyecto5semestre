@@ -6,6 +6,17 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Catálogo público de proyectos** (`/catalogo/{código de empresa}`, vista "Catálogo-Proyectos"):
+  página abierta, sin sesión, con los proyectos ACTIVOS, sus lotes DISPONIBLES (área, medidas,
+  precio), galería de fotos y un formulario "Quiero que me contacten" que crea el prospecto en el
+  CRM (fuente WEB, asignado al gerente del proyecto). La empresa decide si lo publica (interruptor
+  en Proyectos, permiso CONFIGURACION_EMPRESA_EDITAR). El formulario exige la autorización de
+  tratamiento de datos (Ley 1581), trae una trampa para robots y un límite de 5 envíos por hora y
+  red; si el contacto ya existe no se duplica ni se revela.
+- **Galería de fotos del proyecto**: hasta 20 enlaces https por proyecto, desde el detalle en
+  Proyectos; se ven en el catálogo público. Migración V30 (`empresas.catalogo_publico` y tabla
+  `proyecto_imagenes`).
+- Portal del cliente: el saludo usa el nombre del cliente.
 - **Portal del cliente** (`/portal`, vistas "Portal cliente web" y "móvil"): su lote con el avance
   de pago, próximo pago o aviso de mora, plan de cuotas, pagos registrados, documentos para
   descargar, solicitudes PQRS y pedidos de cambio de datos; en el celular, barra inferior. Los

@@ -195,6 +195,27 @@ echo "8. Notificaciones"
 api GET /api/v1/notificaciones/resumen
 [[ "$STATUS" == 200 ]] && paso "Resumen de notificaciones" || falla "Notificaciones respondió $STATUS"
 
+echo "8a. Catálogo público (sin sesión)"
+api GET /api/v1/empresas/actual/catalogo
+EMPRESA_CODIGO="$(cuerpo .codigo)"; CATALOGO_ANTES="$(cuerpo .publico)"
+if [[ "$STATUS" == 200 && "$EMPRESA_CODIGO" != null ]]; then
+  api PUT /api/v1/empresas/actual/catalogo '{"publico":true}'
+  [[ "$STATUS" == 200 && "$(cuerpo .publico)" == true ]] && paso "Catálogo de $EMPRESA_CODIGO publicado" || falla "Publicar catálogo respondió $STATUS"
+  TOKEN_ADMIN="$TOKEN"; TOKEN=""
+  api GET "/api/v1/publico/catalogo/$EMPRESA_CODIGO"
+  [[ "$STATUS" == 200 && "$(cuerpo '.proyectos | type')" == array ]] && paso "Catálogo público sin sesión: $(cuerpo '.proyectos | length') proyectos activos" \
+    || falla "Catálogo público respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api POST "/api/v1/publico/catalogo/$EMPRESA_CODIGO/contacto" "$(jq -n --arg s "$SELLO" \
+    '{nombres:("Visitante " + $s), correo:("visitante" + $s + "@ejemplo.com"), mensaje:"Quiero información", aceptaTratamiento:true, sitioWeb:""}')"
+  [[ "$STATUS" == 202 ]] && paso "Contacto del catálogo recibido como prospecto" || falla "Contacto del catálogo respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api GET "/api/v1/publico/catalogo/NOEXISTE"
+  [[ "$STATUS" == 404 ]] && paso "Catálogo inexistente responde 404" || falla "Catálogo inexistente respondió $STATUS"
+  TOKEN="$TOKEN_ADMIN"
+  api PUT /api/v1/empresas/actual/catalogo "$(jq -n --argjson p "${CATALOGO_ANTES:-false}" '{publico:$p}')"
+else
+  falla "Estado del catálogo respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+fi
+
 echo "8b. Portal del cliente (acceso propio y aislamiento)"
 DOC_CLIENTE="9$(date +%s)"
 api POST /api/v1/clientes "$(jq -n --arg d "$DOC_CLIENTE" --arg s "$SELLO" \
@@ -243,7 +264,7 @@ if [[ "$COMPOSE" == 1 ]]; then
   pendientes="$(mysql_q "SELECT COUNT(*) FROM crm_pendientes WHERE procesado_en IS NULL")"
   [[ "$pendientes" == 0 ]] && paso "crm_pendientes sin pendientes" || falla "crm_pendientes tiene $pendientes pendientes"
   version="$(mysql_q "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1")"
-  [[ "$version" == 29 ]] && paso "Flyway en V29" || falla "Flyway quedó en V$version"
+  [[ "$version" == 30 ]] && paso "Flyway en V30" || falla "Flyway quedó en V$version"
   errores="$(docker compose logs --no-color api 2>/dev/null | grep -c ' ERROR ' || true)"
   if [[ "$errores" == 0 ]]; then paso "Sin líneas ERROR en el log de la API"
   else

@@ -13,7 +13,7 @@ public final class PortalDtos {
     public record Resumen(Long clienteId, String codigoCliente, long contratosVigentes,
                           long cuotasPendientes, BigDecimal saldoPendiente,
                           long documentosDisponibles, long solicitudesAbiertas,
-                          LocalDateTime proximaCita) { }
+                          LocalDateTime proximaCita, String nombres) { }
 
     public record Documento(Long id, String codigo, String tipoDocumento, String nombre,
                             Long proyectoId, String entidadTipo, Long entidadId,
