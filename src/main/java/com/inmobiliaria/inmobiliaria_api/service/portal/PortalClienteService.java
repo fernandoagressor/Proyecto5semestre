@@ -20,6 +20,7 @@ import com.inmobiliaria.inmobiliaria_api.service.notificacion.NotificacionServic
 import com.inmobiliaria.inmobiliaria_api.service.servicio.ServicioClienteAlcanceService;
 import com.inmobiliaria.inmobiliaria_api.service.ventas.documento.DocumentoVentaService;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -232,6 +233,98 @@ public class PortalClienteService {
         SolicitudCambioDatos solicitud = obtener(contexto, id);
         solicitud.cancelar(contexto.usuarioId());
         return PortalDtos.CambioResponse.from(solicitud);
+    }
+
+    /** Contratos del cliente de la sesión (titular o cotitular) con su avance de pago. */
+    @Transactional(readOnly = true)
+    public List<PortalDtos.Contrato> contratos(ContextoUsuario contexto) {
+        Cliente cliente = clientePortal(contexto);
+        return jdbcTemplate.query("""
+                SELECT c.id, c.codigo, c.estado, p.nombre proyecto, p.ciudad, l.codigo lote, l.area_m2,
+                       c.valor_total, c.fecha_firma,
+                       COALESCE(SUM(q.valor_pagado), 0) pagado,
+                       COALESCE(SUM(CASE WHEN q.estado IN ('PENDIENTE','PARCIAL','VENCIDA') THEN q.saldo + q.interes_mora ELSE 0 END), 0) saldo_pendiente,
+                       COALESCE(SUM(CASE WHEN q.estado = 'VENCIDA' THEN q.saldo + q.interes_mora ELSE 0 END), 0) saldo_vencido,
+                       COUNT(CASE WHEN q.estado = 'PAGADA' THEN 1 END) cuotas_pagadas,
+                       COUNT(q.id) cuotas_totales,
+                       MIN(CASE WHEN q.estado IN ('PENDIENTE','PARCIAL','VENCIDA') THEN q.fecha_vencimiento END) proxima_fecha
+                FROM contratos c
+                JOIN proyectos p ON p.id = c.proyecto_id
+                JOIN lotes l ON l.id = c.lote_id
+                LEFT JOIN planes_pago pp ON pp.contrato_id = c.id AND pp.estado = 'ACTIVO'
+                LEFT JOIN cuotas q ON q.plan_pago_id = pp.id
+                WHERE c.empresa_id = ?
+                  AND c.estado NOT IN ('BORRADOR','ANULADO')
+                  AND (c.cliente_principal_id = ? OR EXISTS (
+                    SELECT 1 FROM contrato_clientes cc WHERE cc.contrato_id = c.id AND cc.cliente_id = ?))
+                GROUP BY c.id, c.codigo, c.estado, p.nombre, p.ciudad, l.codigo, l.area_m2, c.valor_total, c.fecha_firma
+                ORDER BY c.fecha_firma DESC, c.id DESC
+                """, (rs, rowNum) -> {
+                    LocalDate proxima = rs.getObject("proxima_fecha", LocalDate.class);
+                    long contratoId = rs.getLong("id");
+                    BigDecimal valorProxima = proxima == null ? null : jdbcTemplate.queryForObject("""
+                            SELECT COALESCE(SUM(q.saldo + q.interes_mora), 0)
+                            FROM cuotas q JOIN planes_pago pp ON pp.id = q.plan_pago_id AND pp.estado = 'ACTIVO'
+                            WHERE q.contrato_id = ? AND q.fecha_vencimiento = ?
+                              AND q.estado IN ('PENDIENTE','PARCIAL','VENCIDA')
+                            """, BigDecimal.class, contratoId, proxima);
+                    java.sql.Date firma = rs.getDate("fecha_firma");
+                    return new PortalDtos.Contrato(contratoId, rs.getString("codigo"), rs.getString("estado"),
+                            rs.getString("proyecto"), rs.getString("ciudad"), rs.getString("lote"),
+                            rs.getBigDecimal("area_m2"), rs.getBigDecimal("valor_total"), rs.getBigDecimal("pagado"),
+                            rs.getBigDecimal("saldo_pendiente"), rs.getBigDecimal("saldo_vencido"),
+                            rs.getLong("cuotas_pagadas"), rs.getLong("cuotas_totales"), proxima, valorProxima,
+                            firma == null ? null : firma.toLocalDate());
+                }, contexto.empresaId(), cliente.getId(), cliente.getId());
+    }
+
+    /** Plan de pagos vigente de un contrato del cliente de la sesión. */
+    @Transactional(readOnly = true)
+    public List<PortalDtos.Cuota> cuotas(ContextoUsuario contexto, Long contratoId) {
+        Cliente cliente = clientePortal(contexto);
+        verificarContratoDelCliente(contexto, cliente, contratoId);
+        return jdbcTemplate.query("""
+                SELECT q.id, q.numero, q.fecha_vencimiento, q.valor_programado, q.valor_pagado, q.saldo,
+                       q.interes_mora, q.dias_mora, q.estado
+                FROM cuotas q
+                JOIN planes_pago pp ON pp.id = q.plan_pago_id AND pp.estado = 'ACTIVO'
+                WHERE q.empresa_id = ? AND q.contrato_id = ?
+                ORDER BY q.numero
+                """, (rs, rowNum) -> new PortalDtos.Cuota(rs.getLong("id"), rs.getInt("numero"),
+                rs.getObject("fecha_vencimiento", LocalDate.class), rs.getBigDecimal("valor_programado"),
+                rs.getBigDecimal("valor_pagado"), rs.getBigDecimal("saldo"), rs.getBigDecimal("interes_mora"),
+                rs.getInt("dias_mora"), rs.getString("estado")), contexto.empresaId(), contratoId);
+    }
+
+    /** Últimos pagos del cliente de la sesión. */
+    @Transactional(readOnly = true)
+    public List<PortalDtos.Pago> pagos(ContextoUsuario contexto) {
+        Cliente cliente = clientePortal(contexto);
+        return jdbcTemplate.query("""
+                SELECT pg.id, pg.codigo, c.codigo contrato, pg.fecha_pago, pg.valor, mp.nombre metodo,
+                       pg.referencia, pg.estado
+                FROM pagos pg
+                JOIN metodos_pago mp ON mp.id = pg.metodo_pago_id
+                LEFT JOIN contratos c ON c.id = pg.contrato_id
+                WHERE pg.empresa_id = ? AND pg.cliente_id = ?
+                ORDER BY pg.fecha_pago DESC
+                LIMIT 50
+                """, (rs, rowNum) -> new PortalDtos.Pago(rs.getLong("id"), rs.getString("codigo"),
+                rs.getString("contrato"), rs.getTimestamp("fecha_pago").toLocalDateTime(), rs.getBigDecimal("valor"),
+                rs.getString("metodo"), rs.getString("referencia"), rs.getString("estado")),
+                contexto.empresaId(), cliente.getId());
+    }
+
+    private void verificarContratoDelCliente(ContextoUsuario contexto, Cliente cliente, Long contratoId) {
+        Long propios = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM contratos c
+                WHERE c.id = ? AND c.empresa_id = ?
+                  AND (c.cliente_principal_id = ? OR EXISTS (
+                    SELECT 1 FROM contrato_clientes cc WHERE cc.contrato_id = c.id AND cc.cliente_id = ?))
+                """, Long.class, contratoId, contexto.empresaId(), cliente.getId(), cliente.getId());
+        if (propios == null || propios == 0) {
+            throw new RecursoNoEncontradoException("El contrato no existe");
+        }
     }
 
     private Cliente clientePortal(ContextoUsuario contexto) {

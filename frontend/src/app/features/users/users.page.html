@@ -47,7 +47,7 @@
                     <td>
                       <div class="who">
                         <span class="nx-avatar">{{ (u.nombres.charAt(0) + (u.apellidos ?? '').charAt(0)).toUpperCase() }}</span>
-                        <span><b>{{ u.nombreCompleto }}</b>@if (u.id === me) { <span class="you">usted</span> }<small>{{ u.nombreUsuario }} · {{ u.correo }}</small></span>
+                        <span><span class="name"><b>{{ u.nombreCompleto }}</b>@if (u.id === me) { <span class="you">usted</span> }</span><small>{{ u.nombreUsuario }} · {{ u.correo }}</small></span>
                       </div>
                     </td>
                     <td><div class="chips">@for (r of u.roles; track r) { <span class="chip">{{ roleName(r) }}</span> }</div></td>
@@ -59,7 +59,7 @@
                     <td>{{ u.ultimoAccesoEn ? (u.ultimoAccesoEn | fecha: 'relativa') : 'Nunca' }}</td>
                     <td class="nx-actions">
                       @if (manageable(u)) {
-                        <div class="nx-row nx-row--end">
+                        <div class="row-actions">
                           @if (canEditUser) { <button type="button" class="nx-btn nx-btn--xs" (click)="openUser(u)">Editar</button> }
                           @if (canReset && u.estado === 'ACTIVO') { <button type="button" class="nx-btn nx-btn--xs" [disabled]="saving()" (click)="resetCredentials(u)" title="Genera una contraseña temporal y cierra sus sesiones">Contraseña</button> }
                           @if (canBlock) {

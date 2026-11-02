@@ -45,3 +45,9 @@
 .file-picker app-icon { width: 22px; height: 22px; color: var(--color-primary); }
 .file-picker span { color: var(--text-strong); font-weight: 600; }
 .file-picker small { font-size: 12px; }
+
+.portal-box { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; }
+.portal-box > app-icon { width: 20px; height: 20px; color: var(--color-primary); }
+.portal-box__text { display: flex; flex: 1; flex-direction: column; }
+.portal-box__text small { color: var(--text-muted); font-size: 12px; }
+.nx-alert code { padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, .7); font-family: var(--font-mono); user-select: all; }

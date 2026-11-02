@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../config/api.config';
+import { PortalAccess } from '../models/sales.models';
 import { PageResponse } from '../models/api.models';
 import {
   Contract,
@@ -25,6 +26,15 @@ import {
 @Injectable({ providedIn: 'root' })
 export class SalesService {
   private readonly http = inject(HttpClient);
+
+  /** Crea el acceso del cliente a su portal; la contraseña temporal llega una sola vez. */
+  enablePortal(customerId: number): Observable<PortalAccess> {
+    return this.http.post<PortalAccess>(`${API_BASE_URL}/clientes/${customerId}/portal`, {});
+  }
+
+  resendPortal(customerId: number): Observable<PortalAccess> {
+    return this.http.post<PortalAccess>(`${API_BASE_URL}/clientes/${customerId}/portal/reenviar`, {});
+  }
 
   customers(options: { text?: string; status?: string; page?: number; size?: number } = {}): Observable<PageResponse<Customer>> {
     let params = this.pageParams(options.page, options.size);

@@ -5,6 +5,7 @@ import { guestGuard } from './core/guards/guest.guard';
 import { companyModuleGuard } from './core/guards/company-module.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { passwordChangeGuard } from './core/guards/password-change.guard';
+import { clientPortalGuard, internalAreaGuard } from './core/guards/client-portal.guard';
 
 export const routes: Routes = [
   {
@@ -14,9 +15,15 @@ export const routes: Routes = [
     title: 'Iniciar sesión | Nexora Core',
   },
   {
+    path: 'portal',
+    canActivate: [authGuard, clientPortalGuard],
+    loadComponent: () => import('./features/portal/portal.page').then((m) => m.PortalPage),
+    title: 'Mi portal | Nexora Core',
+  },
+  {
     path: '',
     canActivate: [authGuard],
-    canActivateChild: [passwordChangeGuard],
+    canActivateChild: [passwordChangeGuard, internalAreaGuard],
     loadComponent: () => import('./layout/app-shell.component').then((m) => m.AppShellComponent),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },

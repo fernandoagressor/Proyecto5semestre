@@ -49,6 +49,25 @@ export class InventoryPage {
   readonly summary = signal<InventorySummary | null>(null);
   readonly stages = signal<ProjectStage[]>([]);
   readonly blocks = signal<Block[]>([]);
+  /** Todas las manzanas del proyecto, para rotular el plano aunque no haya etapa elegida. */
+  readonly allBlocks = signal<Block[]>([]);
+  /** Plano agrupado por manzana, en el orden de la etapa y la manzana. */
+  readonly planGroups = computed(() => {
+    const groups = new Map<number, Lot[]>();
+    for (const lot of this.lots()?.contenido ?? []) {
+      const list = groups.get(lot.manzanaId) ?? [];
+      list.push(lot);
+      groups.set(lot.manzanaId, list);
+    }
+    const order = (id: number) => this.allBlocks().findIndex((b) => b.id === id);
+    return [...groups.entries()]
+      .sort(([a], [b]) => order(a) - order(b) || a - b)
+      .map(([blockId, lots]) => ({
+        blockId,
+        title: `${this.stageName(lots[0].etapaId)} · ${this.blockName(blockId)}`,
+        lots: [...lots].sort((x, y) => x.numero.localeCompare(y.numero, 'es', { numeric: true })),
+      }));
+  });
   readonly lots = signal<PageResponse<Lot> | null>(null);
   readonly selectedLot = signal<Lot | null>(null);
   readonly editingLot = signal<Lot | null>(null);
@@ -385,7 +404,7 @@ export class InventoryPage {
   }
 
   blockName(id: number): string {
-    return this.blocks().find((block) => block.id === id)?.nombre ?? `Manzana #${id}`;
+    return (this.blocks().find((block) => block.id === id) ?? this.allBlocks().find((block) => block.id === id))?.nombre ?? `Manzana #${id}`;
   }
 
   private calculateLotArea(): void {
@@ -436,8 +455,17 @@ export class InventoryPage {
         if (!data) return;
         this.summary.set(data.summary);
         this.stages.set(data.stages);
+        this.loadAllBlocks(projectId, data.stages);
         this.loadLots(0);
       });
+  }
+
+  private loadAllBlocks(projectId: number, stages: ProjectStage[]): void {
+    this.allBlocks.set([]);
+    if (!stages.length || !this.auth.hasAuthority('MANZANAS_VER')) return;
+    forkJoin(stages.map((stage) => this.inventory.blocks(projectId, stage.id).pipe(catchError(() => of([] as Block[])))))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((lists) => this.allBlocks.set(lists.flat()));
   }
 
   private loadBlocks(stageId: number): void {

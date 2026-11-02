@@ -1,12 +1,14 @@
 <div class="nx-page">
   <nx-page-header eyebrow="Portafolio inmobiliario" title="Proyectos" [description]="limitLabel()">
-    <span class="nx-search search"><app-icon name="search" /><input class="nx-input" [formControl]="search" placeholder="Nombre, código o ciudad" aria-label="Buscar proyectos" /></span>
     @if (canCreate) {
       <button type="button" class="nx-btn nx-btn--primary" (click)="openForm(null)" [disabled]="atLimit()" [title]="atLimit() ? 'Alcanzó el límite de proyectos de su plan' : ''"><app-icon name="plus" /> Nuevo proyecto</button>
     }
   </nx-page-header>
 
-  <nx-filter-chips [options]="filters" [value]="status()" (valueChange)="status.set($event)" label="Estado del proyecto" />
+  <div class="nx-toolbar">
+    <nx-filter-chips [options]="filters" [value]="status()" (valueChange)="status.set($event)" label="Estado del proyecto" />
+    <span class="nx-search search"><app-icon name="search" /><input class="nx-input nx-input--sm" [formControl]="search" placeholder="Nombre, código o ciudad" aria-label="Buscar proyectos" /></span>
+  </div>
 
   <nx-state [loading]="loading()" [error]="error()" [empty]="projects().length === 0" (retry)="load()" emptyIcon="projects"
     emptyTitle="Sin proyectos" [emptyText]="canCreate ? 'Cree el primer proyecto para cargar su inventario.' : 'Aún no hay proyectos autorizados para su usuario.'">

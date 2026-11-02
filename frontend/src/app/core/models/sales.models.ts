@@ -186,3 +186,11 @@ export interface SalesDocument {
   clasificacion: string;
   creadoEn: string;
 }
+
+export interface PortalAccess {
+  clienteId: number;
+  usuarioId: number;
+  nombreUsuario: string;
+  correo: string;
+  passwordTemporal: string;
+}

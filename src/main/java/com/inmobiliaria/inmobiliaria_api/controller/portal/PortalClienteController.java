@@ -6,6 +6,7 @@ import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.portal.PortalClienteService;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,24 @@ public class PortalClienteController {
     @PreAuthorize("hasAuthority('DASHBOARD_VER')")
     public PortalDtos.Resumen resumen(@AuthenticationPrincipal Jwt jwt) {
         return service.resumen(ContextoUsuario.empresa(jwt));
+    }
+
+    @GetMapping("/contratos")
+    @PreAuthorize("hasAuthority('CONTRATOS_VER')")
+    public List<PortalDtos.Contrato> contratos(@AuthenticationPrincipal Jwt jwt) {
+        return service.contratos(ContextoUsuario.empresa(jwt));
+    }
+
+    @GetMapping("/contratos/{contratoId}/cuotas")
+    @PreAuthorize("hasAuthority('CUOTAS_VER')")
+    public List<PortalDtos.Cuota> cuotas(@AuthenticationPrincipal Jwt jwt, @PathVariable Long contratoId) {
+        return service.cuotas(ContextoUsuario.empresa(jwt), contratoId);
+    }
+
+    @GetMapping("/pagos")
+    @PreAuthorize("hasAuthority('PAGOS_VER')")
+    public List<PortalDtos.Pago> pagos(@AuthenticationPrincipal Jwt jwt) {
+        return service.pagos(ContextoUsuario.empresa(jwt));
     }
 
     @GetMapping("/documentos")

@@ -66,12 +66,19 @@
         <nx-state [loading]="lotsLoading() && !lots()" [error]="error() ? 'No se pudo cargar el inventario.' : null" [empty]="(lots()?.contenido ?? []).length === 0" (retry)="loadLots(0)"
           emptyIcon="inventory" emptyTitle="No hay lotes con estos filtros" emptyText="Ajuste la búsqueda o registre el primer lote.">
           @if (lotsView() === 'plano') {
-            <div class="plan" [class.dim]="lotsLoading()">
-              @for (lot of lots()?.contenido ?? []; track lot.id) {
-                <button type="button" class="lot" [attr.data-state]="lot.estado" [class.on]="selectedLot()?.id === lot.id" (click)="showLot(lot)"
-                  [attr.aria-label]="'Lote ' + lot.codigo + ', ' + statusLabel(lot.estado) + ', ' + currency(lot.valorLista)" [title]="lot.codigo + ' · ' + lot.areaM2 + ' m² · ' + currency(lot.valorLista)">
-                  <b>{{ lot.numero }}</b><small>{{ lot.areaM2 }} m²</small>
-                </button>
+            <div class="plan-groups" [class.dim]="lotsLoading()">
+              @for (g of planGroups(); track g.blockId) {
+                <div class="plan-group">
+                  <span class="plan-group__title">{{ g.title }} <small>{{ g.lots.length }} lotes</small></span>
+                  <div class="plan">
+                    @for (lot of g.lots; track lot.id) {
+                      <button type="button" class="lot" [attr.data-state]="lot.estado" [class.on]="selectedLot()?.id === lot.id" (click)="showLot(lot)"
+                        [attr.aria-label]="'Lote ' + lot.codigo + ', ' + statusLabel(lot.estado) + ', ' + currency(lot.valorLista)" [title]="lot.codigo + ' · ' + lot.areaM2 + ' m² · ' + currency(lot.valorLista)">
+                        <b>{{ lot.numero }}</b><small>{{ lot.areaM2 }} m²</small>
+                      </button>
+                    }
+                  </div>
+                </div>
               }
             </div>
             <div class="legend"><span><i class="free"></i>Disponible</span><span><i class="res"></i>Reservado</span><span><i class="sold"></i>Vendido</span><span><i class="blocked"></i>Bloqueado</span></div>
