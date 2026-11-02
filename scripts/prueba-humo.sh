@@ -35,6 +35,8 @@ verde() { printf '\033[32m%s\033[0m\n' "$*"; }
 rojo() { printf '\033[31m%s\033[0m\n' "$*"; }
 
 paso() { ok=$((ok + 1)); verde "  ✔ $*"; }
+avisos=0
+aviso() { avisos=$((avisos + 1)); printf '\033[33m  ! %s\033[0m\n' "$*"; }
 falla() {
   fallos=$((fallos + 1)); rojo "  ✘ $*"
   # En GitHub Actions cada falla queda también como anotación del PR (se lee sin bajar el log).
@@ -141,12 +143,19 @@ done
 echo "4. Proyecto (MySQL)"
 api POST /api/v1/proyectos "$(jq -n --arg c "HUMO-$SELLO" '{codigo:$c, nombre:"Proyecto de humo", ciudad:"Cartagena", departamento:"Bolívar", maxLotes:10}')"
 PROYECTO_ID="$(cuerpo .id)"
-[[ "$STATUS" == 201 && "$PROYECTO_ID" != null ]] && paso "Proyecto creado ($PROYECTO_ID)" \
-  || falla "Crear proyecto respondió $STATUS: $(cat "$TMP/cuerpo")"
+if [[ "$STATUS" == 201 && "$PROYECTO_ID" != null ]]; then
+  paso "Proyecto creado ($PROYECTO_ID)"
+elif [[ "$STATUS" == 422 ]] && grep -q "límite de proyectos" "$TMP/cuerpo"; then
+  # En staging la semilla de carga llena el cupo del plan: no es un error de la aplicación.
+  PROYECTO_ID=null
+  aviso "La empresa está en su límite de proyectos (suba el cupo en Superadministración); se sigue sin proyecto"
+else
+  falla "Crear proyecto respondió $STATUS: $(cat "$TMP/cuerpo")"
+fi
 
 echo "5. Prospecto (MongoDB)"
 api POST /api/v1/prospectos "$(jq -n --argjson p "${PROYECTO_ID:-null}" --arg s "$SELLO" \
-  '{proyectoId:$p, nombres:("Prospecto humo " + $s), telefono:"3000000000", correo:("humo" + $s + "@ejemplo.com"), fuente:"WEB", temperatura:"TIBIO", presupuesto:150000000}')"
+  '{proyectoId:$p, nombres:("Prospecto humo " + $s), telefono:("3" + ($s | .[-9:])), correo:("humo" + $s + "@ejemplo.com"), fuente:"WEB", temperatura:"TIBIO", presupuesto:150000000}')"
 PROSPECTO_ID="$(cuerpo .id)"
 [[ "$STATUS" == 201 && "$PROSPECTO_ID" != null ]] && paso "Prospecto creado ($PROSPECTO_ID)" \
   || falla "Crear prospecto respondió $STATUS: $(cat "$TMP/cuerpo")"
@@ -238,7 +247,7 @@ api GET "/api/v1/desistimientos/liquidacion?contratoId=999999999"
 echo "8b. Portal del cliente (acceso propio y aislamiento)"
 DOC_CLIENTE="9$(date +%s)"
 api POST /api/v1/clientes "$(jq -n --arg d "$DOC_CLIENTE" --arg s "$SELLO" \
-  '{tipoPersona:"NATURAL", tipoDocumento:"CC", numeroDocumento:$d, nombres:"Cliente", apellidos:("Portal " + $s), correo:("portal" + $s + "@ejemplo.com"), telefono:"3001112233", origen:"WEB"}')"
+  '{tipoPersona:"NATURAL", tipoDocumento:"CC", numeroDocumento:$d, nombres:"Cliente", apellidos:("Portal " + $s), correo:("portal" + $s + "@ejemplo.com"), telefono:("31" + ($s | .[-8:])), origen:"WEB"}')"
 CLIENTE_ID="$(cuerpo .id)"
 [[ "$STATUS" == 201 && "$CLIENTE_ID" != null ]] && paso "Cliente creado ($CLIENTE_ID)" || falla "Crear cliente respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
 api POST "/api/v1/clientes/$CLIENTE_ID/portal"
@@ -295,5 +304,5 @@ if [[ "$COMPOSE" == 1 ]]; then
 fi
 
 echo
-if [[ "$fallos" == 0 ]]; then verde "Prueba de humo superada: $ok pasos bien"; exit 0
+if [[ "$fallos" == 0 ]]; then verde "Prueba de humo superada: $ok pasos bien$( ((avisos)) && echo ", $avisos avisos")"; exit 0
 else rojo "Prueba de humo con errores: $ok bien, $fallos con error"; exit 1; fi
