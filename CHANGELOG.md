@@ -6,6 +6,13 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Desistimientos** (Reservas y contratos → pestaña Desistimientos, vista "Ventas-Desistimiento"):
+  liquidación en vivo (pagado − cláusula penal − otros descuentos), registro, aprobación o rechazo
+  y **acta en PDF**. Aprobar anula el contrato (libera el lote y reabre la oportunidad), cancela el
+  plan y las cuotas abiertas y anula las comisiones no pagadas; avisa si hay comisiones ya pagadas.
+  Quien registra no puede aprobar (salvo SUPER_ADMIN). Migración V31 con la tabla `desistimientos`
+  (un solo desistimiento abierto por contrato) y los permisos DESISTIMIENTOS_VER, _SOLICITAR y
+  _APROBAR para Administrador, Gerencia, Cartera y Auditor según corresponda.
 - **Reportes, bitácora y documentos de cartera en PDF, Excel y CSV** (generados al vuelo, sin caché):
   - Gerencia → **Reportes** (REPORTES_EXPORTAR): ventas, recaudo, cartera vencida, inventario y
     comisiones, con periodo y proyecto; respetan el alcance de proyectos del usuario.

@@ -229,6 +229,12 @@ codigo="$(bajar "/api/v1/exportaciones/reportes/cartera?formato=CSV" "$TMP/carte
 codigo="$(bajar "/api/v1/exportaciones/auditoria?formato=XLSX" "$TMP/auditoria.xlsx")"
 [[ "$codigo" == 200 && "$(head -c 2 "$TMP/auditoria.xlsx")" == "PK" ]] && paso "Bitácora de auditoría en Excel" || falla "Exportar bitácora respondió $codigo"
 
+echo "8d. Desistimientos"
+api GET /api/v1/desistimientos
+[[ "$STATUS" == 200 && "$(cuerpo 'type')" == array ]] && paso "Listado de desistimientos ($(cuerpo 'length'))" || falla "Desistimientos respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+api GET "/api/v1/desistimientos/liquidacion?contratoId=999999999"
+[[ "$STATUS" == 404 ]] && paso "Liquidación de un contrato inexistente responde 404" || falla "Liquidación inexistente respondió $STATUS"
+
 echo "8b. Portal del cliente (acceso propio y aislamiento)"
 DOC_CLIENTE="9$(date +%s)"
 api POST /api/v1/clientes "$(jq -n --arg d "$DOC_CLIENTE" --arg s "$SELLO" \
@@ -277,7 +283,7 @@ if [[ "$COMPOSE" == 1 ]]; then
   pendientes="$(mysql_q "SELECT COUNT(*) FROM crm_pendientes WHERE procesado_en IS NULL")"
   [[ "$pendientes" == 0 ]] && paso "crm_pendientes sin pendientes" || falla "crm_pendientes tiene $pendientes pendientes"
   version="$(mysql_q "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1")"
-  [[ "$version" == 30 ]] && paso "Flyway en V30" || falla "Flyway quedó en V$version"
+  [[ "$version" == 31 ]] && paso "Flyway en V31" || falla "Flyway quedó en V$version"
   errores="$(docker compose logs --no-color api 2>/dev/null | grep -c ' ERROR ' || true)"
   if [[ "$errores" == 0 ]]; then paso "Sin líneas ERROR en el log de la API"
   else

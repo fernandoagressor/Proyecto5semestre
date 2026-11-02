@@ -8,7 +8,7 @@
       </a>
       <nav class="top__links">
         @if (company()?.telefono) { <a [href]="'tel:' + company()!.telefono"><app-icon name="phone" /> {{ company()!.telefono }}</a> }
-        <a href="#contacto" class="nx-btn nx-btn--primary nx-btn--sm">Quiero que me contacten</a>
+        <a href="#contacto" class="nx-btn nx-btn--primary nx-btn--sm"><span class="hide-sm">Quiero que me contacten</span><span class="show-sm">Contactar</span></a>
       </nav>
     </div>
   </header>
@@ -99,16 +99,16 @@
               </div>
               <div class="nx-table-wrap">
                 <table class="nx-table nx-table--compact nx-table--clickable">
-                  <thead><tr><th>Lote</th><th class="hide-sm">Etapa / manzana</th><th class="nx-right">Área</th><th class="nx-right hide-sm">Medidas</th><th class="nx-right">Precio</th><th></th></tr></thead>
+                  <thead><tr><th>Lote</th><th class="hide-sm">Etapa / manzana</th><th class="nx-right">Área</th><th class="nx-right hide-sm">Medidas</th><th class="nx-right">Precio</th><th class="hide-sm"></th></tr></thead>
                   <tbody>
                     @for (l of lots(); track l.id) {
                       <tr (click)="chooseLot(l)" [class.is-selected]="selectedLot()?.id === l.id">
                         <td><b>{{ l.numero }}</b><div class="sub">{{ l.ubicacion || l.codigo }}</div></td>
                         <td class="hide-sm">{{ l.etapa }} · {{ l.manzana }}</td>
-                        <td class="nx-right nx-num">{{ l.areaM2 }} m²</td>
+                        <td class="nx-right nx-num nowrap">{{ l.areaM2 }} m²</td>
                         <td class="nx-right nx-num hide-sm">{{ l.frenteM ?? '—' }} × {{ l.fondoM ?? '—' }} m</td>
-                        <td class="nx-right nx-num"><b>{{ l.valor | cop }}</b></td>
-                        <td class="nx-actions"><span class="nx-btn nx-btn--xs nx-btn--soft">Me interesa</span></td>
+                        <td class="nx-right nx-num nowrap"><b>{{ l.valor | cop }}</b></td>
+                        <td class="nx-actions hide-sm"><span class="nx-btn nx-btn--xs nx-btn--soft">Me interesa</span></td>
                       </tr>
                     } @empty {
                       <tr><td colspan="6" class="nx-muted">No hay lotes con esos filtros.</td></tr>
