@@ -6,6 +6,11 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Rediseño, fase 3b: Proyectos e Inventario.**
+  - Proyectos: tarjetas con imagen, avance de ventas e inventario disponible; filtros por estado,
+    búsqueda y límite del plan; detalle con cambio de estado y etapas; creación y edición en panel.
+  - Inventario: tarjetas por estado que filtran, panel de etapas y manzanas, plano con fichas de
+    color por estado y tabla paginada; detalle del lote con precio, disponibilidad e historial.
 - **Rediseño, fase 0: sistema visual** del tablero "NEXORA CORE — Vistas propuestas". Manrope
   para títulos, Inter para el texto y JetBrains Mono para bitácoras; acento índigo `#4f46e5` sobre
   fondo `#f4f6fb`. Piezas reutilizables en `frontend/src/app/shared/ui` (encabezado de página,
