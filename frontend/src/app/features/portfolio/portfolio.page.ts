@@ -28,6 +28,7 @@ import {
   PortfolioSummary,
 } from '../../core/models/portfolio.models';
 import { AuthService } from '../../core/services/auth.service';
+import { DownloadService } from '../../core/services/download.service';
 import { PortfolioService } from '../../core/services/portfolio.service';
 import { SalesService } from '../../core/services/sales.service';
 import { apiErrorMessage, currentPeriod, NX_UI, ToastService } from '../../shared/ui';
@@ -58,6 +59,8 @@ export class PortfolioPage implements OnInit {
 
   readonly activeTab = signal<PortfolioTab>('contratos');
   private readonly toast = inject(ToastService);
+  private readonly downloads = inject(DownloadService);
+  readonly docBusy = signal('');
   /** Cierre de mes: periodo, resultado y estado del diálogo. */
   readonly closingOpen = signal(false);
   readonly closingPeriod = signal(this.previousPeriod());
@@ -541,6 +544,26 @@ export class PortfolioPage implements OnInit {
       ]),
     ];
     this.downloadCsv('cartera-nexora.csv', rows);
+  }
+
+  /** Estado de cuenta, paz y salvo o cobro de mora en PDF, generados por la API. */
+  contractPdf(kind: 'estado-cuenta' | 'paz-y-salvo' | 'cobro-mora'): void {
+    const contract = this.selectedContract();
+    if (!contract) return;
+    this.docBusy.set(kind);
+    this.downloads
+      .contractDocument(contract.contratoId, kind)
+      .pipe(finalize(() => this.docBusy.set('')))
+      .subscribe({
+        error: (e) =>
+          this.toast.error(
+            kind === 'paz-y-salvo'
+              ? 'No se puede expedir el paz y salvo: el contrato tiene saldo pendiente o no está vigente.'
+              : kind === 'cobro-mora'
+                ? 'El contrato no tiene cuotas vencidas para cobrar.'
+                : apiErrorMessage(e, 'No se pudo generar el documento.'),
+          ),
+      });
   }
 
   exportStatement(): void {

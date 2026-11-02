@@ -2,7 +2,7 @@
   <nx-page-header eyebrow="Control" title="Auditoría y alertas"
     description="Quién hizo qué y cuándo: cambios con su antes y después, alertas de seguridad y tareas vencidas.">
     @if (canExport && seesEvents) {
-      <button type="button" class="nx-btn" (click)="exportOpen.set(true)"><app-icon name="download" /> Exportar bitácora (CSV)</button>
+      <button type="button" class="nx-btn" (click)="exportOpen.set(true)"><app-icon name="download" /> Exportar bitácora</button>
     }
   </nx-page-header>
 
@@ -135,7 +135,12 @@ IP {{ e.ipOrigen ?? '—' }}{{ e.proyectoId ? '\nProyecto #' + e.proyectoId : ''
 
 <nx-drawer [(open)]="exportOpen" variant="dialog" title="Exportar bitácora" subtitle="La exportación queda registrada con su motivo." [dismissible]="!exporting()">
   <div class="nx-stack">
-    <p class="nx-muted" style="margin: 0">Se descargan hasta 2.000 eventos con los filtros actuales en un archivo CSV que abre Excel.</p>
+    <p class="nx-muted" style="margin: 0">Se descargan hasta 5.000 eventos con los filtros actuales.</p>
+    <div class="nx-row" role="radiogroup" aria-label="Formato">
+      @for (f of [{ v: 'XLSX', l: 'Excel' }, { v: 'PDF', l: 'PDF' }, { v: 'CSV', l: 'CSV' }]; track f.v) {
+        <button type="button" class="nx-btn nx-btn--sm" role="radio" [attr.aria-checked]="exportFormat() === f.v" [class.nx-btn--primary]="exportFormat() === f.v" (click)="exportFormat.set($any(f.v))">{{ f.l }}</button>
+      }
+    </div>
     <label class="nx-field">
       <span>Motivo</span>
       <textarea class="nx-textarea" maxlength="500" placeholder="Revisión mensual de cartera solicitada por revisoría fiscal" [value]="exportReason()" (input)="exportReason.set($any($event.target).value)"></textarea>

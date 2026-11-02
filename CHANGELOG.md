@@ -6,6 +6,14 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Reportes, bitácora y documentos de cartera en PDF, Excel y CSV** (generados al vuelo, sin caché):
+  - Gerencia → **Reportes** (REPORTES_EXPORTAR): ventas, recaudo, cartera vencida, inventario y
+    comisiones, con periodo y proyecto; respetan el alcance de proyectos del usuario.
+  - Auditoría: la bitácora se descarga desde la API en Excel, PDF o CSV (hasta 5.000 eventos).
+  - Cartera, detalle del contrato: **estado de cuenta** (ESTADOS_CUENTA_GENERAR), **paz y salvo**
+    (PAZ_SALVO_GENERAR, solo sin saldo pendiente) y **cuenta de cobro por mora** (MORA_GESTIONAR).
+  - Portal del cliente: descarga su propio estado de cuenta.
+  - CSV con BOM y protección contra fórmulas; XLSX sin dependencias; PDF con OpenPDF 1.3.30.
 - **Catálogo público de proyectos** (`/catalogo/{código de empresa}`, vista "Catálogo-Proyectos"):
   página abierta, sin sesión, con los proyectos ACTIVOS, sus lotes DISPONIBLES (área, medidas,
   precio), galería de fotos y un formulario "Quiero que me contacten" que crea el prospecto en el

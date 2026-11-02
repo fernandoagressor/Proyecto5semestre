@@ -216,6 +216,19 @@ else
   falla "Estado del catálogo respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
 fi
 
+echo "8c. Reportes y bitácora descargables"
+bajar() { # bajar RUTA ARCHIVO → código HTTP
+  curl -s "${CURL_EXTRA[@]}" -o "$2" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE_URL$1"
+}
+codigo="$(bajar "/api/v1/exportaciones/reportes/inventario?formato=PDF" "$TMP/inv.pdf")"
+[[ "$codigo" == 200 && "$(head -c 5 "$TMP/inv.pdf")" == "%PDF-" ]] && paso "Reporte de inventario en PDF" || falla "Reporte PDF respondió $codigo"
+codigo="$(bajar "/api/v1/exportaciones/reportes/ventas?formato=XLSX" "$TMP/ventas.xlsx")"
+[[ "$codigo" == 200 && "$(head -c 2 "$TMP/ventas.xlsx")" == "PK" ]] && paso "Reporte de ventas en Excel" || falla "Reporte XLSX respondió $codigo"
+codigo="$(bajar "/api/v1/exportaciones/reportes/cartera?formato=CSV" "$TMP/cartera.csv")"
+[[ "$codigo" == 200 ]] && grep -q "Contrato;Cliente" "$TMP/cartera.csv" && paso "Reporte de cartera en CSV" || falla "Reporte CSV respondió $codigo"
+codigo="$(bajar "/api/v1/exportaciones/auditoria?formato=XLSX" "$TMP/auditoria.xlsx")"
+[[ "$codigo" == 200 && "$(head -c 2 "$TMP/auditoria.xlsx")" == "PK" ]] && paso "Bitácora de auditoría en Excel" || falla "Exportar bitácora respondió $codigo"
+
 echo "8b. Portal del cliente (acceso propio y aislamiento)"
 DOC_CLIENTE="9$(date +%s)"
 api POST /api/v1/clientes "$(jq -n --arg d "$DOC_CLIENTE" --arg s "$SELLO" \
