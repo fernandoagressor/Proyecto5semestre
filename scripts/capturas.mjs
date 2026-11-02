@@ -27,6 +27,7 @@ const RUTAS = [
   'servicio',
   'gerencia',
   'auditoria',
+  'usuarios',
   'seguridad/cambiar-password',
 ];
 const MOVIL = ['dashboard', 'inventario', 'cartera'];

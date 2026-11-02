@@ -6,6 +6,13 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Usuarios y roles de la empresa** (`/usuarios`, vista "Usuarios-Roles"). El administrador de la
+  empresa crea usuarios con contraseña temporal, define su alcance (empresa, proyecto o registros
+  propios), bloquea, reactiva y reinicia credenciales, y arma roles con la matriz de permisos.
+  API nueva `/api/v1/seguridad` (USUARIOS_* y ROLES_*) con regla de delegación: nadie otorga ni
+  administra permisos que no tiene, ni cambia su propia cuenta desde ahí.
+- **Superadministración**: letra legible y colores del diseño; el asistente "Crear empresa" (cuatro
+  pasos, vista previa, módulos y confirmación) recibe por fin sus estilos.
 - **Rediseño, fase 3b: Proyectos e Inventario.**
   - Proyectos: tarjetas con imagen, avance de ventas e inventario disponible; filtros por estado,
     búsqueda y límite del plan; detalle con cambio de estado y etapas; creación y edición en panel.

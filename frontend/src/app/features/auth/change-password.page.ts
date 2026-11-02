@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,6 +14,22 @@ import { AuthService } from '../../core/services/auth.service';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 
 const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/;
+const STRENGTH_LABELS = ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Muy fuerte'] as const;
+const COMMON = /(password|contrase|nexora|123456|qwerty|abc123|admin|inmobiliaria)/i;
+
+/** Puntaje de 0 a 4: reglas cumplidas y longitud, con castigo por patrones obvios. */
+export function passwordStrength(value: string): { score: number; label: string } {
+  if (!value) return { score: 0, label: '' };
+  let points = 0;
+  if (value.length >= 12) points += 1;
+  if (value.length >= 16) points += 1;
+  const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9\s]/].filter((r) => r.test(value)).length;
+  points += kinds >= 4 ? 2 : kinds >= 3 ? 1 : 0;
+  if (COMMON.test(value) || /(.)\1{2,}/.test(value)) points -= 1;
+  if (value.length < 8) points = Math.min(points, 0);
+  const score = Math.max(0, Math.min(4, points));
+  return { score, label: STRENGTH_LABELS[score] };
+}
 
 @Component({
   selector: 'app-change-password-page',
@@ -47,6 +64,12 @@ export class ChangePasswordPage {
     ],
     confirmacionPassword: ['', [Validators.required, Validators.maxLength(72)]],
   });
+
+  private readonly newPassword = toSignal(this.form.controls.passwordNueva.valueChanges, { initialValue: '' });
+  private readonly confirmation = toSignal(this.form.controls.confirmacionPassword.valueChanges, { initialValue: '' });
+  readonly strength = computed(() => passwordStrength(this.newPassword()));
+  readonly matches = computed(() => !!this.confirmation() && this.confirmation() === this.newPassword());
+  readonly mismatch = computed(() => !!this.confirmation() && this.confirmation() !== this.newPassword());
 
   submit(): void {
     this.apiError.set(null);

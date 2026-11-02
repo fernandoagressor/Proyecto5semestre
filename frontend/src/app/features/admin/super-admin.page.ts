@@ -48,7 +48,7 @@ interface IssuedCredentials {
   selector: 'app-super-admin-page',
   imports: [ReactiveFormsModule, AppIconComponent, InsightChartComponent],
   templateUrl: './super-admin.page.html',
-  styleUrl: './super-admin.page.scss',
+  styleUrls: ['./super-admin.page.scss', './company-wizard.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SuperAdminPage {
