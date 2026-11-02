@@ -119,7 +119,7 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     route: '/gerencia',
     icon: 'management',
     group: 'gestion',
-    permissions: ['METAS_VER', 'COMISIONES_EQUIPO_VER', 'RENTABILIDAD_VER'],
+    permissions: ['METAS_VER', 'COMISIONES_EQUIPO_VER', 'RENTABILIDAD_VER', 'REPORTES_EXPORTAR'],
     module: 'GERENCIA_REPORTES',
   },
   {

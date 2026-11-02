@@ -4,6 +4,7 @@ import { catchError, EMPTY, expand, map, of, reduce, switchMap } from 'rxjs';
 import { AnomalyAlert, AuditEvent, AuditEventQuery } from '../../core/models/auditoria.models';
 import { AuditoriaService } from '../../core/services/auditoria.service';
 import { AuthService } from '../../core/services/auth.service';
+import { DownloadService, ExportFormat } from '../../core/services/download.service';
 import { TaskService, TeamTask } from '../../core/services/task.service';
 import { TeamService } from '../../core/services/team.service';
 import {
@@ -109,6 +110,8 @@ export class AuditPage {
   readonly exportOpen = signal(false);
   readonly exportReason = signal('');
   readonly exporting = signal(false);
+  readonly exportFormat = signal<ExportFormat>('XLSX');
+  private readonly downloads = inject(DownloadService);
 
   // Tareas vencidas
   readonly overdue = signal<TeamTask[]>([]);
@@ -304,27 +307,17 @@ export class AuditPage {
     const reason = this.exportReason().trim();
     if (!reason) return;
     const query = this.query();
+    const format = this.exportFormat();
     this.exporting.set(true);
     this.api
-      .registerExport(reason, 'CSV', { ...query })
-      .pipe(
-        switchMap(() =>
-          this.api.events({ ...query, pagina: 0, tamano: 100 }).pipe(
-            expand((page) => (page.ultima || (page.pagina + 1) * 100 >= MAX_EXPORT_ROWS ? EMPTY : this.api.events({ ...query, pagina: page.pagina + 1, tamano: 100 }))),
-            map((page) => page.contenido),
-            reduce((all, rows) => [...all, ...rows], [] as AuditEvent[]),
-          ),
-        ),
-      )
+      .registerExport(reason, format, { ...query })
+      .pipe(switchMap(() => this.downloads.audit(format, { ...query })))
       .subscribe({
-        next: (rows) => {
-          const csv = buildAuditCsv(rows, (id) => this.actorName(id));
-          const stamp = localDateTimeIso(new Date()).replace(/[-:]/g, '').replace('T', '-').slice(0, 13);
-          downloadText(`bitacora-auditoria-${stamp}.csv`, csv, 'text/csv;charset=utf-8');
+        next: () => {
           this.exporting.set(false);
           this.exportOpen.set(false);
           this.exportReason.set('');
-          this.toast.success(`Bitácora exportada: ${rows.length} eventos${rows.length >= MAX_EXPORT_ROWS ? ' (máximo por archivo)' : ''}.`);
+          this.toast.success('Bitácora exportada con los filtros actuales (hasta 5.000 eventos).');
         },
         error: (e) => {
           this.exporting.set(false);

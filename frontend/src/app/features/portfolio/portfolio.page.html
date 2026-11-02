@@ -170,7 +170,10 @@
         <div class="nx-section-head">
           <div><h3 class="nx-section-title small">Plan de pagos V{{ plan.versionPlan }}</h3><p class="nx-section-subtitle">{{ plan.numeroCuotas }} cuotas · {{ plan.periodicidad.toLowerCase() }} · {{ plan.tasaEfectivaAnual * 100 | porcentaje: 2 }} EA</p></div>
           <div class="nx-row">
-            <button type="button" class="nx-btn nx-btn--sm" (click)="exportStatement()"><app-icon name="download" /> Estado de cuenta</button>
+            @if (auth.hasAuthority('ESTADOS_CUENTA_GENERAR')) { <button type="button" class="nx-btn nx-btn--sm" [disabled]="docBusy() === 'estado-cuenta'" (click)="contractPdf('estado-cuenta')"><app-icon name="download" /> Estado de cuenta</button> }
+            @else { <button type="button" class="nx-btn nx-btn--sm" (click)="exportStatement()"><app-icon name="download" /> Estado de cuenta (CSV)</button> }
+            @if (auth.hasAuthority('MORA_GESTIONAR') && contract.saldoVencido > 0) { <button type="button" class="nx-btn nx-btn--sm" [disabled]="docBusy() === 'cobro-mora'" (click)="contractPdf('cobro-mora')"><app-icon name="file" /> Cobro de mora</button> }
+            @if (auth.hasAuthority('PAZ_SALVO_GENERAR') && contract.saldoPendiente <= 0) { <button type="button" class="nx-btn nx-btn--sm nx-btn--soft" [disabled]="docBusy() === 'paz-y-salvo'" (click)="contractPdf('paz-y-salvo')"><app-icon name="check" /> Paz y salvo</button> }
             @if (auth.hasAuthority('PAGOS_CREAR') && contract.saldoPendiente > 0) { <button type="button" class="nx-btn nx-btn--sm nx-btn--primary" (click)="openPayment(contract)">Registrar abono</button> }
           </div>
         </div>

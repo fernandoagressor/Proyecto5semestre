@@ -17,6 +17,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { CompanyService } from '../../core/services/company.service';
 import { CustomerServiceService } from '../../core/services/customer-service.service';
+import { DownloadService } from '../../core/services/download.service';
 import { apiErrorMessage, NX_UI, ToastService } from '../../shared/ui';
 import { ToasterComponent } from '../../shared/ui/toast';
 
@@ -53,6 +54,8 @@ export class PortalPage {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly downloads = inject(DownloadService);
+  readonly statementBusy = signal(false);
   readonly auth = inject(AuthService);
 
   readonly can = {
@@ -163,6 +166,16 @@ export class PortalPage {
       .portalInstallments(contractId)
       .pipe(catchError(() => of([] as PortalInstallment[])), finalize(() => this.installmentsLoading.set(false)))
       .subscribe((list) => this.installments.set(list));
+  }
+
+  downloadStatement(): void {
+    const contract = this.contract();
+    if (!contract) return;
+    this.statementBusy.set(true);
+    this.downloads
+      .portalStatement(contract.id)
+      .pipe(finalize(() => this.statementBusy.set(false)))
+      .subscribe({ error: () => this.toast.error('No se pudo generar su estado de cuenta.') });
   }
 
   loadRequests(): void {

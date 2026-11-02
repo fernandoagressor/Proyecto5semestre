@@ -148,7 +148,7 @@ export const routes: Routes = [
         path: 'gerencia',
         canActivate: [permissionGuard, companyModuleGuard],
         data: {
-          permissions: ['METAS_VER', 'COMISIONES_EQUIPO_VER', 'RENTABILIDAD_VER'],
+          permissions: ['METAS_VER', 'COMISIONES_EQUIPO_VER', 'RENTABILIDAD_VER', 'REPORTES_EXPORTAR'],
           module: 'GERENCIA_REPORTES',
           title: 'Gerencia y control',
         },

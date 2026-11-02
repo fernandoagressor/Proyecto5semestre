@@ -10,6 +10,7 @@ import { BudgetTabComponent } from './budget-tab.component';
 import { CommissionsTabComponent } from './commissions-tab.component';
 import { GoalsTabComponent } from './goals-tab.component';
 import { ProfitabilityTabComponent } from './profitability-tab.component';
+import { ReportsTabComponent } from './reports-tab.component';
 
 /**
  * Gerencia y control (vista "Finanzas-Comisiones" del diseño): metas por asesor, comisiones,
@@ -18,7 +19,7 @@ import { ProfitabilityTabComponent } from './profitability-tab.component';
  */
 @Component({
   selector: 'app-management-page',
-  imports: [...NX_UI, GoalsTabComponent, CommissionsTabComponent, BudgetTabComponent, ProfitabilityTabComponent],
+  imports: [...NX_UI, GoalsTabComponent, CommissionsTabComponent, BudgetTabComponent, ProfitabilityTabComponent, ReportsTabComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="nx-page">
@@ -38,7 +39,7 @@ import { ProfitabilityTabComponent } from './profitability-tab.component';
       @if (tabs().length === 0) {
         <div class="nx-card nx-card--pad">
           <nx-state [empty]="true" emptyIcon="lock" emptyTitle="Sin secciones disponibles"
-            emptyText="Tu rol no tiene permisos para metas, comisiones, presupuestos ni rentabilidad." />
+            emptyText="Tu rol no tiene permisos para metas, comisiones, presupuestos, rentabilidad ni reportes." />
         </div>
       } @else {
         <nx-tabs [items]="tabs()" [(active)]="tab" label="Secciones de gerencia" />
@@ -47,6 +48,7 @@ import { ProfitabilityTabComponent } from './profitability-tab.component';
           @case ('comisiones') { <app-commissions-tab [projectId]="projectId()" [projects]="projects()" /> }
           @case ('presupuesto') { <app-budget-tab [projectId]="projectId()" [projects]="projects()" /> }
           @case ('rentabilidad') { <app-profitability-tab [projectId]="projectId()" [projects]="projects()" /> }
+          @case ('reportes') { <app-reports-tab [projectId]="projectId()" [projects]="projects()" /> }
         }
       }
     </div>
@@ -70,6 +72,7 @@ export class ManagementPage {
     if (can('COMISIONES_EQUIPO_VER', 'COMISIONES_PROPIAS_VER')) items.push({ id: 'comisiones', label: 'Comisiones' });
     if (can('PRESUPUESTOS_VER', 'COSTOS_PROYECTO_VER')) items.push({ id: 'presupuesto', label: 'Presupuesto y costos' });
     if (can('RENTABILIDAD_VER')) items.push({ id: 'rentabilidad', label: 'Rentabilidad' });
+    if (can('REPORTES_EXPORTAR')) items.push({ id: 'reportes', label: 'Reportes' });
     return items;
   });
   readonly tab = signal<string>(this.tabs()[0]?.id ?? 'metas');

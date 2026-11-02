@@ -120,7 +120,7 @@
           }
           @if (can.installments && contract()) {
             <section class="nx-card nx-card--pad nx-card--stack">
-              <h3 class="nx-section-title">Plan de pagos</h3>
+              <div class="nx-section-head"><h3 class="nx-section-title">Plan de pagos</h3><button type="button" class="nx-btn nx-btn--sm" [disabled]="statementBusy()" (click)="downloadStatement()"><app-icon name="download" /> {{ statementBusy() ? 'Generando…' : 'Estado de cuenta (PDF)' }}</button></div>
               <nx-state [loading]="installmentsLoading()" [empty]="installments().length === 0" emptyIcon="calendar" emptyTitle="Sin cuotas programadas">
                 <div class="nx-table-wrap">
                   <table class="nx-table nx-table--compact">
