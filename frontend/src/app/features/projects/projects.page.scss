@@ -1,5 +1,6 @@
 :host { display: block; }
-.search { min-width: min(280px, 100%); }
+.nx-toolbar { justify-content: space-between; }
+.search { width: min(300px, 100%); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; }
 .card { display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--border-soft); border-radius: var(--radius-card); color: var(--text-strong); background: var(--surface-card); box-shadow: var(--shadow-sm); text-align: left; cursor: pointer; transition: border-color .18s, box-shadow .18s, transform .18s; }
 .card:hover { border-color: var(--border-medium); box-shadow: var(--shadow-lg); transform: translateY(-2px); }

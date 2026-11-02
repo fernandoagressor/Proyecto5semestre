@@ -11,7 +11,9 @@
 .who { display: flex; align-items: center; gap: 10px; min-width: 220px; }
 .who > span:last-child { display: flex; flex-direction: column; min-width: 0; }
 .who small { color: var(--text-muted); font-size: 12px; }
-.you { margin-left: 6px; padding: 1px 6px; border-radius: 6px; color: var(--color-primary-strong); background: var(--color-primary-soft); font-size: 11px; font-weight: 700; }
+.name { display: flex; align-items: center; gap: 6px; }
+.row-actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 6px; }
+.you { flex: none; padding: 1px 6px; border-radius: 6px; color: var(--color-primary-strong); background: var(--color-primary-soft); font-size: 11px; font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { padding: 2px 8px; border-radius: 999px; color: var(--text-strong); background: var(--surface-sunken); font-size: 12px; font-weight: 600; white-space: nowrap; }
 
