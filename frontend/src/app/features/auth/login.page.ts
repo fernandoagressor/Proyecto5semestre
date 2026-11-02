@@ -63,7 +63,9 @@ export class LoginPage {
             ? '/seguridad/cambiar-password'
             : user?.roles.includes('SUPER_ADMIN') && !user.empresaId
               ? '/superadmin'
-              : this.safeReturnUrl();
+              : user?.roles.includes('CLIENTE')
+                ? '/portal'
+                : this.safeReturnUrl();
           void this.router.navigateByUrl(target);
         },
         error: (error: HttpErrorResponse) => {

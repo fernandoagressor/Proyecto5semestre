@@ -195,6 +195,41 @@ echo "8. Notificaciones"
 api GET /api/v1/notificaciones/resumen
 [[ "$STATUS" == 200 ]] && paso "Resumen de notificaciones" || falla "Notificaciones respondió $STATUS"
 
+echo "8b. Portal del cliente (acceso propio y aislamiento)"
+DOC_CLIENTE="9$(date +%s)"
+api POST /api/v1/clientes "$(jq -n --arg d "$DOC_CLIENTE" --arg s "$SELLO" \
+  '{tipoPersona:"NATURAL", tipoDocumento:"CC", numeroDocumento:$d, nombres:"Cliente", apellidos:("Portal " + $s), correo:("portal" + $s + "@ejemplo.com"), telefono:"3001112233", origen:"WEB"}')"
+CLIENTE_ID="$(cuerpo .id)"
+[[ "$STATUS" == 201 && "$CLIENTE_ID" != null ]] && paso "Cliente creado ($CLIENTE_ID)" || falla "Crear cliente respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+api POST "/api/v1/clientes/$CLIENTE_ID/portal"
+CLIENTE_USUARIO="$(cuerpo .nombreUsuario)"; CLIENTE_CLAVE="$(cuerpo .passwordTemporal)"
+if [[ "$STATUS" == 201 && "$CLIENTE_CLAVE" != null ]]; then
+  paso "Portal habilitado para $CLIENTE_USUARIO"
+  TOKEN_ADMIN="$TOKEN"; TOKEN=""
+  CLIENTE_CLAVE_NUEVA="Portal-$SELLO-Nueva9!"
+  api POST /api/v1/auth/login "$(jq -n --arg u "$CLIENTE_USUARIO" --arg p "$CLIENTE_CLAVE" '{identificador:$u, password:$p}')"
+  TOKEN="$(cuerpo .accessToken)"
+  api POST /api/v1/auth/cambiar-password "$(jq -n --arg a "$CLIENTE_CLAVE" --arg n "$CLIENTE_CLAVE_NUEVA" \
+    '{passwordActual:$a, passwordNueva:$n, confirmacionPassword:$n}')"
+  TOKEN=""
+  api POST /api/v1/auth/login "$(jq -n --arg u "$CLIENTE_USUARIO" --arg p "$CLIENTE_CLAVE_NUEVA" '{identificador:$u, password:$p}')"
+  if [[ "$STATUS" == 200 ]]; then
+    TOKEN="$(cuerpo .accessToken)"
+    paso "El cliente inicia sesión con su contraseña propia"
+    for ruta in resumen contratos pagos documentos; do
+      api GET "/api/v1/portal/$ruta"
+      [[ "$STATUS" == 200 ]] && paso "Portal: $ruta" || falla "Portal $ruta respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+    done
+    api GET /api/v1/clientes
+    [[ "$STATUS" == 403 ]] && paso "El cliente no ve la lista de clientes (403)" || falla "El cliente pudo listar clientes (HTTP $STATUS)"
+  else
+    falla "El cliente no pudo iniciar sesión (HTTP $STATUS: $(head -c 300 "$TMP/cuerpo"))"
+  fi
+  TOKEN="$TOKEN_ADMIN"
+else
+  falla "Habilitar portal respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+fi
+
 if [[ "$COMPOSE" == 1 ]]; then
   echo "9. Bases por dentro"
   colecciones="$(mongo_q 'db.getCollectionNames().sort().join(",")')"

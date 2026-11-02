@@ -6,6 +6,16 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Portal del cliente** (`/portal`, vistas "Portal cliente web" y "móvil"): su lote con el avance
+  de pago, próximo pago o aviso de mora, plan de cuotas, pagos registrados, documentos para
+  descargar, solicitudes PQRS y pedidos de cambio de datos; en el celular, barra inferior. Los
+  clientes entran directo al portal y no ven las pantallas internas.
+  - API nueva del portal (solo datos del cliente de la sesión): `GET /api/v1/portal/contratos`,
+    `/portal/contratos/{id}/cuotas` y `/portal/pagos`.
+  - Acceso al portal: `POST /api/v1/clientes/{id}/portal` (PORTAL_CLIENTE_HABILITAR) crea el usuario
+    del cliente con contraseña temporal y `/portal/reenviar` (PORTAL_CLIENTE_REENVIAR_ACCESO) la
+    renueva. Se usa desde el detalle del contrato en Reservas y contratos. Las cuentas de clientes no
+    consumen cupos de usuarios internos.
 - **Usuarios y roles de la empresa** (`/usuarios`, vista "Usuarios-Roles"). El administrador de la
   empresa crea usuarios con contraseña temporal, define su alcance (empresa, proyecto o registros
   propios), bloquea, reactiva y reinicia credenciales, y arma roles con la matriz de permisos.

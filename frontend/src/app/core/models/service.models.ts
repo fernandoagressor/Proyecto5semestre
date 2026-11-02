@@ -145,3 +145,46 @@ export interface ClientDataChange {
   comentarioRevision: string | null;
   creadoEn: string;
 }
+
+/** Contrato del cliente en el portal, con avance de pago y próxima cuota. */
+export interface PortalContract {
+  id: number;
+  codigo: string;
+  estado: string;
+  proyecto: string;
+  ciudad: string;
+  lote: string;
+  areaM2: number;
+  valorTotal: number;
+  pagado: number;
+  saldoPendiente: number;
+  saldoVencido: number;
+  cuotasPagadas: number;
+  cuotasTotales: number;
+  proximaCuotaFecha: string | null;
+  proximaCuotaValor: number | null;
+  fechaFirma: string | null;
+}
+
+export interface PortalInstallment {
+  id: number;
+  numero: number;
+  fechaVencimiento: string;
+  valorProgramado: number;
+  valorPagado: number;
+  saldo: number;
+  interesMora: number;
+  diasMora: number;
+  estado: string;
+}
+
+export interface PortalPayment {
+  id: number;
+  codigo: string;
+  contrato: string | null;
+  fechaPago: string;
+  valor: number;
+  metodo: string;
+  referencia: string | null;
+  estado: string;
+}

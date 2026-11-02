@@ -211,6 +211,21 @@
         </div>
       }
       @if (contract.estado === 'VIGENTE') { <div class="nx-alert nx-alert--success"><app-icon name="check" /><span><b>Venta activada.</b> Las firmas están completas y el lote quedó vendido.</span></div> }
+      @if (contract.estado !== 'ANULADO' && (auth.hasAuthority('PORTAL_CLIENTE_HABILITAR') || auth.hasAuthority('PORTAL_CLIENTE_REENVIAR_ACCESO'))) {
+        <div class="portal-box">
+          <app-icon name="user" />
+          <span class="portal-box__text"><b>Portal del cliente</b><small>{{ customerHasPortal(contract.clientePrincipalId) ? 'Tiene acceso para ver su lote, pagos y documentos.' : 'Aún no tiene acceso a su portal.' }}</small></span>
+          @if (customerHasPortal(contract.clientePrincipalId) ? auth.hasAuthority('PORTAL_CLIENTE_REENVIAR_ACCESO') : auth.hasAuthority('PORTAL_CLIENTE_HABILITAR')) {
+            <button type="button" class="nx-btn nx-btn--sm" [disabled]="portalBusy()" (click)="portalAction(contract.clientePrincipalId)">{{ customerHasPortal(contract.clientePrincipalId) ? 'Reenviar acceso' : 'Habilitar portal' }}</button>
+          }
+        </div>
+        @if (portalAccess(); as access) {
+          @if (access.clienteId === contract.clientePrincipalId) {
+            <div class="nx-alert nx-alert--success"><app-icon name="key" /><span>Entregue al cliente por un canal seguro: usuario <code>{{ access.nombreUsuario }}</code>, contraseña temporal <code>{{ access.passwordTemporal }}</code>. Deberá cambiarla al ingresar.
+              <button type="button" class="nx-btn nx-btn--xs" (click)="copyText(access.passwordTemporal)">Copiar</button></span></div>
+          }
+        }
+      }
       @if (contract.estado === 'ANULADO') { <div class="nx-alert nx-alert--danger"><app-icon name="warning" /><span><b>Contrato anulado.</b> {{ contract.motivoAnulacion }}</span></div> }
 
       <h3 class="nx-section-title small">Firmantes</h3>

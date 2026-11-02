@@ -21,6 +21,7 @@ import {
   ContractConditionsPayload,
   ContractSigner,
   Customer,
+  PortalAccess,
   CustomerPayload,
   Reservation,
 } from '../../core/models/sales.models';
@@ -77,6 +78,8 @@ export class SalesPage implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly feedback = signal('');
+  readonly portalAccess = signal<PortalAccess | null>(null);
+  readonly portalBusy = signal(false);
   readonly error = signal('');
   readonly modal = signal<SalesModal>(null);
   readonly selectedReservation = signal<Reservation | null>(null);
@@ -930,6 +933,30 @@ export class SalesPage implements OnInit {
       fechaInicio: value.startDate,
       fechaFinalizacion: this.nullIfBlank(value.endDate),
     };
+  }
+
+  customerHasPortal(id: number): boolean {
+    return !!this.customerById(id)?.usuarioId;
+  }
+
+  /** Habilita o reenvía el acceso del cliente a su portal y deja visible la contraseña temporal. */
+  portalAction(customerId: number): void {
+    const resend = this.customerHasPortal(customerId);
+    this.portalBusy.set(true);
+    this.error.set('');
+    (resend ? this.sales.resendPortal(customerId) : this.sales.enablePortal(customerId))
+      .pipe(finalize(() => this.portalBusy.set(false)))
+      .subscribe({
+        next: (access) => {
+          this.portalAccess.set(access);
+          this.customers.update((list) => list.map((c) => (c.id === customerId ? { ...c, usuarioId: access.usuarioId } : c)));
+        },
+        error: (e) => this.error.set(e?.error?.detail ?? 'No se pudo habilitar el portal del cliente.'),
+      });
+  }
+
+  copyText(value: string): void {
+    void globalThis.navigator?.clipboard?.writeText(value);
   }
 
   private customerById(id: number): Customer | undefined {

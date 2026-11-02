@@ -1,0 +1,255 @@
+<div class="portal">
+  <header class="top">
+    <div class="top__in">
+      <span class="brand">
+        @if (company()?.logoUrl) { <img [src]="company()!.logoUrl" alt="" /> }
+        @else { <span class="brand__mark">{{ (company()?.nombre ?? 'N').charAt(0) }}</span> }
+        <span><b>{{ company()?.nombre ?? 'Mi inmobiliaria' }}</b><small>Portal del cliente</small></span>
+      </span>
+      <nav class="tabs" aria-label="Secciones del portal">
+        @for (s of sections; track s.id) {
+          <button type="button" [class.on]="section() === s.id" (click)="go(s.id)" [attr.aria-current]="section() === s.id ? 'page' : null">{{ s.label }}</button>
+        }
+      </nav>
+      <div class="me">
+        <button type="button" class="me__btn" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()" aria-label="Mi cuenta">
+          <span class="nx-avatar">{{ firstName().charAt(0) }}</span>
+        </button>
+        @if (menuOpen()) {
+          <div class="me__menu" role="menu">
+            <div class="me__who"><b>{{ auth.user()?.nombreUsuario }}</b><small>{{ auth.user()?.correo }}</small></div>
+            <a role="menuitem" routerLink="/seguridad/cambiar-password"><app-icon name="lock" /> Cambiar contraseña</a>
+            <button type="button" role="menuitem" (click)="logout()"><app-icon name="logout" /> Cerrar sesión</button>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  <main class="body">
+    @if (loading()) {
+      <div class="nx-card nx-card--pad"><nx-state [loading]="true" /></div>
+    } @else {
+      @switch (section()) {
+        @case ('inicio') {
+          <section class="hello">
+            <h1>Hola, {{ firstName() }}</h1>
+            <p>{{ contract() ? 'Así va la compra de su lote.' : 'Bienvenido a su portal.' }}</p>
+          </section>
+
+          @if (contract(); as c) {
+            @if (contracts().length > 1) {
+              <label class="nx-field picker"><span>Contrato</span>
+                <select class="nx-select" [value]="c.id" (change)="selectContract($any($event.target).value)">
+                  @for (k of contracts(); track k.id) { <option [value]="k.id">{{ k.proyecto }} · Lote {{ k.lote }}</option> }
+                </select>
+              </label>
+            }
+            <div class="hero">
+              <article class="lot">
+                <span class="lot__tag">{{ c.proyecto }} · {{ c.ciudad }}</span>
+                <h2>Lote {{ c.lote }}</h2>
+                <p>{{ c.areaM2 }} m² · Contrato {{ c.codigo }} · <nx-badge [status]="c.estado" /></p>
+                <div class="lot__bar"><span [style.width.%]="progress()"></span></div>
+                <div class="lot__nums">
+                  <span><small>Pagado</small><b>{{ c.pagado | cop }}</b></span>
+                  <span><small>Avance</small><b>{{ progress() | porcentaje }}</b></span>
+                  <span><small>Valor total</small><b>{{ c.valorTotal | cop }}</b></span>
+                </div>
+                <small class="lot__foot">{{ c.cuotasPagadas }} de {{ c.cuotasTotales }} cuotas pagadas</small>
+              </article>
+
+              <article class="next" [class.late]="c.saldoVencido > 0">
+                @if (c.saldoVencido > 0) {
+                  <span class="next__label"><app-icon name="warning" /> Tiene pagos vencidos</span>
+                  <b class="next__value">{{ c.saldoVencido | cop }}</b>
+                  <p>Póngase al día para evitar más intereses de mora.</p>
+                } @else if (c.proximaCuotaFecha) {
+                  <span class="next__label">Próximo pago</span>
+                  <b class="next__value">{{ c.proximaCuotaValor | cop }}</b>
+                  <p>Vence el {{ c.proximaCuotaFecha | fecha }}@if (nextWhen()) { · {{ nextWhen() }} }</p>
+                } @else {
+                  <span class="next__label">Sin pagos pendientes</span>
+                  <b class="next__value">¡Al día!</b>
+                  <p>No tiene cuotas por pagar.</p>
+                }
+                <div class="next__actions">
+                  <button type="button" class="nx-btn nx-btn--primary nx-btn--block" (click)="go('pagos')">Ver plan de pagos</button>
+                </div>
+                <small>Saldo por pagar: {{ c.saldoPendiente | cop }}</small>
+              </article>
+            </div>
+          } @else if (can.contracts) {
+            <div class="nx-card nx-card--pad"><nx-state [empty]="true" emptyIcon="sales" emptyTitle="Aún no tiene contratos" emptyText="Cuando firme su contrato verá aquí el avance de su compra." /></div>
+          }
+
+          <section class="quick" aria-label="Accesos rápidos">
+            <button type="button" class="quick__item" (click)="go('documentos')"><app-icon name="file" /><b>{{ summary()?.documentosDisponibles ?? documents().length }}</b><span>Documentos</span></button>
+            <button type="button" class="quick__item" (click)="go('ayuda')"><app-icon name="service" /><b>{{ summary()?.solicitudesAbiertas ?? 0 }}</b><span>Solicitudes abiertas</span></button>
+            <button type="button" class="quick__item" (click)="go('pagos')"><app-icon name="money" /><b>{{ summary()?.cuotasPendientes ?? 0 }}</b><span>Cuotas pendientes</span></button>
+            <div class="quick__item"><app-icon name="calendar" /><b class="small">{{ summary()?.proximaCita ? (summary()!.proximaCita | fecha: 'hora') : 'Sin citas' }}</b><span>Próxima cita</span></div>
+          </section>
+
+          @if (upcoming().length) {
+            <section class="nx-card nx-card--pad nx-card--stack">
+              <div class="nx-section-head"><h3 class="nx-section-title">Próximas cuotas</h3><button type="button" class="nx-btn nx-btn--link" (click)="go('pagos')">Ver todas</button></div>
+              <div class="nx-list">
+                @for (q of upcoming(); track q.id) {
+                  <div class="nx-list-row"><span><b>Cuota {{ q.numero }}</b><div class="sub">Vence {{ q.fechaVencimiento | fecha }}</div></span><span class="right"><b>{{ q.saldo + q.interesMora | cop }}</b><nx-badge [status]="q.estado" /></span></div>
+                }
+              </div>
+            </section>
+          }
+        }
+
+        @case ('pagos') {
+          <section class="hello"><h1>Pagos</h1><p>Plan de cuotas de su contrato y pagos registrados.</p></section>
+          @if (contract(); as c) {
+            @if (contracts().length > 1) {
+              <label class="nx-field picker"><span>Contrato</span>
+                <select class="nx-select" [value]="c.id" (change)="selectContract($any($event.target).value)">
+                  @for (k of contracts(); track k.id) { <option [value]="k.id">{{ k.proyecto }} · Lote {{ k.lote }}</option> }
+                </select>
+              </label>
+            }
+            <section class="nx-grid nx-grid--kpi">
+              <nx-kpi label="Pagado" icon="check" [value]="c.pagado | cop: 'compact'" tone="success" [progress]="progress()" />
+              <nx-kpi label="Por pagar" icon="money" [value]="c.saldoPendiente | cop: 'compact'" [hint]="(c.cuotasTotales - c.cuotasPagadas) + ' cuotas'" />
+              <nx-kpi label="Vencido" icon="warning" [value]="c.saldoVencido | cop: 'compact'" [tone]="c.saldoVencido > 0 ? 'danger' : 'neutral'" />
+            </section>
+          }
+          @if (can.installments && contract()) {
+            <section class="nx-card nx-card--pad nx-card--stack">
+              <h3 class="nx-section-title">Plan de pagos</h3>
+              <nx-state [loading]="installmentsLoading()" [empty]="installments().length === 0" emptyIcon="calendar" emptyTitle="Sin cuotas programadas">
+                <div class="nx-table-wrap">
+                  <table class="nx-table nx-table--compact">
+                    <thead><tr><th>#</th><th>Vence</th><th class="nx-right">Valor</th><th class="nx-right hide-sm">Pagado</th><th class="nx-right">Saldo</th><th>Estado</th></tr></thead>
+                    <tbody>
+                      @for (q of installments(); track q.id) {
+                        <tr [class.late]="q.estado === 'VENCIDA'">
+                          <td class="nx-num">{{ q.numero }}</td>
+                          <td>{{ q.fechaVencimiento | fecha }}@if (q.diasMora > 0) { <div class="sub warn">{{ q.diasMora }} días de mora</div> }</td>
+                          <td class="nx-right nx-num">{{ q.valorProgramado | cop }}</td>
+                          <td class="nx-right nx-num hide-sm">{{ q.valorPagado | cop }}</td>
+                          <td class="nx-right nx-num"><b>{{ q.saldo + q.interesMora | cop }}</b></td>
+                          <td><nx-badge [status]="q.estado" /></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </nx-state>
+            </section>
+          }
+          @if (can.payments) {
+            <section class="nx-card nx-card--pad nx-card--stack">
+              <h3 class="nx-section-title">Pagos registrados</h3>
+              <div class="nx-list">
+                @for (p of payments(); track p.id) {
+                  <div class="nx-list-row">
+                    <span><b>{{ p.valor | cop }}</b><div class="sub">{{ p.fechaPago | fecha }} · {{ p.metodo }}{{ p.referencia ? ' · ' + p.referencia : '' }}</div></span>
+                    <nx-badge [status]="p.estado" />
+                  </div>
+                } @empty { <p class="nx-muted">Aún no hay pagos registrados.</p> }
+              </div>
+              <p class="nx-muted small">Los pagos por consignación quedan en revisión hasta que la inmobiliaria los confirme.</p>
+            </section>
+          }
+        }
+
+        @case ('documentos') {
+          <section class="hello"><h1>Documentos</h1><p>Contrato, paz y salvo, estados de cuenta y demás archivos que la inmobiliaria comparte con usted.</p></section>
+          <section class="docs">
+            @for (d of documents(); track d.id) {
+              <article class="nx-card doc">
+                <span class="doc__icon"><app-icon name="file" /></span>
+                <span class="doc__body"><b>{{ d.nombre }}</b><small>{{ d.tipoDocumento }} · versión {{ d.numeroVersion }} · {{ d.actualizadoEn | fecha }}</small></span>
+                @if (can.download && d.archivoId) { <button type="button" class="nx-btn nx-btn--sm" (click)="download(d)"><app-icon name="download" /> Descargar</button> }
+              </article>
+            } @empty {
+              <div class="nx-card nx-card--pad"><nx-state [empty]="true" emptyIcon="file" emptyTitle="Sin documentos" emptyText="Cuando la inmobiliaria publique documentos los verá aquí." /></div>
+            }
+          </section>
+        }
+
+        @case ('ayuda') {
+          <section class="hello hello--row">
+            <span><h1>Ayuda</h1><p>Peticiones, quejas, reclamos y sugerencias con respuesta en los tiempos de ley.</p></span>
+            @if (can.createRequest) { <button type="button" class="nx-btn nx-btn--primary" (click)="requestOpen.set(true)"><app-icon name="plus" /> Nueva solicitud</button> }
+          </section>
+          <section class="nx-card nx-card--pad nx-card--stack">
+            <div class="nx-list">
+              @for (r of requests(); track r.id) {
+                <div class="nx-list-row">
+                  <span><b>{{ r.asunto }}</b><div class="sub">{{ r.codigo }} · {{ typeLabel(r.tipo) }} · {{ r.creadoEn | fecha }}@if (!['RESUELTA','CERRADA','CANCELADA'].includes(r.estado)) { · respuesta antes del {{ r.fechaLimite | fecha }} }</div></span>
+                  <nx-badge [status]="r.estado" />
+                </div>
+              } @empty { <p class="nx-muted">No tiene solicitudes. Si necesita algo, cree una y le responderemos.</p> }
+            </div>
+          </section>
+        }
+
+        @case ('perfil') {
+          <section class="hello hello--row">
+            <span><h1>Mis datos</h1><p>Pida cambios en sus datos de contacto; la inmobiliaria los revisa antes de aplicarlos.</p></span>
+            @if (can.dataChange) { <button type="button" class="nx-btn nx-btn--primary" (click)="changeOpen.set(true)"><app-icon name="edit" /> Pedir un cambio</button> }
+          </section>
+          <section class="nx-card nx-card--pad nx-card--stack">
+            <dl class="facts">
+              <div><dt>Usuario</dt><dd>{{ auth.user()?.nombreUsuario }}</dd></div>
+              <div><dt>Correo</dt><dd>{{ auth.user()?.correo }}</dd></div>
+              <div><dt>Código de cliente</dt><dd>{{ summary()?.codigoCliente ?? '—' }}</dd></div>
+            </dl>
+            <a class="nx-btn nx-btn--sm" routerLink="/seguridad/cambiar-password" style="align-self: flex-start"><app-icon name="lock" /> Cambiar contraseña</a>
+          </section>
+          @if (can.dataChange) {
+            <section class="nx-card nx-card--pad nx-card--stack">
+              <h3 class="nx-section-title">Solicitudes de cambio</h3>
+              <div class="nx-list">
+                @for (ch of changes(); track ch.id) {
+                  <div class="nx-list-row">
+                    <span><b>{{ fieldLabel(ch.campo) }}: {{ ch.valorSolicitado }}</b><div class="sub">{{ ch.creadoEn | fecha }}{{ ch.comentarioRevision ? ' · ' + ch.comentarioRevision : '' }}</div></span>
+                    <span class="right"><nx-badge [status]="ch.estado" />@if (ch.estado === 'PENDIENTE') { <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="cancelChange(ch)">Cancelar</button> }</span>
+                  </div>
+                } @empty { <p class="nx-muted">No ha pedido cambios.</p> }
+              </div>
+            </section>
+          }
+        }
+      }
+    }
+  </main>
+
+  <nav class="bottom" aria-label="Secciones del portal">
+    @for (s of sections; track s.id) {
+      <button type="button" [class.on]="section() === s.id" (click)="go(s.id)" [attr.aria-current]="section() === s.id ? 'page' : null"><app-icon [name]="s.icon" /><span>{{ s.label }}</span></button>
+    }
+  </nav>
+</div>
+
+<nx-drawer [open]="requestOpen()" (openChange)="requestOpen.set($event)" title="Nueva solicitud" subtitle="Le responderemos por este portal y por correo." [dismissible]="!saving()">
+  <form class="nx-stack" [formGroup]="requestForm" (ngSubmit)="sendRequest()" id="request-form">
+    <label class="nx-field"><span>Tipo</span><select class="nx-select" formControlName="tipo">@for (t of requestTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }</select></label>
+    <label class="nx-field"><span>Asunto</span><input class="nx-input" formControlName="asunto" placeholder="Ej.: Certificado de pagos" /></label>
+    <label class="nx-field"><span>Cuéntenos qué necesita</span><textarea class="nx-textarea" rows="6" formControlName="descripcion"></textarea></label>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="requestOpen.set(false)" [disabled]="saving()">Cancelar</button>
+    <button type="submit" form="request-form" class="nx-btn nx-btn--primary" [disabled]="saving()">{{ saving() ? 'Enviando…' : 'Enviar' }}</button>
+  </ng-container>
+</nx-drawer>
+
+<nx-drawer [open]="changeOpen()" (openChange)="changeOpen.set($event)" variant="dialog" title="Pedir un cambio de datos" [dismissible]="!saving()">
+  <form class="nx-stack" [formGroup]="changeForm" (ngSubmit)="sendChange()" id="change-form">
+    <label class="nx-field"><span>Dato</span><select class="nx-select" formControlName="campo">@for (f of dataFields; track f.value) { <option [value]="f.value">{{ f.label }}</option> }</select></label>
+    <label class="nx-field"><span>Nuevo valor</span><input class="nx-input" formControlName="valor" /></label>
+    <label class="nx-field"><span>Motivo</span><textarea class="nx-textarea" rows="3" formControlName="motivo"></textarea></label>
+  </form>
+  <ng-container drawer-footer>
+    <button type="button" class="nx-btn" (click)="changeOpen.set(false)" [disabled]="saving()">Cancelar</button>
+    <button type="submit" form="change-form" class="nx-btn nx-btn--primary" [disabled]="saving()">Enviar</button>
+  </ng-container>
+</nx-drawer>
+
+<nx-toaster />

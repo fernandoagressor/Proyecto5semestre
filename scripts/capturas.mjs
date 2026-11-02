@@ -62,12 +62,12 @@ async function esperar(page) {
   await page.waitForTimeout(700);
 }
 
-async function iniciarSesion(page, vista) {
+async function iniciarSesion(page, vista, usuario = USUARIO, password = PASSWORD) {
   await page.goto(`${BASE}/login`);
   await esperar(page);
-  await capturar(page, `${vista}-00-login`);
-  await page.locator('[formcontrolname="identificador"]').fill(USUARIO);
-  await page.locator('[formcontrolname="password"]').fill(PASSWORD);
+  if (usuario === USUARIO) await capturar(page, `${vista}-00-login`);
+  await page.locator('[formcontrolname="identificador"]').fill(usuario);
+  await page.locator('[formcontrolname="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 });
   await esperar(page);
@@ -97,10 +97,63 @@ async function recorrer(browser, vista, viewport, rutas) {
   await context.close();
 }
 
+// Portal del cliente: habilita el acceso de un cliente (de preferencia uno con contrato), cambia
+// su contraseña temporal por la API y captura el portal como lo ve él, en escritorio y celular.
+async function api(metodo, ruta, token, cuerpo) {
+  const r = await fetch(`${BASE}/api/v1${ruta}`, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
+  const texto = await r.text();
+  return { status: r.status, json: texto ? JSON.parse(texto) : null };
+}
+
+async function prepararCliente() {
+  const admin = (await api('POST', '/auth/login', null, { identificador: USUARIO, password: PASSWORD })).json?.accessToken;
+  if (!admin) return null;
+  const contratos = (await api('GET', '/contratos?tamano=1', admin)).json?.contenido ?? [];
+  const clientes = (await api('GET', '/clientes?tamano=20', admin)).json?.contenido ?? [];
+  const id = contratos[0]?.clientePrincipalId ?? clientes.find((c) => c.correo && !c.usuarioId)?.id ?? clientes[0]?.id;
+  if (!id) return null;
+  let acceso = await api('POST', `/clientes/${id}/portal`, admin);
+  if (acceso.status === 409) acceso = await api('POST', `/clientes/${id}/portal/reenviar`, admin);
+  if (!acceso.json?.passwordTemporal) {
+    errores.push(`[portal] no se pudo habilitar el cliente ${id}: HTTP ${acceso.status}`);
+    return null;
+  }
+  const { nombreUsuario, passwordTemporal } = acceso.json;
+  const nueva = `Captura-${Date.now()}-Ok9!`;
+  const token = (await api('POST', '/auth/login', null, { identificador: nombreUsuario, password: passwordTemporal })).json?.accessToken;
+  const cambio = await api('POST', '/auth/cambiar-password', token, {
+    passwordActual: passwordTemporal, passwordNueva: nueva, confirmacionPassword: nueva,
+  });
+  return cambio.status < 300 ? { usuario: nombreUsuario, password: nueva } : null;
+}
+
+async function portal(browser, cliente) {
+  for (const [vista, viewport] of [['escritorio', { width: 1440, height: 900 }], ['movil', { width: 390, height: 844 }]]) {
+    const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'es-CO', timezoneId: 'America/Bogota' });
+    const page = await context.newPage();
+    await vigilar(page, `portal-${vista}`);
+    await iniciarSesion(page, vista, cliente.usuario, cliente.password);
+    await page.goto(`${BASE}/portal`);
+    await esperar(page);
+    await capturar(page, `${vista}-portal`);
+    console.log(`${vista}-portal  (${page.url().replace(BASE, '')})`);
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch();
 try {
   await recorrer(browser, 'escritorio', { width: 1440, height: 900 }, RUTAS);
   await recorrer(browser, 'movil', { width: 390, height: 844 }, MOVIL);
+  const cliente = await prepararCliente().catch((e) => {
+    errores.push(`[portal] ${e.message}`);
+    return null;
+  });
+  if (cliente) await portal(browser, cliente);
 } finally {
   await browser.close();
   writeFileSync(`${SALIDA}/errores.txt`, errores.length ? errores.join('\n') + '\n' : 'Sin errores\n');

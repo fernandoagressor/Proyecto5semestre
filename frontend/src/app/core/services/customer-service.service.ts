@@ -10,6 +10,9 @@ import {
   ClientPortalSummary,
   CreateServiceAppointmentPayload,
   CreateServiceRequestPayload,
+  PortalContract,
+  PortalInstallment,
+  PortalPayment,
   ServiceAppointment,
   ServiceAppointmentStatus,
   ServiceAttachment,
@@ -147,6 +150,18 @@ export class CustomerServiceService {
 
   portalSummary(): Observable<ClientPortalSummary> {
     return this.http.get<ClientPortalSummary>(`${API_BASE_URL}/portal/resumen`);
+  }
+
+  portalContracts(): Observable<PortalContract[]> {
+    return this.http.get<PortalContract[]>(`${API_BASE_URL}/portal/contratos`);
+  }
+
+  portalInstallments(contractId: number): Observable<PortalInstallment[]> {
+    return this.http.get<PortalInstallment[]>(`${API_BASE_URL}/portal/contratos/${contractId}/cuotas`);
+  }
+
+  portalPayments(): Observable<PortalPayment[]> {
+    return this.http.get<PortalPayment[]>(`${API_BASE_URL}/portal/pagos`);
   }
 
   portalDocuments(page = 0, size = 50): Observable<PageResponse<ClientPortalDocument>> {
