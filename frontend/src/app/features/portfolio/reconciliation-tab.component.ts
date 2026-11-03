@@ -36,7 +36,7 @@ import { apiErrorMessage, formatCop, NX_UI, todayIso, ToastService } from '../..
         </div>
         <div class="nx-table-wrap">
           <table class="nx-table">
-            <thead><tr><th>Fecha</th><th>Movimiento del banco</th><th class="nx-right">Valor</th><th>Pago en NEXORA</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Movimiento del banco</th><th class="nx-right">Valor</th><th>Pago registrado</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
             <tbody>
               @for (m of c.movimientos; track m.id) {
                 <tr>

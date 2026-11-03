@@ -1,5 +1,5 @@
 <div class="nx-page">
-  <nx-page-header [eyebrow]="greeting() + ', ' + (auth.user()?.nombreUsuario ?? '')" [title]="title()" [description]="'Corte al ' + today + ' · ' + periodDescription()">
+  <nx-page-header [title]="title()" [description]="greeting() + ', ' + (auth.user()?.nombreUsuario ?? '') + '. Corte al ' + today + ' · ' + periodDescription()">
     @if (supportsPeriodFilter()) {
       <div class="periods" role="group" aria-label="Periodo">
         @for (option of periodOptions; track option.value) {
@@ -30,7 +30,7 @@
 
   @if (!loading() && kind() !== 'cliente' && projects().length === 0 && auth.hasAuthority('PROYECTOS_CREAR')) {
     <section class="nx-card nx-card--pad onboarding">
-      <div><span class="nx-eyebrow">Primeros pasos</span><h2 class="nx-section-title">Su empresa está lista para comenzar</h2><p class="nx-muted">Cree el primer proyecto para habilitar inventario, clientes y reservas.</p></div>
+      <div><h2 class="nx-section-title">Tu empresa está lista para comenzar</h2><p class="nx-muted">Crea el primer proyecto para habilitar inventario, clientes y reservas.</p></div>
       <ol>
         <li class="on"><span>1</span><div><b>Crear proyecto</b><small>Datos generales y capacidad</small></div><a class="nx-btn nx-btn--sm nx-btn--primary" routerLink="/proyectos">Comenzar</a></li>
         <li><span>2</span><div><b>Cargar inventario</b><small>Etapas, manzanas y lotes</small></div></li>
@@ -62,7 +62,7 @@
           <h2 class="nx-section-title">Requiere atención hoy</h2>
           <div class="alerts">
             @for (alert of alerts(); track alert.title) {
-              <div class="alert" [attr.data-tone]="alert.tone"><span><app-icon [name]="alert.icon" /></span><div><b>{{ alert.title }}</b><small>{{ alert.description }}</small></div></div>
+              <div class="alert" [attr.data-tone]="alert.tone"><i aria-hidden="true"></i><div><b>{{ alert.title }}</b><small>{{ alert.description }}</small></div></div>
             }
           </div>
           @if (performance().length > 0) {
@@ -143,11 +143,11 @@
         }
 
         <section class="nx-card nx-card--pad nx-card--stack" aria-label="Accesos directos">
-          <h2 class="nx-section-title">Continúe su operación</h2>
+          <h2 class="nx-section-title">Continúa tu operación</h2>
           <div class="actions">
             @for (action of quickActions; track action.route) {
               @if (isQuickActionVisible(action)) {
-                <a [routerLink]="action.route"><span><app-icon [name]="action.icon" /></span><div><b>{{ action.label }}</b><small>{{ action.caption }}</small></div><app-icon name="chevron" /></a>
+                <a [routerLink]="action.route"><app-icon class="actions__icon" [name]="action.icon" /><div><b>{{ action.label }}</b><small>{{ action.caption }}</small></div><app-icon class="actions__go" name="chevron" /></a>
               }
             }
           </div>

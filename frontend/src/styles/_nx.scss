@@ -10,7 +10,7 @@
 .nx-section-title { margin: 0; color: var(--text-strong); font-family: var(--font-display); font-size: 19px; font-weight: 800; line-height: 1.3; letter-spacing: -.01em; }
 .nx-section-subtitle { margin: 2px 0 0; color: var(--text-muted); font-size: 13px; }
 .nx-section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 16px; }
-.nx-eyebrow { color: var(--color-primary); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.nx-eyebrow { color: var(--text-muted); font-size: 13px; font-weight: 600; }
 .nx-muted { color: var(--text-muted); }
 .nx-subtle { color: var(--text-subtle); }
 .nx-mono { font-family: var(--font-mono); font-size: 12px; }
@@ -60,21 +60,24 @@
   min-height: var(--control-height);
   padding: 0 16px;
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   color: var(--text-strong);
   background: var(--surface-card);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
 }
 .nx-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary-strong); }
+.nx-btn:active:not(:disabled) { transform: scale(.985); }
 .nx-btn:disabled { opacity: .55; }
 .nx-btn app-icon { width: 16px; height: 16px; }
-.nx-btn--primary { border-color: var(--color-primary); color: var(--color-on-primary); background: var(--color-primary); }
-.nx-btn--primary:hover:not(:disabled) { border-color: var(--color-primary-hover); color: var(--color-on-primary); background: var(--color-primary-hover); }
+/* El botón principal va en azul marino, como "Ingresar" del login. */
+.nx-btn--primary { border-color: var(--color-primary-strong); color: var(--color-on-primary); background: var(--color-primary-strong); }
+.nx-btn--primary:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-on-primary); background: var(--color-primary); }
 .nx-btn--danger { border-color: var(--tone-danger-fg); color: #fff; background: #b42318; }
 .nx-btn--danger:hover:not(:disabled) { border-color: #912018; color: #fff; background: #912018; }
 .nx-btn--soft { border-color: transparent; color: var(--color-primary-strong); background: var(--color-primary-soft); }
@@ -82,8 +85,8 @@
 .nx-btn--ghost:hover:not(:disabled) { border-color: transparent; background: var(--surface-muted); }
 .nx-btn--link { min-height: auto; padding: 0; border: 0; color: var(--color-primary); background: transparent; }
 .nx-btn--link:hover:not(:disabled) { color: var(--color-primary-hover); text-decoration: underline; }
-.nx-btn--sm { min-height: 36px; padding: 0 12px; border-radius: 9px; font-size: 13px; }
-.nx-btn--xs { min-height: 30px; padding: 0 10px; border-radius: 8px; font-size: 12px; }
+.nx-btn--sm { min-height: 36px; padding: 0 14px; font-size: 13px; }
+.nx-btn--xs { min-height: 30px; padding: 0 10px; font-size: 12px; }
 .nx-btn--icon { width: var(--control-height); padding: 0; }
 .nx-btn--icon.nx-btn--sm { width: 36px; }
 .nx-btn--block { width: 100%; }
@@ -107,7 +110,8 @@ a.nx-btn:hover { text-decoration: none; }
 }
 .nx-textarea { min-height: 96px; padding: 10px 12px; resize: vertical; line-height: 1.45; }
 .nx-input::placeholder, .nx-textarea::placeholder { color: var(--text-subtle); }
-.nx-input:focus, .nx-select:focus, .nx-textarea:focus { border-color: var(--color-primary); outline: 2px solid color-mix(in srgb, var(--color-primary) 22%, transparent); outline-offset: 0; }
+.nx-input:hover:not(:disabled), .nx-select:hover:not(:disabled), .nx-textarea:hover:not(:disabled) { border-color: var(--text-subtle); }
+.nx-input:focus, .nx-select:focus, .nx-textarea:focus { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent); }
 .nx-input.ng-invalid.ng-touched, .nx-select.ng-invalid.ng-touched, .nx-textarea.ng-invalid.ng-touched { border-color: var(--tone-danger-fg); }
 .nx-input:disabled, .nx-select:disabled, .nx-textarea:disabled { color: var(--text-subtle); background: var(--surface-muted); }
 .nx-input--sm, .nx-select--sm { min-height: 36px; border-radius: 9px; font-size: 13px; }
@@ -147,12 +151,10 @@ a.nx-btn:hover { text-decoration: none; }
 .nx-table th {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-soft);
-  color: var(--text-subtle);
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: .04em;
   text-align: left;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 .nx-table td { padding: 12px; border-bottom: 1px solid var(--border-faint); color: var(--text-strong); vertical-align: middle; }
@@ -175,10 +177,10 @@ a.nx-btn:hover { text-decoration: none; }
 /* ---------- Progreso, avatar y separadores ---------- */
 .nx-progress { overflow: hidden; height: 8px; border-radius: var(--radius-pill); background: var(--surface-sunken); }
 .nx-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transition: width .3s ease; }
-.nx-progress--success > span { background: #10a37f; }
+.nx-progress--success > span { background: var(--tone-success-fg); }
 .nx-progress--warning > span { background: #d97706; }
-.nx-progress--danger > span { background: #d92d20; }
-.nx-avatar { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 10px; color: var(--color-primary-strong); background: var(--color-primary-soft); font-family: var(--font-display); font-size: 13px; font-weight: 800; }
+.nx-progress--danger > span { background: var(--tone-danger-fg); }
+.nx-avatar { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; color: var(--color-primary-strong); background: var(--color-primary-soft); font-family: var(--font-display); font-size: 13px; font-weight: 800; }
 .nx-divider { height: 1px; margin: 4px 0; border: 0; background: var(--border-soft); }
 
 /* ---------- Avisos ---------- */

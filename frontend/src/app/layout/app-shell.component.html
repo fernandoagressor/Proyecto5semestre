@@ -3,15 +3,15 @@
     <div class="sidebar__brand">
       <a routerLink="/dashboard" class="brand" aria-label="Ir al dashboard">
         @if (isGlobalScope()) {
-          <span class="brand__logo brand__logo--nexora"><app-brand-mark [showText]="false" /></span>
-          <span class="brand__copy"><strong>NEXORA CORE</strong><small>Control global</small></span>
+          <img class="brand__emblem" src="brand/logo-altamar-emblema.png" alt="" width="50" height="47" />
+          <span class="brand__copy"><strong>E&amp;C Altamar</strong><small>Control global</small></span>
         } @else {
           @if (company()?.logoUrl && !logoFailed()) {
             <img class="brand__logo" [src]="company()!.logoUrl ?? ''" [alt]="companyName()" (error)="logoFailed.set(true)" />
           } @else {
-            <span class="brand__logo brand__logo--initial">{{ companyInitial() }}</span>
+            <img class="brand__emblem" src="brand/logo-altamar-emblema.png" alt="" width="50" height="47" />
           }
-          <span class="brand__copy"><strong>{{ companyName() }}</strong><small>con NEXORA CORE</small></span>
+          <span class="brand__copy"><strong>{{ companyName() }}</strong><small>Constructora</small></span>
         }
       </a>
       <button class="icon-button mobile-close" type="button" (click)="mobileMenuOpen.set(false)" aria-label="Cerrar menú">
@@ -42,6 +42,11 @@
     </nav>
 
     <div class="sidebar__footer">
+      <svg class="sidebar__wave" viewBox="0 0 240 28" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 28 L0 14 C30 2 60 22 100 12 C140 2 180 20 240 8 L240 28 Z" fill="#7cc4ea" />
+        <path d="M0 28 L0 19 C34 9 64 27 104 18 C144 9 184 25 240 15 L240 28 Z" fill="#1f5c99" />
+        <path d="M0 28 L0 24 C36 16 68 30 108 24 C148 18 188 30 240 22 L240 28 Z" fill="var(--surface-card)" />
+      </svg>
       <div class="user-card">
         <span class="nx-avatar">{{ auth.initials() }}</span>
         <span class="user-card__copy">

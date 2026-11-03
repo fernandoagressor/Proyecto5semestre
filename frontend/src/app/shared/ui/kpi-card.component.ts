@@ -5,7 +5,8 @@ import { AppIconComponent } from '../components/app-icon.component';
 export type KpiTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
 
 /**
- * Indicador numérico: etiqueta, valor grande y una línea de apoyo opcional. Con `trend` muestra
+ * Indicador numérico: etiqueta, valor grande y una línea de apoyo opcional. El indicador es texto:
+ * `icon` se conserva por compatibilidad pero ya no se dibuja. Con `trend` muestra
  * la variación con flecha (positiva en verde, negativa en rojo, salvo `invertTrend`).
  *
  *   <nx-kpi label="Recaudo del mes" value="$ 412 M" hint="Meta $ 480 M" [progress]="86" />
@@ -16,12 +17,7 @@ export type KpiTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'nx-card', '[attr.data-tone]': 'tone()' },
   template: `
-    <span class="label">
-      @if (icon()) {
-        <app-icon [name]="icon()" />
-      }
-      {{ label() }}
-    </span>
+    <span class="label">{{ label() }}</span>
     @if (loading()) {
       <span class="nx-skeleton value-skeleton"></span>
     } @else {
@@ -47,10 +43,9 @@ export type KpiTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
     }
   `,
   styles: `
-    :host { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 16px 18px; }
-    .label { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
-    .label app-icon { width: 16px; height: 16px; color: var(--accent, var(--text-subtle)); }
-    .value { overflow: hidden; color: var(--text-strong); font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+    :host { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 18px 20px; }
+    .label { color: var(--text-muted); font-size: 13px; font-weight: 600; }
+    .value { overflow: hidden; color: var(--text-strong); font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
     .value-skeleton { width: 60%; height: 30px; }
     @media (max-width: 560px) { :host { padding: 12px 14px; } .value { font-size: 21px; } .label { font-size: 12px; } }
     .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; }
@@ -64,9 +59,9 @@ export type KpiTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
     :host([data-tone='warning']) { --accent: var(--tone-warning-fg); }
     :host([data-tone='danger']) { --accent: var(--tone-danger-fg); }
     :host([data-tone='danger']) .value, :host([data-tone='warning']) .value { color: var(--accent); }
-    :host([data-tone='success']) .nx-progress > span { background: #10a37f; }
+    :host([data-tone='success']) .nx-progress > span { background: var(--tone-success-fg); }
     :host([data-tone='warning']) .nx-progress > span { background: #d97706; }
-    :host([data-tone='danger']) .nx-progress > span { background: #d92d20; }
+    :host([data-tone='danger']) .nx-progress > span { background: var(--tone-danger-fg); }
   `,
 })
 export class KpiCardComponent {

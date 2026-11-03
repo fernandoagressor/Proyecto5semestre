@@ -18,36 +18,39 @@
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--text-strong); text-decoration: none; }
 .brand:hover { color: var(--text-strong); }
 .brand__logo { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 10px; object-fit: cover; }
-.brand__logo--initial { color: #fff; background: linear-gradient(145deg, #4f46e5, #6366f1); font-family: var(--font-display); font-size: 17px; font-weight: 800; }
-.brand__logo--nexora { color: #fff; background: #071426; }
-.brand__logo--nexora app-brand-mark { transform: scale(.78); }
+.brand__emblem { display: block; width: 50px; height: auto; flex: none; }
 .brand__copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
-.brand__copy strong { overflow: hidden; font-family: var(--font-display); font-size: 15px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.brand__copy small { color: var(--text-muted); font-size: 11px; font-weight: 600; }
+.brand__copy strong { overflow: hidden; font-family: var(--font-display); font-size: 16px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.brand__copy small { color: var(--text-muted); font-size: 12px; font-weight: 600; }
 
 .navigation { flex: 1; overflow-y: auto; min-height: 0; margin: 0 -4px; padding: 0 4px; scrollbar-width: thin; }
 .navigation__group { display: flex; flex-direction: column; gap: 2px; }
-.navigation__group + .navigation__group { margin-top: 14px; }
-.navigation__label { padding: 0 12px 6px; color: var(--text-subtle); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.navigation__group + .navigation__group { margin-top: 18px; }
+.navigation__label { padding: 0 12px 6px; color: var(--text-subtle); font-size: 12px; font-weight: 700; }
 .navigation a {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: 42px;
   padding: 0 12px;
   border-radius: var(--radius-control);
   color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
+  transition: background-color .15s ease, color .15s ease;
 }
 .navigation a app-icon { width: 18px; height: 18px; color: var(--text-subtle); }
-.navigation a:hover { color: var(--color-primary-strong); background: var(--color-primary-soft); }
-.navigation a:hover app-icon { color: var(--color-primary); }
-.navigation a.active { color: var(--color-primary-strong); background: var(--color-primary-soft); }
+.navigation a:hover { color: var(--text-strong); background: var(--surface-muted); }
+.navigation a:hover app-icon { color: var(--text-strong); }
+/* Activo: azul marino sobre un tono frío y la franja celeste de la ola del logo. */
+.navigation a.active { color: var(--color-primary-strong); background: var(--color-primary-soft); font-weight: 700; }
+.navigation a.active::before { content: ''; position: absolute; top: 9px; bottom: 9px; left: 0; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand-aqua); }
 .navigation a.active app-icon { color: var(--color-primary); }
 
-.sidebar__footer { padding-top: 12px; border-top: 1px solid var(--border-soft); }
+.sidebar__footer { position: relative; margin: 0 -16px -16px; padding: 30px 16px 16px; background: var(--surface-card); }
+.sidebar__wave { position: absolute; top: 0; left: 0; width: 100%; height: 28px; }
 .user-card { display: flex; align-items: center; gap: 10px; padding: 4px; }
 .user-card__copy { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.25; }
 .user-card__copy strong { overflow: hidden; color: var(--text-strong); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
@@ -66,8 +69,7 @@
   height: 64px;
   padding: 0 clamp(16px, 3vw, 40px);
   border-bottom: 1px solid var(--border-soft);
-  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--surface-card);
 }
 .topbar__heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .breadcrumb { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--text-muted); font-size: 13px; font-weight: 600; }

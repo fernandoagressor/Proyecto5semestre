@@ -11,12 +11,11 @@ import { CompanyService } from '../core/services/company.service';
 import { AppNotification, NotificationService } from '../core/services/notification.service';
 import { ThemeService } from '../core/services/theme.service';
 import { AppIconComponent } from '../shared/components/app-icon.component';
-import { BrandMarkComponent } from '../shared/components/brand-mark.component';
 import { FechaPipe, statusLabel, ToasterComponent } from '../shared/ui';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, BrandMarkComponent, FechaPipe, ToasterComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, FechaPipe, ToasterComponent],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,8 +33,7 @@ export class AppShellComponent {
   readonly notificationOpen = signal(false);
   readonly company = signal<Company | null>(null);
   readonly logoFailed = signal(false);
-  readonly companyName = computed(() => this.company()?.nombre ?? 'Nexora Core');
-  readonly companyInitial = computed(() => this.companyName().charAt(0).toUpperCase());
+  readonly companyName = computed(() => this.company()?.nombre ?? 'E&C Altamar');
   readonly companyModules = computed<readonly CompanyModuleCode[] | null>(() => this.company()?.modulos ?? null);
   readonly isGlobalScope = computed(() => this.auth.hasAuthority('ROLE_SUPER_ADMIN') && !this.auth.user()?.empresaId);
   readonly roleLabel = computed(() => {
@@ -140,6 +138,6 @@ export class AppShellComponent {
   private updatePageTitle(): void {
     let activeRoute = this.router.routerState.snapshot.root;
     while (activeRoute.firstChild) activeRoute = activeRoute.firstChild;
-    this.pageTitle.set((activeRoute.data?.['title'] as string | undefined) ?? 'Nexora Core');
+    this.pageTitle.set((activeRoute.data?.['title'] as string | undefined) ?? 'E&C Altamar');
   }
 }

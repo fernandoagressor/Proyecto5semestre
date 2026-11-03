@@ -33,7 +33,6 @@ interface PlottedPoint {
     } @else if (variant() === 'line') {
       <div class="line-layout">
         <svg class="line-svg" viewBox="0 0 320 150" preserveAspectRatio="none" role="img" [attr.aria-label]="accessibleSummary()">
-          <defs><linearGradient id="nexoraChartArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6366f1" stop-opacity=".25" /><stop offset="100%" stop-color="#22d3b6" stop-opacity=".02" /></linearGradient></defs>
           <path class="line-area" [attr.d]="areaPath()" />
           <polyline class="line-stroke" [attr.points]="polyline()" />
           @for (point of plottedPoints(); track point.x) { <circle class="line-dot" [attr.cx]="point.x" [attr.cy]="point.y" r="4" /> }
@@ -45,7 +44,7 @@ interface PlottedPoint {
     } @else {
       <div class="bars-layout">
         @for (point of points(); track point.categoria; let index = $index) {
-          <div class="bar-row"><div><span>{{ label(point.categoria) }}</span><strong>{{ formatPoint(point) }}</strong></div><span class="bar-track"><i [style.width.%]="width(point)" [style.background]="color(index)"></i></span>@if (point.cantidad > 0 && format() === 'currency') { <small>{{ formatNumber(point.cantidad) }} registros</small> }</div>
+          <div class="bar-row"><div><span>{{ label(point.categoria) }}</span><strong>{{ formatPoint(point) }}</strong></div><span class="bar-track"><i [style.width.%]="width(point)"></i></span>@if (point.cantidad > 0 && format() === 'currency') { <small>{{ formatNumber(point.cantidad) }} registros</small> }</div>
         }
       </div>
     }
@@ -53,7 +52,7 @@ interface PlottedPoint {
   styles: `
     :host { display:block; min-width:0; }
     .chart-empty { min-height:10rem; display:grid; align-content:center; justify-items:center; gap:.4rem; text-align:center; }
-    .chart-empty > span { width:2.7rem; height:2.7rem; border:1px dashed var(--border-medium); border-radius:50%; background:radial-gradient(circle,var(--color-primary-soft),transparent 70%); }
+    .chart-empty > span { width:2.7rem; height:2.7rem; border:1px dashed var(--border-medium); border-radius:50%; background:var(--color-primary-soft); }
     .chart-empty strong { color:var(--text-strong); font-size:15px; }.chart-empty small { max-width:16rem; color:var(--text-subtle); font-size:13px; }
     .donut-layout { display:grid; grid-template-columns:minmax(7rem, .78fr) minmax(8rem,1fr); align-items:center; gap:1rem; }
     .donut { position:relative; width:min(100%,10rem); aspect-ratio:1; margin-inline:auto; border-radius:50%; }
@@ -62,9 +61,9 @@ interface PlottedPoint {
     .donut strong { color:var(--text-strong); font-family:var(--font-display); font-size:28px; letter-spacing:-.02em; }.donut small { color:var(--text-subtle); font-size:12px; }
     .legend { display:grid; gap:.6rem; }.legend-row { display:grid; grid-template-columns:.6rem minmax(0,1fr) auto; align-items:center; gap:.6rem; }
     .legend-row i { width:.6rem; height:.6rem; border-radius:50%; }.legend-row span { overflow:hidden; color:var(--text-muted); font-size:13px; text-overflow:ellipsis; white-space:nowrap; }.legend-row strong { color:var(--text-strong); font-size:14px; }
-    .line-layout { display:grid; gap:.7rem; }.line-svg { display:block; width:100%; height:9.5rem; overflow:visible; }.line-area { fill:url(#nexoraChartArea); }.line-stroke { fill:none; stroke:#6366f1; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }.line-dot { fill:var(--surface-card); stroke:#6366f1; stroke-width:2.5; }
+    .line-layout { display:grid; gap:.7rem; }.line-svg { display:block; width:100%; height:9.5rem; overflow:visible; }.line-area { fill:var(--color-primary); fill-opacity:.1; }.line-stroke { fill:none; stroke:var(--color-primary); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }.line-dot { fill:var(--surface-card); stroke:var(--color-primary); stroke-width:2.5; }
     .line-labels { display:grid; grid-auto-columns:minmax(0,1fr); grid-auto-flow:column; gap:.45rem; }.line-labels div { display:grid; gap:.18rem; min-width:0; }.line-labels small,.line-labels strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.line-labels small { color:var(--text-subtle); font-size:12px; }.line-labels strong { color:var(--text-strong); font-size:13px; }
-    .bars-layout { display:grid; gap:.82rem; }.bar-row { display:grid; gap:.36rem; }.bar-row > div { display:flex; justify-content:space-between; gap:.65rem; }.bar-row > div span { color:var(--text-muted); font-size:13px; }.bar-row > div strong { color:var(--text-strong); font-size:14px; }.bar-track { overflow:hidden; height:.6rem; border-radius:2rem; background:var(--surface-muted); }.bar-track i { display:block; height:100%; min-width:.28rem; border-radius:inherit; transition:width .45s cubic-bezier(.2,.8,.2,1); }.bar-row > small { color:var(--text-subtle); font-size:12px; }
+    .bars-layout { display:grid; gap:.82rem; }.bar-row { display:grid; gap:.36rem; }.bar-row > div { display:flex; justify-content:space-between; gap:.65rem; }.bar-row > div span { color:var(--text-muted); font-size:13px; }.bar-row > div strong { color:var(--text-strong); font-size:14px; }.bar-track { overflow:hidden; height:.6rem; border-radius:2rem; background:var(--surface-muted); }.bar-track i { display:block; height:100%; min-width:.28rem; border-radius:inherit; background:var(--color-primary); transition:width .45s cubic-bezier(.2,.8,.2,1); }.bar-row > small { color:var(--text-subtle); font-size:12px; }
     @media(max-width:480px) { .donut-layout { grid-template-columns:1fr; }.donut { max-width:8rem; } }
   `,
 })
@@ -75,7 +74,8 @@ export class InsightChartComponent {
   readonly totalLabel = input('registros');
   readonly emptyMessage = input('Los datos aparecerán cuando exista actividad registrada.');
 
-  private readonly palette = ['#6366f1', '#22d3b6', '#38bdf8', '#f59e0b', '#f472b6', '#8b5cf6', '#ef4444'];
+  /** Categorías del donut, en los azules de la marca y con luminosidades distintas entre vecinas. */
+  private readonly palette = ['#1f5c99', '#7cc4ea', '#0b2545', '#d9a441', '#4fa3a5', '#9aa8b6', '#b42318'];
 
   readonly total = computed(() => this.points().reduce((sum, point) => sum + this.value(point), 0));
 
