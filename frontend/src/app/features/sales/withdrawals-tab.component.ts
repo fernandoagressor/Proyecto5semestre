@@ -34,7 +34,7 @@ const FILTERS: ChipOption[] = [
       </div>
     </div>
     <nx-state [loading]="loading()" [error]="error()" [empty]="items().length === 0" (retry)="load()" emptyIcon="file"
-      emptyTitle="Sin desistimientos" emptyText="Cuando un cliente desista de su compra, regístrelo aquí para liquidarlo.">
+      emptyTitle="Sin desistimientos" emptyText="Cuando un cliente desista de su compra, regístralo aquí para liquidarlo.">
       <div class="nx-table-wrap">
         <table class="nx-table">
           <thead><tr><th>Desistimiento</th><th>Contrato / cliente</th><th>Proyecto · lote</th><th class="nx-right">Pagado</th><th class="nx-right">A devolver</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
@@ -64,7 +64,7 @@ const FILTERS: ChipOption[] = [
       <form class="nx-stack" [formGroup]="form" (ngSubmit)="submit()" id="withdrawal-form">
         <label class="nx-field"><span>Contrato</span>
           <select class="nx-select" formControlName="contratoId">
-            <option [value]="0">Seleccione…</option>
+            <option [value]="0">Selecciona…</option>
             @for (c of eligible(); track c.id) { <option [value]="c.id">{{ c.codigo }} · {{ nameOf(c.clientePrincipalId) }} · {{ c.estado === 'VIGENTE' ? 'vigente' : 'por firmar' }}</option> }
           </select>
         </label>
@@ -92,7 +92,7 @@ const FILTERS: ChipOption[] = [
             <ul class="effects">
               <li>Se cancelarán <b>{{ s.cuotasAbiertas }}</b> cuotas pendientes y el lote <b>{{ s.lote }}</b> quedará disponible.</li>
               <li>Se anularán <b>{{ s.comisionesPendientes }}</b> comisiones no pagadas.</li>
-              @if (s.comisionesPagadas > 0) { <li class="warn">Hay {{ s.comisionesPagadas }} comisiones ya pagadas: considérelas en "otros descuentos" o recupérelas con el asesor.</li> }
+              @if (s.comisionesPagadas > 0) { <li class="warn">Hay {{ s.comisionesPagadas }} comisiones ya pagadas: considéralas en "otros descuentos" o recupéralas con el asesor.</li> }
             </ul>
           </section>
         } @else if (settlementLoading()) {
