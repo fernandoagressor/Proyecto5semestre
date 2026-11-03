@@ -7,8 +7,8 @@
 .contact a { color: var(--text-strong); text-decoration: none; }
 .contact a:hover { color: var(--color-primary); }
 
-.stage-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; color: var(--text-strong); background: color-mix(in srgb, var(--stage, #8a96a9) 14%, transparent); font-size: 12px; font-weight: 700; white-space: nowrap; }
-.stage-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--stage, #8a96a9); }
+.stage-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; color: var(--text-strong); background: color-mix(in srgb, var(--stage, #a9b6c4) 16%, transparent); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.stage-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--stage, #a9b6c4); }
 
 /* Panel de la oportunidad */
 .opp { display: flex; flex-direction: column; gap: 16px; }
@@ -45,9 +45,9 @@
 
 /* Agenda */
 .agenda-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; }
-.agenda-chip { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); background: var(--surface-card); text-align: left; cursor: pointer; }
-.agenda-chip:hover { border-color: var(--color-primary); }
-.agenda-chip span { color: var(--color-primary); font-size: 12px; font-weight: 700; letter-spacing: .03em; }
+.agenda-chip { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); background: var(--surface-card); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.agenda-chip:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+.agenda-chip span { color: var(--color-primary); font-size: 12px; font-weight: 700; }
 .agenda-chip small { color: var(--text-muted); font-size: 12px; }
 .agenda-day { margin: 8px 0 0; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; font-weight: 700; }
 .agenda-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 8px 14px; padding: 10px 0; border-bottom: 1px solid var(--border-faint); }

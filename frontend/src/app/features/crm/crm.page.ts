@@ -224,7 +224,7 @@ export class CrmPage {
   }
 
   stageColor(o: Opportunity): string {
-    return stageOf(o.etapaActual)?.color ?? '#8a96a9';
+    return stageOf(o.etapaActual)?.color ?? '#a9b6c4';
   }
 
   columnValue(c: Column): string {

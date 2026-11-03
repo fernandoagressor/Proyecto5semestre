@@ -191,7 +191,7 @@
               <label class="nx-field" style="flex: 1">
                 <span>Vincular lote disponible</span>
                 <select class="nx-select nx-select--sm" [value]="lotToAdd()" (change)="lotToAdd.set($any($event.target).value)">
-                  <option value="">Seleccione…</option>
+                  <option value="">Selecciona…</option>
                   @for (l of availableLots(); track l.id) { <option [value]="l.id">{{ l.codigo }} · {{ l.areaM2 }} m² · {{ l.valorLista | cop: 'compact' }}</option> }
                 </select>
               </label>

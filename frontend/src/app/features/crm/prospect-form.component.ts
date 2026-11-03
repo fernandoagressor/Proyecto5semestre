@@ -22,7 +22,7 @@ import { SOURCES, TEMPERATURES } from './crm-labels';
         <label class="nx-field">
           <span>Nombre completo</span>
           <input class="nx-input" formControlName="nombres" autocomplete="off" />
-          @if (form.controls.nombres.touched && form.controls.nombres.invalid) { <span class="nx-field__error">Escriba el nombre.</span> }
+          @if (form.controls.nombres.touched && form.controls.nombres.invalid) { <span class="nx-field__error">Escribe el nombre.</span> }
         </label>
         <div class="nx-grid nx-grid--2">
           <label class="nx-field"><span>Teléfono</span><input class="nx-input" type="tel" formControlName="telefono" /></label>

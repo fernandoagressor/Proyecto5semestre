@@ -8,16 +8,20 @@ export interface StageDefinition {
   color: string;
 }
 
-/** Etapas del embudo en orden, con la probabilidad sugerida al llegar a cada una. */
+/**
+ * Etapas del embudo en orden, con la probabilidad sugerida al llegar a cada una. El color avanza
+ * por los azules de la marca (de plata a marino) a medida que el negocio madura; propuesta y
+ * negociación van en ámbar porque piden decisión, y el cierre en verde.
+ */
 export const STAGES: readonly StageDefinition[] = [
-  { value: 'PROSPECTO_RECIBIDO', label: 'Recibido', probability: 5, color: '#8a96a9' },
-  { value: 'CONTACTO_INICIAL', label: 'Contacto', probability: 10, color: '#6b7a90' },
-  { value: 'CALIFICACION', label: 'Calificación', probability: 25, color: '#0ea5e9' },
-  { value: 'PRESENTACION_PROYECTO', label: 'Presentación', probability: 40, color: '#6366f1' },
-  { value: 'VISITA', label: 'Visita', probability: 55, color: '#4f46e5' },
-  { value: 'PROPUESTA', label: 'Propuesta', probability: 70, color: '#d97706' },
-  { value: 'NEGOCIACION', label: 'Negociación', probability: 85, color: '#ea580c' },
-  { value: 'CIERRE', label: 'Cierre', probability: 95, color: '#10a37f' },
+  { value: 'PROSPECTO_RECIBIDO', label: 'Recibido', probability: 5, color: '#a9b6c4' },
+  { value: 'CONTACTO_INICIAL', label: 'Contacto', probability: 10, color: '#7cc4ea' },
+  { value: 'CALIFICACION', label: 'Calificación', probability: 25, color: '#4a9ad0' },
+  { value: 'PRESENTACION_PROYECTO', label: 'Presentación', probability: 40, color: '#1f5c99' },
+  { value: 'VISITA', label: 'Visita', probability: 55, color: '#0b2545' },
+  { value: 'PROPUESTA', label: 'Propuesta', probability: 70, color: '#d9a441' },
+  { value: 'NEGOCIACION', label: 'Negociación', probability: 85, color: '#b7791f' },
+  { value: 'CIERRE', label: 'Cierre', probability: 95, color: '#0f6b52' },
 ];
 
 export function stageOf(value: OpportunityStage | null | undefined): StageDefinition | undefined {
