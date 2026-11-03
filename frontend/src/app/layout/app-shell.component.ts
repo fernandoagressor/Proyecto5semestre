@@ -19,6 +19,10 @@ import { FechaPipe, statusLabel, ToasterComponent } from '../shared/ui';
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:click)': 'closeMenusOnOutsideClick($event)',
+    '(document:keydown.escape)': 'closeMenus()',
+  },
 })
 export class AppShellComponent {
   readonly auth = inject(AuthService);
@@ -127,6 +131,19 @@ export class AppShellComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((page) => this.recentNotifications.set(page?.contenido ?? []));
+  }
+
+  /** Cierra notificaciones y perfil cuando el clic cae fuera de su botón y su ventana. */
+  closeMenusOnOutsideClick(event: MouseEvent): void {
+    if (!this.notificationOpen() && !this.profileOpen()) return;
+    const target = event.target as Element | null;
+    if (!target?.closest('.notifications')) this.notificationOpen.set(false);
+    if (!target?.closest('.profile')) this.profileOpen.set(false);
+  }
+
+  closeMenus(): void {
+    this.notificationOpen.set(false);
+    this.profileOpen.set(false);
   }
 
   private finishLogout(): void {
