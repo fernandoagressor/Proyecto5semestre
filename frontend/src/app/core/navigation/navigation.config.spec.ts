@@ -37,10 +37,10 @@ describe('Nexora navigation', () => {
   it('only shows a link when its route guard would let the user in', () => {
     for (const item of NAVIGATION_ITEMS) {
       const route = findRoute(item.route.slice(1));
-      expect(route).withContext(item.route).toBeDefined();
-      expect([...(route?.data?.['permissions'] ?? [])].sort()).withContext(item.route).toEqual([...item.permissions].sort());
-      expect(route?.data?.['permissionMode'] ?? 'any').withContext(item.route).toBe(item.permissionMode ?? 'any');
-      expect(route?.data?.['module']).withContext(item.route).toBe(item.module);
+      expect(route, item.route).toBeDefined();
+      expect([...(route?.data?.['permissions'] ?? [])].sort(), item.route).toEqual([...item.permissions].sort());
+      expect(route?.data?.['permissionMode'] ?? 'any', item.route).toBe(item.permissionMode ?? 'any');
+      expect(route?.data?.['module'], item.route).toBe(item.module);
     }
   });
 });

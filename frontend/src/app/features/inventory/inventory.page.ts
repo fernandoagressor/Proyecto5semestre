@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, merge, Observable, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, map, merge, Observable, of, switchMap } from 'rxjs';
 
 import { PageResponse } from '../../core/models/api.models';
 import { Project } from '../../core/models/empresa.models';
@@ -21,6 +21,7 @@ import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
 import { NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { LotConsecutive, nextLotConsecutive } from './lot-consecutive';
 
 type InventoryView = 'lotes' | 'estructura';
 type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | null;
@@ -69,6 +70,10 @@ export class InventoryPage {
       }));
   });
   readonly lots = signal<PageResponse<Lot> | null>(null);
+  /** Todos los lotes del proyecto (sin filtros): avance por etapa y consecutivo de lotes nuevos. */
+  readonly allLots = signal<Lot[]>([]);
+  /** Último consecutivo sugerido; solo se reemplaza lo que el usuario no ha escrito a mano. */
+  readonly suggestedConsecutive = signal<LotConsecutive | null>(null);
   readonly selectedLot = signal<Lot | null>(null);
   readonly editingLot = signal<Lot | null>(null);
   readonly stateHistory = signal<LotStateHistory[]>([]);
@@ -84,6 +89,10 @@ export class InventoryPage {
   readonly feedback = signal('');
 
   readonly search = new FormControl('', { nonNullable: true });
+  /** Rango de precio de lista; el API ya filtra por valor mínimo y máximo. */
+  readonly minPrice = new FormControl<number | null>(null);
+  readonly maxPrice = new FormControl<number | null>(null);
+  readonly hasFilters = computed(() => !!(this.stateFilter() || this.stageFilter() || this.blockFilter()));
   readonly stateFilter = signal('');
   readonly stageFilter = signal<number | null>(null);
   readonly blockFilter = signal<number | null>(null);
@@ -124,6 +133,42 @@ export class InventoryPage {
     motivo: ['', [Validators.required, Validators.maxLength(300)]],
   });
 
+  /** Participación de cada estado sobre el total del proyecto, para las tarjetas. */
+  readonly shareOf = (count: number | undefined): string => {
+    const total = this.summary()?.total ?? 0;
+    return total ? `${Math.round(((count ?? 0) / total) * 1000) / 10} % del total` : 'Sin lotes';
+  };
+  readonly soldPct = computed(() => {
+    const s = this.summary();
+    return s?.total ? Math.round((s.vendidos / s.total) * 1000) / 10 : 0;
+  });
+  /** Fin del tramo de reservados en el anillo (vendidos + reservados). */
+  readonly soldAndReservedPct = computed(() => {
+    const s = this.summary();
+    return s?.total ? Math.round(((s.vendidos + s.reservados) / s.total) * 1000) / 10 : 0;
+  });
+  /** Avance de ventas por etapa, calculado con todos los lotes del proyecto. */
+  readonly stageProgress = computed(() =>
+    this.stages()
+      .map((stage) => {
+        const lots = this.allLots().filter((lot) => lot.etapaId === stage.id);
+        const count = (state: LotStatus) => lots.filter((lot) => lot.estado === state).length;
+        const vendidos = count('VENDIDO');
+        const total = lots.length;
+        return {
+          id: stage.id,
+          nombre: stage.nombre,
+          total,
+          vendidos,
+          reservados: count('RESERVADO'),
+          disponibles: count('DISPONIBLE'),
+          bloqueados: count('BLOQUEADO'),
+          pct: total ? Math.round((vendidos / total) * 1000) / 10 : 0,
+        };
+      })
+      .filter((stage) => stage.total > 0),
+  );
+
   readonly viewOptions = [
     { value: 'plano', label: 'Plano' },
     { value: 'tabla', label: 'Tabla' },
@@ -138,12 +183,15 @@ export class InventoryPage {
   ];
 
   constructor() {
-    this.search.valueChanges
-      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed())
+    merge(this.search.valueChanges, this.minPrice.valueChanges, this.maxPrice.valueChanges)
+      .pipe(debounceTime(350), takeUntilDestroyed())
       .subscribe(() => this.loadLots(0));
     merge(this.lotForm.controls.frenteM.valueChanges, this.lotForm.controls.fondoM.valueChanges)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.calculateLotArea());
+    this.lotForm.controls.manzanaId.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((blockId) => this.suggestConsecutive(Number(blockId)));
     this.loadProjects();
   }
 
@@ -180,6 +228,18 @@ export class InventoryPage {
     this.selectView('lotes');
   }
 
+  /** Quita estado, etapa, manzana, búsqueda y rango de precio de una vez. */
+  clearFilters(): void {
+    this.stateFilter.set('');
+    this.stageFilter.set(null);
+    this.blockFilter.set(null);
+    this.blocks.set([]);
+    this.search.setValue('', { emitEvent: false });
+    this.minPrice.setValue(null, { emitEvent: false });
+    this.maxPrice.setValue(null, { emitEvent: false });
+    this.loadLots(0);
+  }
+
   changeStateFilter(value: string): void {
     this.stateFilter.set(value);
     this.loadLots(0);
@@ -201,6 +261,7 @@ export class InventoryPage {
 
   openCreateLot(): void {
     this.editingLot.set(null);
+    this.suggestedConsecutive.set(null);
     this.lotForm.reset({
       etapaId: this.stageFilter() ?? 0,
       manzanaId: this.blockFilter() ?? 0,
@@ -208,7 +269,28 @@ export class InventoryPage {
       ubicacionReferencia: '', descripcion: '',
     });
     if (this.lotForm.controls.etapaId.value) this.loadBlocks(this.lotForm.controls.etapaId.value);
+    this.suggestConsecutive(this.lotForm.controls.manzanaId.value);
     this.panel.set('lote');
+  }
+
+  /**
+   * Llena número y código con el siguiente consecutivo de la manzana elegida. Solo actúa al crear,
+   * y respeta lo que el usuario haya escrito a mano en cualquiera de los dos campos.
+   */
+  private suggestConsecutive(blockId: number): void {
+    if (this.editingLot() || !blockId) return;
+    const block = this.blocks().find((b) => b.id === blockId) ?? this.allBlocks().find((b) => b.id === blockId);
+    const stage = this.stages().find((s) => s.id === (block?.etapaId ?? this.lotForm.controls.etapaId.value));
+    const next = nextLotConsecutive(
+      this.allLots().filter((lot) => lot.manzanaId === blockId),
+      stage?.codigo ?? '',
+      block?.codigo ?? '',
+    );
+    const previous = this.suggestedConsecutive();
+    const { codigo, numero } = this.lotForm.controls;
+    if (!codigo.value || codigo.value === previous?.codigo) codigo.setValue(next.codigo);
+    if (!numero.value || numero.value === previous?.numero) numero.setValue(next.numero);
+    this.suggestedConsecutive.set(next);
   }
 
   openEditLot(lot: Lot): void {
@@ -375,6 +457,8 @@ export class InventoryPage {
         stageId: this.stageFilter(),
         blockId: this.blockFilter(),
         text: this.search.value.trim(),
+        minPrice: this.minPrice.value || null,
+        maxPrice: this.maxPrice.value || null,
         page,
         size: this.lotsView() === 'plano' ? 100 : 20,
       })
@@ -456,8 +540,29 @@ export class InventoryPage {
         this.summary.set(data.summary);
         this.stages.set(data.stages);
         this.loadAllBlocks(projectId, data.stages);
+        this.loadAllLots(projectId);
         this.loadLots(0);
       });
+  }
+
+  /** Recorre todas las páginas de lotes del proyecto (el API entrega máximo 100 por página). */
+  private loadAllLots(projectId: number): void {
+    const size = 100;
+    this.inventory
+      .listLots({ projectId, state: '', stageId: null, blockId: null, text: '', page: 0, size })
+      .pipe(
+        switchMap((first) => {
+          const rest = Array.from({ length: Math.max(0, first.totalPaginas - 1) }, (_, i) =>
+            this.inventory.listLots({ projectId, state: '', stageId: null, blockId: null, text: '', page: i + 1, size }),
+          );
+          return rest.length
+            ? forkJoin(rest).pipe(map((pages) => [first, ...pages].flatMap((page) => page.contenido)))
+            : of(first.contenido);
+        }),
+        catchError(() => of([] as Lot[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((lots) => this.allLots.set(lots));
   }
 
   private loadAllBlocks(projectId: number, stages: ProjectStage[]): void {
