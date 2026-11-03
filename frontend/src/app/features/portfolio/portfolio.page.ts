@@ -590,6 +590,13 @@ export class PortfolioPage implements OnInit {
     this.downloadCsv(`estado-cuenta-${contract.contratoCodigo}.csv`, rows);
   }
 
+  /** Avance del plan de pagos: lo pagado sobre lo programado, redondeado a un decimal. */
+  paidPct(contract: PortfolioContract): number {
+    const programmed = Number(contract.totalProgramado ?? 0);
+    if (programmed <= 0) return 0;
+    return Math.min(100, Math.round((Number(contract.totalPagado ?? 0) / programmed) * 1000) / 10);
+  }
+
   contractCode(id: number | null): string {
     return this.contracts().find((item) => item.contratoId === id)?.contratoCodigo ?? `#${id ?? '-'}`;
   }

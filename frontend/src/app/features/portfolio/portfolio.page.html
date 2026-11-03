@@ -1,5 +1,5 @@
 <div class="nx-page">
-  <nx-page-header eyebrow="Cartera" title="Cartera y recaudo" description="Planes, cuotas, pagos, mora, refinanciaciones y conciliación desde el contrato firmado.">
+  <nx-page-header title="Cartera y recaudo" description="Planes, cuotas, pagos, mora, refinanciaciones y conciliación desde el contrato firmado.">
     <button class="nx-btn" type="button" (click)="exportPortfolio()" [disabled]="!contracts().length"><app-icon name="download" /> Exportar</button>
     @if (auth.hasAuthority('CUOTAS_PROGRAMAR') && configuration()) {
       <button class="nx-btn nx-btn--ghost" type="button" (click)="openConfiguration()"><app-icon name="admin" /> Configuración</button>
@@ -24,7 +24,7 @@
       <nx-kpi label="Vencido" [value]="data.carteraVencida | cop: 'compact'" [hint]="'Mora ' + (data.porcentajeMora | porcentaje: 2)" icon="warning" [tone]="data.carteraVencida > 0 ? 'danger' : 'neutral'" />
     </section>
     @if (data.contratosSinPlan > 0) {
-      <div class="nx-alert nx-alert--warning"><app-icon name="warning" /><span><b>{{ data.contratosSinPlan }} contrato(s) vigente(s) sin plan de pagos.</b> Ábralos y use «Generar cartera».</span></div>
+      <div class="nx-alert nx-alert--warning"><app-icon name="warning" /><span><b>{{ data.contratosSinPlan }} contrato(s) vigente(s) sin plan de pagos.</b> Ábrelos y usa «Generar cartera».</span></div>
     }
   } @else if (loading()) {
     <section class="nx-grid nx-grid--kpi"><nx-kpi label="Cartera programada" [loading]="true" /><nx-kpi label="Recaudado" [loading]="true" /><nx-kpi label="Saldo pendiente" [loading]="true" /><nx-kpi label="Vencido" [loading]="true" /></section>
@@ -84,7 +84,7 @@
           <option value="">Todos los estados</option><option value="PENDIENTE">Pendiente</option><option value="EN_REVISION">En revisión</option><option value="CONFIRMADO">Confirmado</option><option value="RECHAZADO">Rechazado</option><option value="REVERSADO">Reversado</option>
         </select>
       </div>
-      <nx-state [empty]="payments().length === 0" emptyIcon="money" emptyTitle="No hay pagos con este filtro" emptyText="Registre el primer abono desde Contratos y cuotas.">
+      <nx-state [empty]="payments().length === 0" emptyIcon="money" emptyTitle="No hay pagos con este filtro" emptyText="Registra el primer abono desde Contratos y cuotas.">
         <div class="nx-table-wrap">
           <table class="nx-table">
             <thead><tr><th>Pago</th><th>Contrato</th><th>Fecha</th><th>Método / referencia</th><th class="nx-right">Valor</th><th>Aplicación</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
@@ -156,6 +156,13 @@
   [title]="selectedContract()?.contratoCodigo ?? ''" [subtitle]="selectedContract() ? selectedContract()!.clienteNombre + ' · ' + selectedContract()!.proyectoNombre + ' · Lote ' + selectedContract()!.loteCodigo : ''">
   @if (selectedContract(); as contract) {
     <div class="nx-stack detail">
+      <div class="balance-hero">
+        <div class="balance-hero__row">
+          <div><small>Saldo pendiente</small><b class="nx-num">{{ contract.saldoPendiente | cop }}</b></div>
+          <div class="balance-hero__paid"><small>Pagado</small><b class="nx-num">{{ paidPct(contract) }} %</b></div>
+        </div>
+        <span class="balance-hero__bar" role="progressbar" [attr.aria-valuenow]="paidPct(contract)" aria-valuemin="0" aria-valuemax="100" aria-label="Porcentaje pagado del contrato"><span [style.width.%]="paidPct(contract)"></span></span>
+      </div>
       <dl class="facts">
         <div><dt>Valor del contrato</dt><dd>{{ contract.valorContrato | cop }}</dd></div>
         <div><dt>Cuota inicial</dt><dd>{{ contract.cuotaInicial | cop }}</dd></div>
@@ -213,7 +220,7 @@
     <div class="nx-stack" [formGroup]="paymentForm">
       <div class="fact"><span>Saldo pendiente</span><b>{{ contract.saldoPendiente | cop }}</b></div>
       <div class="nx-grid nx-grid--2">
-        <label class="nx-field"><span>Método de pago</span><select class="nx-select" formControlName="methodId"><option [ngValue]="0">Seleccione…</option>@for (method of methods(); track method.id) { <option [ngValue]="method.id">{{ method.nombre }}</option> }</select></label>
+        <label class="nx-field"><span>Método de pago</span><select class="nx-select" formControlName="methodId"><option [ngValue]="0">Selecciona…</option>@for (method of methods(); track method.id) { <option [ngValue]="method.id">{{ method.nombre }}</option> }</select></label>
         <label class="nx-field"><span>Fecha y hora</span><input class="nx-input" type="datetime-local" formControlName="paidAt" /></label>
         <label class="nx-field"><span>Valor del abono</span><input class="nx-input" type="text" nexoraMoney formControlName="amount" /></label>
         <label class="nx-field"><span>Referencia</span><input class="nx-input" type="text" formControlName="reference" placeholder="Número de operación" /></label>
@@ -245,7 +252,7 @@
           <label class="nx-field"><span>Fecha de la promesa</span><input class="nx-input" type="date" formControlName="promiseDate" /></label>
           <label class="nx-field"><span>Valor prometido</span><input class="nx-input" type="text" nexoraMoney formControlName="promiseAmount" /></label>
         </div>
-        <p class="nx-field__hint">La promesa es opcional; si la registra, complete fecha y valor sin superar el saldo de la cuota.</p>
+        <p class="nx-field__hint">La promesa es opcional; si la registras, completa fecha y valor sin superar el saldo de la cuota.</p>
         @if (selectedCollections().length) { <p class="nx-muted">Gestiones anteriores de esta cuota: {{ selectedCollections().length }}</p> }
       </div>
     } @else {
@@ -266,7 +273,7 @@
               </div>
             </li>
           } @empty {
-            <nx-state [empty]="true" emptyIcon="phone" emptyTitle="Sin gestiones" emptyText="Registre el primer contacto o compromiso de pago." />
+            <nx-state [empty]="true" emptyIcon="phone" emptyTitle="Sin gestiones" emptyText="Registra el primer contacto o compromiso de pago." />
           }
         </ol>
       }
