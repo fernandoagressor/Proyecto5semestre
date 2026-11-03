@@ -110,6 +110,48 @@ export class CustomerLotFlowPage {
     `${this.customerFirstName()} ${this.customerLastName()}`.trim() || 'Nuevo cliente',
   );
 
+  private readonly customerValue = toSignal(this.customerForm.valueChanges, {
+    initialValue: this.customerForm.getRawValue(),
+  });
+  private readonly reservationValue = toSignal(this.reservationForm.valueChanges, {
+    initialValue: this.reservationForm.getRawValue(),
+  });
+  readonly personType = computed(() => this.customerValue().tipoPersona ?? 'NATURAL');
+  readonly observationsLength = computed(() => (this.customerValue().observaciones ?? '').length);
+  readonly today = new Date();
+
+  /** Lo que el panel lateral marca como listo; usa las mismas reglas que bloquean cada paso. */
+  readonly checklist = computed(() => {
+    const customer = this.customerValue();
+    const controls = this.customerForm.controls;
+    const contact = !!(customer.telefono?.trim() || customer.correo?.trim());
+    this.reservationValue();
+    return [
+      {
+        label: this.personType() === 'JURIDICA' ? 'Información de la empresa' : 'Datos personales completos',
+        done: !!customer.numeroDocumento?.trim() && !!customer.nombres?.trim() && controls.numeroDocumento.valid && controls.nombres.valid,
+      },
+      { label: 'Contacto válido', done: contact && controls.correo.valid && controls.telefono.valid },
+      { label: 'Lote seleccionado', done: !!this.selectedLot() },
+      { label: 'Reserva configurada', done: this.reservationForm.valid },
+    ];
+  });
+  readonly progress = computed(() => {
+    const items = this.checklist();
+    return Math.round((items.filter((item) => item.done).length / items.length) * 100);
+  });
+
+  /** Cambia el tipo de persona y ajusta el documento sugerido sin pisar lo que el usuario eligió. */
+  setPersonType(type: 'NATURAL' | 'JURIDICA'): void {
+    const { tipoDocumento } = this.customerForm.getRawValue();
+    this.customerForm.patchValue({
+      tipoPersona: type,
+      ...(type === 'JURIDICA' && tipoDocumento === 'CC' ? { tipoDocumento: 'NIT' } : {}),
+      ...(type === 'NATURAL' && tipoDocumento === 'NIT' ? { tipoDocumento: 'CC' } : {}),
+      ...(type === 'JURIDICA' ? { apellidos: '' } : {}),
+    });
+  }
+
   constructor() {
     this.loadProjects();
   }

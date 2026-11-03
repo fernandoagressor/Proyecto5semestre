@@ -32,6 +32,26 @@ describe('CustomerLotFlowPage', () => {
     expect(component.customerName()).toBe('Ana Pérez');
   });
 
+  it('adjusts the document type when switching person type and tracks the registration checklist', () => {
+    configureProviders();
+    const component = TestBed.runInInjectionContext(() => new CustomerLotFlowPage());
+
+    expect(component.progress()).toBe(0);
+
+    component.customerForm.patchValue({ apellidos: 'Pérez' });
+    component.setPersonType('JURIDICA');
+    expect(component.customerForm.getRawValue()).toEqual(
+      expect.objectContaining({ tipoPersona: 'JURIDICA', tipoDocumento: 'NIT', apellidos: '' }),
+    );
+
+    component.customerForm.patchValue({ numeroDocumento: '900845321', nombres: 'Constructora Altavista', correo: 'info@altavista.co' });
+    expect(component.checklist().map((item) => item.done)).toEqual([true, true, false, false]);
+    expect(component.progress()).toBe(50);
+
+    component.setPersonType('NATURAL');
+    expect(component.customerForm.controls.tipoDocumento.value).toBe('CC');
+  });
+
   it('explains why confirmation cannot continue when the selected project is missing', () => {
     configureProviders();
     const component = TestBed.runInInjectionContext(() => new CustomerLotFlowPage());
@@ -100,7 +120,7 @@ describe('CustomerLotFlowPage', () => {
 });
 
 function configureProviders(): void {
-  TestBed.configureTestingModule({ providers: pageProviders() });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), ...pageProviders()] });
 }
 
 function pageProviders(flowService: object = { create: () => of({} as CustomerLotFlowResult) }) {
