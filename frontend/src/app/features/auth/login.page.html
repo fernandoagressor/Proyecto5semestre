@@ -1,65 +1,142 @@
 <main class="login">
-  <section class="hero" aria-label="NEXORA CORE">
-    <div class="hero__pattern" aria-hidden="true"></div>
-    <div class="hero__brand"><app-brand-mark /></div>
-    <div class="hero__copy">
-      <span class="tag">{{ slides[slide()].tag }}</span>
-      <h1>{{ slides[slide()].title }}</h1>
-      <p>Lotes, ventas y cartera de su inmobiliaria en un solo lugar.</p>
-      <div class="dots" role="group" aria-label="Mensajes">
-        @for (s of slides; track s.tag; let i = $index) {
-          <button type="button" [class.on]="slide() === i" (click)="slide.set(i)" [attr.aria-label]="'Ver mensaje ' + (i + 1)" [attr.aria-pressed]="slide() === i"></button>
-        }
+  <section class="hero" aria-label="E&amp;C Altamar Constructora">
+    <div class="hero__brand">
+      <div class="lockup">
+        <img src="brand/logo-altamar-emblema.png" alt="E&amp;C Altamar Constructora" width="76" height="70" />
+        <span class="lockup__name">ALTAMAR<br />CONSTRUCTORA</span>
       </div>
+      <span class="hero__divider" aria-hidden="true"></span>
+      <span class="hero__product">Venta de lotes</span>
     </div>
-    <small class="hero__foot"><app-icon name="audit" /> Acceso protegido y auditado</small>
+
+    <div class="hero__copy">
+      <p class="hero__title">
+        <span class="mask"><span>Lotes con alto potencial</span></span>
+        <span class="mask"><span>de valorización</span></span>
+      </p>
+      <p class="hero__lead fade">Gestiona, reserva y vende lotes de forma simple, rápida y segura.</p>
+    </div>
+
+    <ul class="benefits fade fade--late">
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+        <span>Lotes disponibles</span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2" /></svg>
+        <span>Reservas en línea</span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V14M9 20V10M14 20V13M19 20V7M3 9l5-4 5 4 7-6" /></svg>
+        <span>Gestión de ventas</span>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /><circle cx="17" cy="9" r="2.6" /><path d="M16.5 14.6c2.6.1 4.4 1.8 5 4.4" /></svg>
+        <span>Clientes y asesoría</span>
+      </li>
+    </ul>
   </section>
 
   <section class="panel">
+    <svg class="wave wave--v" viewBox="0 0 120 900" preserveAspectRatio="none" aria-hidden="true">
+      <path class="drift" d="M120 -20 L58 -20 C18 140 98 300 48 450 C0 600 88 760 38 920 L120 920 Z" fill="#7cc4ea" fill-opacity=".9" />
+      <path class="drift drift--slow" d="M120 -20 L80 -20 C42 140 112 300 70 450 C28 600 104 760 60 920 L120 920 Z" fill="#1f5c99" />
+      <path d="M120 -20 L102 -20 C68 140 118 300 92 450 C64 600 116 760 86 920 L120 920 Z" fill="#ffffff" />
+    </svg>
+    <svg class="wave wave--h" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 60 L0 30 C150 0 300 50 450 24 C600 0 760 44 920 20 C1040 4 1130 26 1200 18 L1200 60 Z" fill="#7cc4ea" />
+      <path d="M0 60 L0 40 C160 16 300 58 460 36 C610 16 760 54 920 34 C1050 20 1130 38 1200 30 L1200 60 Z" fill="#1f5c99" />
+      <path d="M0 60 L0 50 C170 34 310 62 470 48 C620 34 770 62 930 48 C1060 38 1140 50 1200 44 L1200 60 Z" fill="#ffffff" />
+    </svg>
+
+    <span class="panel__spacer" aria-hidden="true"></span>
+
     <div class="card">
-      <div class="mobile-brand"><app-brand-mark /></div>
+      <img class="card__logo" src="brand/logo-altamar.png" alt="E&amp;C Altamar Constructora" width="170" height="174" />
+
       <div class="heading">
-        <h2>Iniciar sesión</h2>
-        <p>Ingrese con su usuario o correo.</p>
+        <h1>Iniciar sesión</h1>
+        <p>Accede a tu plataforma de venta de lotes.</p>
       </div>
 
       @if (sessionExpired()) {
-        <div class="nx-alert nx-alert--info" role="status"><app-icon name="info" /><span>Su sesión terminó por seguridad. Ingrese de nuevo para continuar.</span></div>
+        <div class="nx-alert nx-alert--info" role="status"><app-icon name="info" /><span>Tu sesión terminó por seguridad. Ingresa de nuevo para continuar.</span></div>
       }
       @if (passwordUpdated()) {
-        <div class="nx-alert nx-alert--success" role="status"><app-icon name="check" /><span>Contraseña actualizada. Ingrese con su clave nueva.</span></div>
+        <div class="nx-alert nx-alert--success" role="status"><app-icon name="check" /><span>Contraseña actualizada. Ingresa con tu clave nueva.</span></div>
       }
       @if (apiError()) {
-        <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ apiError() }}</span></div>
+        <div class="nx-alert nx-alert--danger" role="alert" tabindex="-1" #errorAlert><app-icon name="warning" /><span>{{ apiError() }}</span></div>
       }
 
       <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <label class="nx-field" for="identificador">
-          <span>Usuario o correo</span>
-          <input id="identificador" class="nx-input big" formControlName="identificador" autocomplete="username" placeholder="nombre@empresa.com" />
-          @if (form.controls.identificador.touched && form.controls.identificador.hasError('required')) {
-            <span class="nx-field__error">Escriba su usuario o correo.</span>
+        <div class="field">
+          <label for="identificador">Usuario o correo</label>
+          <div class="control">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
+            <input
+              id="identificador"
+              class="input input--no-toggle"
+              formControlName="identificador"
+              autocomplete="username"
+              placeholder="Ingresa tu usuario o correo"
+              [attr.aria-invalid]="identificadorInvalid()"
+              [attr.aria-describedby]="identificadorInvalid() ? 'identificador-error' : null"
+            />
+          </div>
+          @if (identificadorInvalid()) {
+            <span class="field__error" id="identificador-error">Escribe tu usuario o correo.</span>
           }
-        </label>
+        </div>
 
-        <label class="nx-field" for="password">
-          <span>Contraseña</span>
-          <span class="pw">
-            <input id="password" class="nx-input big" formControlName="password" [type]="showPassword() ? 'text' : 'password'" autocomplete="current-password" />
-            <button type="button" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"><app-icon [name]="showPassword() ? 'close' : 'eye'" /></button>
-          </span>
-          @if (form.controls.password.touched && form.controls.password.hasError('required')) {
-            <span class="nx-field__error">Escriba su contraseña.</span>
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <div class="control">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg>
+            <input
+              id="password"
+              class="input"
+              formControlName="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Ingresa tu contraseña"
+              [attr.aria-invalid]="passwordInvalid()"
+              [attr.aria-describedby]="passwordInvalid() ? 'password-error' : null"
+            />
+            <button type="button" class="eye" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword()">
+              @if (showPassword()) {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18" /><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2.5 12 2.5 12s3.5 7 9.5 7c1.8 0 3.4-.5 4.8-1.2" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+              }
+            </button>
+          </div>
+          @if (passwordInvalid()) {
+            <span class="field__error" id="password-error">Escribe tu contraseña.</span>
           }
-        </label>
+        </div>
 
-        <button class="nx-btn nx-btn--primary nx-btn--block big" type="submit" [disabled]="loading()">
-          @if (loading()) { <span class="nx-spinner"></span> Validando acceso… } @else { Ingresar }
+        <button class="submit" type="submit" [disabled]="loading()">
+          @if (loading()) {
+            <span class="nx-spinner"></span> Validando acceso…
+          } @else {
+            <span>Ingresar</span>
+            <svg class="submit__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          }
         </button>
       </form>
 
-      <p class="note">¿Olvidó su contraseña? Pídale al administrador de su empresa que la restablezca.</p>
+      <div class="forgot">
+        <button type="button" class="forgot__toggle" (click)="showHelp.set(!showHelp())" [attr.aria-expanded]="showHelp()" aria-controls="forgot-help">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6" /><path d="M12 17h.01" /></svg>
+          ¿Olvidaste tu contraseña?
+        </button>
+        @if (showHelp()) {
+          <p class="forgot__help" id="forgot-help">Pídele al administrador de tu empresa que la restablezca. Si eres comprador, escríbele a tu asesor comercial.</p>
+        }
+      </div>
     </div>
-    <small class="copyright">© 2026 NEXORA CORE</small>
+
+    <small class="copyright">© 2026 E&amp;C Altamar Constructora</small>
   </section>
 </main>

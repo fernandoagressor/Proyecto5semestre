@@ -1,62 +1,196 @@
-:host { display: block; }
-.login { display: flex; flex-wrap: wrap; min-height: 100dvh; background: var(--surface-card); }
+/* Login E&C Altamar: foto del proyecto + ola de la marca que abre el panel de acceso. */
+:host {
+  --al-navy: #0b2545;
+  --al-navy-hover: #13355f;
+  --al-ocean: #1f5c99;
+  --al-aqua: #7cc4ea;
+  --al-ink: #0b1b2e;
+  --al-muted: #586474;
+  --al-field: #f2f5f8;
+  --al-border: #d5dde6;
+  --al-border-hover: #a9b6c4;
+  --al-ring: #d8eaf7;
+  --al-danger: #b42318;
+  display: block;
+  font-family: Manrope, system-ui, sans-serif;
+}
 
+.login { display: flex; flex-wrap: wrap; min-height: 100dvh; color: var(--al-ink); background: #fff; }
+.login ::selection { color: var(--al-navy); background: var(--al-aqua); }
+
+/* ---------- Foto ---------- */
 .hero {
-  position: relative;
   display: flex;
-  flex: 1 1 420px;
+  flex: 999 1 720px;
   flex-direction: column;
   justify-content: space-between;
-  gap: 40px;
-  min-height: 560px;
-  overflow: hidden;
-  padding: clamp(32px, 6vw, 72px);
+  gap: 48px;
+  min-width: 0;
+  min-height: 600px;
+  padding: 48px 64px 56px;
   color: #fff;
-  background:
-    radial-gradient(ellipse at 15% 10%, rgba(129, 140, 248, .45), transparent 45%),
-    radial-gradient(ellipse at 90% 90%, rgba(32, 211, 176, .18), transparent 40%),
-    linear-gradient(160deg, #1e1b4b 0%, #312e81 55%, #0b1028 100%);
-}
-/* Cuadrícula de lotes como textura de fondo. */
-.hero__pattern {
-  position: absolute;
-  inset: 0;
-  opacity: .14;
+  background-color: var(--al-navy);
+  /* Velo neutro bajo el texto; la foto queda limpia a la derecha. */
   background-image:
-    linear-gradient(rgba(255, 255, 255, .5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, .5) 1px, transparent 1px);
-  background-size: 56px 40px;
-  mask-image: linear-gradient(180deg, transparent 0%, #000 45%, transparent 100%);
-  transform: perspective(600px) rotateX(35deg) scale(1.4);
-  transform-origin: bottom;
+    linear-gradient(90deg, rgba(5, 16, 32, .82) 0%, rgba(5, 16, 32, .55) 38%, rgba(5, 16, 32, .08) 70%),
+    url('/brand/altamar-hero.webp');
+  background-position: 30% center;
+  background-size: cover;
 }
-.hero__brand { position: relative; color: #fff; }
-.hero__copy { position: relative; display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
-.tag { align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, .18); font-size: 13px; font-weight: 700; }
-h1 { margin: 0; font-family: var(--font-display); font-size: clamp(30px, 3.4vw, 44px); font-weight: 800; line-height: 1.12; letter-spacing: -.02em; }
-.hero__copy p { margin: 0; color: #e0e7ff; font-size: 16px; line-height: 26px; }
-.dots { display: flex; gap: 8px; }
-.dots button { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .4); cursor: pointer; transition: width .25s; }
-.dots button.on { width: 28px; background: #fff; }
-.hero__foot { position: relative; display: inline-flex; align-items: center; gap: 8px; color: #c7d2fe; font-size: 13px; }
-.hero__foot app-icon { width: 16px; height: 16px; }
+.hero__brand { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.lockup { display: flex; align-items: center; gap: 14px; }
+.lockup img { display: block; width: 76px; height: auto; }
+.lockup__name { font-size: 13px; font-weight: 700; line-height: 17px; letter-spacing: .14em; }
+.hero__divider { width: 1px; height: 36px; background: rgba(255, 255, 255, .35); }
+.hero__product { font-size: 18px; font-weight: 600; }
+.hero__copy { display: flex; flex-direction: column; gap: 24px; max-width: 800px; }
+/* Dos líneas exactas: cada línea va en su propia máscara y no se parte. */
+.hero__title { margin: 0; font-size: clamp(34px, 3.9vw, 56px); font-weight: 800; line-height: 1.04; letter-spacing: -.03em; }
+.hero__title .mask > span { white-space: nowrap; }
+.hero__lead { max-width: 44ch; margin: 0; color: #e3ebf3; font-size: 18px; line-height: 28px; }
 
-.panel { display: flex; flex: 1 1 420px; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px 24px; }
-.card { display: flex; flex-direction: column; gap: 20px; width: min(400px, 100%); }
-.mobile-brand { display: none; color: var(--color-primary); }
-.heading h2 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
-.heading p { margin: 6px 0 0; color: var(--text-muted); font-size: 15px; }
-.form { display: flex; flex-direction: column; gap: 16px; }
-.big { min-height: 48px; border-radius: 12px; font-size: 15px; }
-.pw { position: relative; display: block; }
-.pw .nx-input { padding-right: 48px; }
-.pw button { position: absolute; top: 50%; right: 6px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 9px; color: var(--text-muted); background: transparent; transform: translateY(-50%); cursor: pointer; }
-.pw button:hover { color: var(--color-primary); background: var(--color-primary-soft); }
-.pw app-icon { width: 18px; height: 18px; }
-.note { margin: 0; color: var(--text-muted); font-size: 13px; text-align: center; }
-.copyright { color: var(--text-subtle); font-size: 12px; }
+.benefits { display: flex; flex-wrap: wrap; gap: 16px 40px; margin: 0; padding: 0; font-size: 15px; font-weight: 600; line-height: 20px; list-style: none; }
+.benefits li { display: flex; align-items: center; gap: 12px; }
+.benefits svg { width: 26px; height: 26px; fill: none; stroke: var(--al-aqua); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-@media (max-width: 860px) {
-  .hero { display: none; }
-  .mobile-brand { display: block; }
+/* ---------- Panel ---------- */
+.panel {
+  position: relative;
+  display: flex;
+  flex: 1 1 520px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  min-width: 0;
+  padding: 48px 56px 40px 40px;
+  background: #fff;
+}
+.panel__spacer { height: 1px; }
+.wave { position: absolute; pointer-events: none; }
+.wave--v { top: 0; bottom: 0; left: -118px; width: 120px; height: 100%; }
+.wave--h { display: none; top: -58px; right: 0; left: 0; width: 100%; height: 60px; transform: translateY(2px); }
+
+.card { display: flex; flex-direction: column; gap: 28px; width: 100%; max-width: 380px; }
+.card__logo { display: block; width: 170px; height: auto; margin: 0 auto; }
+.heading h1 { margin: 0; font-family: inherit; font-size: 36px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em; }
+.heading p { margin: 8px 0 0; color: var(--al-muted); font-size: 16px; line-height: 24px; }
+
+.form { display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { padding-left: 6px; font-size: 14px; font-weight: 700; }
+.field__error { padding-left: 6px; color: var(--al-danger); font-size: 13px; font-weight: 600; }
+.control { position: relative; display: flex; align-items: center; }
+.control > svg { position: absolute; left: 18px; width: 20px; height: 20px; color: var(--al-muted); pointer-events: none; }
+.control svg, .eye svg, .forgot svg, .submit__arrow { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.input {
+  width: 100%;
+  height: 52px;
+  padding: 0 52px 0 50px;
+  border: 1px solid var(--al-border);
+  border-radius: 999px;
+  color: var(--al-ink);
+  background: var(--al-field);
+  /* 16px evita que iOS haga zoom al enfocar. */
+  font: 500 16px/1 Manrope, system-ui, sans-serif;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.input--no-toggle { padding-right: 20px; }
+.input::placeholder { color: var(--al-muted); }
+.input:hover { border-color: var(--al-border-hover); }
+.input:focus, .input:focus-visible { border-color: var(--al-ocean); outline: none; background: #fff; box-shadow: 0 0 0 4px var(--al-ring); }
+.input[aria-invalid='true'] { border-color: var(--al-danger); }
+
+.eye {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: var(--al-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.eye svg { width: 20px; height: 20px; }
+.eye:hover { color: var(--al-navy); background: #e6eef5; }
+
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 56px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--al-navy);
+  font: 700 17px/1 Manrope, system-ui, sans-serif;
+  cursor: pointer;
+  transition: background-color .15s ease, transform .1s ease;
+}
+.submit:hover:not(:disabled) { background: var(--al-navy-hover); }
+.submit:active:not(:disabled) { transform: scale(.985); }
+.submit:disabled { opacity: .85; }
+.submit__arrow { width: 20px; height: 20px; stroke-width: 2; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+.submit:hover:not(:disabled) .submit__arrow { transform: translateX(3px); }
+
+.forgot { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.forgot__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  color: var(--al-ocean);
+  background: transparent;
+  font: 600 15px/1 Manrope, system-ui, sans-serif;
+  cursor: pointer;
+}
+.forgot__toggle svg { width: 18px; height: 18px; }
+.forgot__toggle:hover { color: var(--al-navy); text-decoration: underline; text-underline-offset: 3px; }
+.forgot__help { margin: 0; color: var(--al-muted); font-size: 14px; line-height: 21px; text-align: center; }
+
+.submit:focus-visible, .eye:focus-visible, .forgot__toggle:focus-visible { outline: 2px solid var(--al-ocean); outline-offset: 3px; }
+.copyright { color: var(--al-muted); font-size: 13px; }
+
+/* ---------- Movimiento ---------- */
+.mask { display: block; overflow: hidden; padding-bottom: .06em; }
+.mask > span { display: block; animation: rise .9s cubic-bezier(.16, 1, .3, 1) both; }
+.mask + .mask > span { animation-delay: .11s; }
+.fade { animation: fade .6s ease-out .5s both; }
+.fade--late { animation-delay: .65s; }
+.drift { animation: drift 9s ease-in-out infinite alternate; }
+.drift--slow { animation-duration: 11s; animation-direction: alternate-reverse; }
+@keyframes rise { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes drift { from { transform: translateY(-10px); } to { transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) {
+  .mask > span, .fade, .drift { animation: none; }
+}
+
+/* ---------- Pantallas angostas: la ola pasa a ser horizontal ---------- */
+@media (max-width: 1199px) {
+  .wave--v { display: none; }
+  .wave--h { display: block; }
+  .panel { padding: 24px 24px 32px; }
+}
+@media (max-width: 640px) {
+  .hero { min-height: 0; padding: 24px 16px 76px; gap: 22px; background-image: linear-gradient(180deg, rgba(5, 16, 32, .7) 0%, rgba(5, 16, 32, .35) 55%, rgba(5, 16, 32, .15) 100%), url('/brand/altamar-hero.webp'); background-position: 28% center; }
+  .hero__divider, .hero__product { display: none; }
+  .lockup img { width: 62px; }
+  .hero__title { font-size: 26px; line-height: 1.08; letter-spacing: -.02em; }
+  .hero__lead { font-size: 16px; line-height: 24px; }
+  .benefits { display: none; }
+  .wave--h { top: auto; bottom: calc(100% - 2px); height: 56px; }
+  .panel { gap: 24px; padding: 20px 16px 24px; }
+  .panel__spacer { display: none; }
+  .card__logo { width: 120px; }
+  .heading h1 { font-size: 28px; }
 }
