@@ -40,6 +40,12 @@
               <b>{{ item.nombre }}</b><small>{{ statusLabel(item.estado) }}</small>
             </button>
             @if (stageFilter() === item.id) {
+              @if (auth.hasAuthority('ETAPAS_GESTIONAR') || (auth.hasAuthority('MANZANAS_GESTIONAR') && selectedBlock())) {
+                <div class="structure__edit">
+                  @if (auth.hasAuthority('ETAPAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="openEditStage(item)"><app-icon name="edit" /> Editar etapa</button> }
+                  @if (auth.hasAuthority('MANZANAS_GESTIONAR') && selectedBlock(); as b) { <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="openEditBlock(b)"><app-icon name="edit" /> Editar {{ b.nombre }}</button> }
+                </div>
+              }
               <div class="blocks">
                 <button type="button" class="block" [class.on]="!blockFilter()" (click)="changeBlockFilter('')">Todas</button>
                 @for (b of blocks(); track b.id) {
@@ -242,7 +248,7 @@
 </nx-drawer>
 
 <!-- Etapa -->
-<nx-drawer [open]="panel() === 'etapa'" (openChange)="$event || closePanel()" variant="dialog" title="Nueva etapa" [dismissible]="!submitting()">
+<nx-drawer [open]="panel() === 'etapa'" (openChange)="$event || closePanel()" variant="dialog" [title]="editingStage() ? 'Editar etapa' : 'Nueva etapa'" [dismissible]="!submitting()">
   <form class="nx-form-grid" [formGroup]="stageForm" (ngSubmit)="submitStage()" id="stage-form">
     <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
     <label class="nx-field"><span>Secuencia</span><input class="nx-input" type="number" min="1" formControlName="secuencia" /></label>
@@ -253,14 +259,14 @@
   </form>
   <ng-container drawer-footer>
     <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
-    <button class="nx-btn nx-btn--primary" type="submit" form="stage-form" [disabled]="submitting()">Crear etapa</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="stage-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingStage() ? 'Guardar cambios' : 'Crear etapa') }}</button>
   </ng-container>
 </nx-drawer>
 
 <!-- Manzana -->
-<nx-drawer [open]="panel() === 'manzana'" (openChange)="$event || closePanel()" variant="dialog" title="Nueva manzana" [dismissible]="!submitting()">
+<nx-drawer [open]="panel() === 'manzana'" (openChange)="$event || closePanel()" variant="dialog" [title]="editingBlock() ? 'Editar manzana' : 'Nueva manzana'" [dismissible]="!submitting()">
   <form class="nx-form-grid" [formGroup]="blockForm" (ngSubmit)="submitBlock()" id="block-form">
-    <label class="nx-field nx-span-all"><span>Etapa</span><select class="nx-select" formControlName="etapaId"><option [value]="0">Selecciona…</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
+    <label class="nx-field nx-span-all"><span>Etapa</span><select class="nx-select" formControlName="etapaId" [attr.disabled]="editingBlock() ? '' : null"><option [value]="0">Selecciona…</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
     <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
     <label class="nx-field"><span>Secuencia</span><input class="nx-input" type="number" min="1" formControlName="secuencia" /></label>
     <label class="nx-field nx-span-all"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
@@ -268,6 +274,6 @@
   </form>
   <ng-container drawer-footer>
     <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
-    <button class="nx-btn nx-btn--primary" type="submit" form="block-form" [disabled]="submitting()">Crear manzana</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="block-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingBlock() ? 'Guardar cambios' : 'Crear manzana') }}</button>
   </ng-container>
 </nx-drawer>

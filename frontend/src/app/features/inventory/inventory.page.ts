@@ -76,6 +76,10 @@ export class InventoryPage {
   readonly suggestedConsecutive = signal<LotConsecutive | null>(null);
   readonly selectedLot = signal<Lot | null>(null);
   readonly editingLot = signal<Lot | null>(null);
+  /** Manzana elegida en el filtro de la estructura: la que se edita con "Editar manzana". */
+  readonly selectedBlock = computed(() => this.blocks().find((b) => b.id === this.blockFilter()) ?? null);
+  readonly editingStage = signal<ProjectStage | null>(null);
+  readonly editingBlock = signal<Block | null>(null);
   readonly stateHistory = signal<LotStateHistory[]>([]);
   readonly priceHistory = signal<LotPriceHistory[]>([]);
   readonly view = signal<InventoryView>('lotes');
@@ -319,13 +323,30 @@ export class InventoryPage {
   }
 
   openCreateStage(): void {
+    this.editingStage.set(null);
     this.stageForm.reset({ codigo: '', nombre: '', secuencia: this.stages().length + 1, fechaInicio: '', fechaFin: '', estado: 'ACTIVA' });
     this.panel.set('etapa');
   }
 
+  openEditStage(stage: ProjectStage): void {
+    this.editingStage.set(stage);
+    this.stageForm.reset({
+      codigo: stage.codigo, nombre: stage.nombre, secuencia: stage.secuencia,
+      fechaInicio: stage.fechaInicio ?? '', fechaFin: stage.fechaFin ?? '', estado: stage.estado,
+    });
+    this.panel.set('etapa');
+  }
+
   openCreateBlock(stageId?: number): void {
+    this.editingBlock.set(null);
     const id = stageId ?? this.stageFilter() ?? this.stages()[0]?.id ?? 0;
     this.blockForm.reset({ etapaId: id, codigo: '', nombre: '', secuencia: this.blocks().length + 1, estado: 'ACTIVA' });
+    this.panel.set('manzana');
+  }
+
+  openEditBlock(block: Block): void {
+    this.editingBlock.set(block);
+    this.blockForm.reset({ etapaId: block.etapaId, codigo: block.codigo, nombre: block.nombre, secuencia: block.secuencia, estado: block.estado });
     this.panel.set('manzana');
   }
 
@@ -407,9 +428,11 @@ export class InventoryPage {
       return;
     }
     const value = this.stageForm.getRawValue();
+    const payload = { ...value, fechaInicio: value.fechaInicio || null, fechaFin: value.fechaFin || null };
+    const editing = this.editingStage();
     this.runMutation(
-      this.inventory.createStage(projectId, { ...value, fechaInicio: value.fechaInicio || null, fechaFin: value.fechaFin || null }),
-      'Etapa creada correctamente.',
+      editing ? this.inventory.updateStage(projectId, editing.id, payload) : this.inventory.createStage(projectId, payload),
+      editing ? 'Etapa actualizada correctamente.' : 'Etapa creada correctamente.',
     );
   }
 
@@ -420,7 +443,13 @@ export class InventoryPage {
       return;
     }
     const { etapaId, ...payload } = this.blockForm.getRawValue();
-    this.runMutation(this.inventory.createBlock(projectId, etapaId, payload), 'Manzana creada correctamente.');
+    const editing = this.editingBlock();
+    this.runMutation(
+      editing
+        ? this.inventory.updateBlock(projectId, editing.etapaId, editing.id, payload)
+        : this.inventory.createBlock(projectId, etapaId, payload),
+      editing ? 'Manzana actualizada correctamente.' : 'Manzana creada correctamente.',
+    );
   }
 
   submitPrice(): void {
