@@ -126,6 +126,9 @@ export class TicketsTabComponent {
   readonly projects = input<Project[]>([]);
   /** Borrador recibido al escalar una PQRS: abre el formulario con estos datos. */
   readonly draft = input<{ asunto: string; descripcion: string; proyectoId: number | null; key: number } | null>(null);
+  /** Ticket que se abre en cuanto carga la lista (llega desde una notificación). */
+  readonly openId = input<number | null>(null);
+  private openedFromLink: number | null = null;
 
   readonly canCreate = this.auth.hasAuthority('SOPORTE_CREAR');
   readonly canAssign = this.auth.hasAuthority('SOPORTE_ASIGNAR');
@@ -169,6 +172,15 @@ export class TicketsTabComponent {
         this.projectId = d.proyectoId;
         this.newOpen.set(true);
       });
+    });
+    effect(() => {
+      const id = this.openId();
+      const ticket = id ? this.items().find((t) => t.id === id) : undefined;
+      // Solo una vez por enlace: cerrar el detalle y recargar la lista no lo vuelve a abrir.
+      if (ticket && this.openedFromLink !== ticket.id) {
+        this.openedFromLink = ticket.id;
+        untracked(() => this.open(ticket));
+      }
     });
   }
 

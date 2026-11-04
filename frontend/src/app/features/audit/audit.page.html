@@ -17,7 +17,7 @@
         emptyText="El sistema avisa aquí de cuentas bloqueadas, accesos desde IP nuevas, exportaciones repetidas y acciones fuera de horario.">
         <div class="nx-grid nx-grid--cards">
           @for (a of visibleAlerts(); track a.id) {
-            <article class="nx-card alert-card" [class.alert-card--closed]="a.estado === 'RESUELTA' || a.estado === 'DESCARTADA'">
+            <article class="nx-card alert-card" [id]="'alerta-' + a.id" [class.alert-card--focus]="focusedAlert() === a.id" [class.alert-card--closed]="a.estado === 'RESUELTA' || a.estado === 'DESCARTADA'">
               <div class="alert-card__top">
                 <nx-badge [status]="a.estado === 'RESUELTA' || a.estado === 'DESCARTADA' ? a.estado : a.severidad" />
                 <span>{{ relative(a.creadoEn) }}</span>

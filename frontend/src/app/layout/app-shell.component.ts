@@ -8,7 +8,7 @@ import { CompanyModuleCode } from '../core/models/company-module.models';
 import { Company } from '../core/models/empresa.models';
 import { AuthService } from '../core/services/auth.service';
 import { CompanyService } from '../core/services/company.service';
-import { AppNotification, NotificationService } from '../core/services/notification.service';
+import { AppNotification, notificationLink, NotificationService } from '../core/services/notification.service';
 import { ThemeService } from '../core/services/theme.service';
 import { AppIconComponent } from '../shared/components/app-icon.component';
 import { FechaPipe, statusLabel, ToasterComponent } from '../shared/ui';
@@ -131,6 +131,19 @@ export class AppShellComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((page) => this.recentNotifications.set(page?.contenido ?? []));
+  }
+
+  /** Marca la notificación como leída y abre la pantalla de lo que avisa. */
+  openNotification(notification: AppNotification): void {
+    this.notificationOpen.set(false);
+    this.recentNotifications.update((list) => list.filter((n) => n.id !== notification.id));
+    this.unreadNotifications.update((count) => Math.max(0, count - 1));
+    this.notifications
+      .markRead(notification.id)
+      .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe();
+    const link = notificationLink(notification);
+    if (link) void this.router.navigate([link.path], { queryParams: link.queryParams });
   }
 
   /** Cierra notificaciones y perfil cuando el clic cae fuera de su botón y su ventana. */

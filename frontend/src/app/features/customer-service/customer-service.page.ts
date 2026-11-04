@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
 
@@ -40,6 +41,7 @@ import { KnowledgeTabComponent } from './knowledge-tab.component';
 import { TicketsTabComponent } from './tickets-tab.component';
 
 type ServiceTab = 'resumen' | 'solicitudes' | 'citas' | 'tickets' | 'conocimiento' | 'portal';
+const SERVICE_TABS: readonly ServiceTab[] = ['resumen', 'solicitudes', 'citas', 'tickets', 'conocimiento', 'portal'];
 type ServiceModal = 'solicitud' | 'detalle' | 'cita' | 'reprogramar' | 'datos' | null;
 type DetailView = 'conversacion' | 'adjuntos' | 'historial';
 
@@ -59,6 +61,9 @@ export class CustomerServicePage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<ServiceTab>('resumen');
+  /** Ticket que pidió abrir una notificación (`?ticket=`). */
+  readonly ticketToOpen = signal<number | null>(null);
+  private readonly route = inject(ActivatedRoute, { optional: true });
   readonly team = inject(TeamService);
   private readonly toast = inject(ToastService);
   /** Selector de artículos de la base de conocimiento para la respuesta. */
@@ -174,6 +179,19 @@ export class CustomerServicePage implements OnInit {
   ngOnInit(): void {
     if (this.isClient()) this.activeTab.set('portal');
     this.loadAll();
+    // Enlaces desde las notificaciones: ?pestana=solicitudes&solicitud=12, ?pestana=tickets&ticket=3.
+    this.route?.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const tab = params.get('pestana') as ServiceTab | null;
+      if (tab && SERVICE_TABS.includes(tab) && !this.isClient()) this.setTab(tab);
+      const requestId = Number(params.get('solicitud'));
+      if (requestId) {
+        this.service
+          .request(requestId)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({ next: (request) => this.openFromSummary(request), error: (error) => this.error.set(this.errorDetail(error)) });
+      }
+      this.ticketToOpen.set(Number(params.get('ticket')) || null);
+    });
   }
 
   setTab(tab: ServiceTab): void {

@@ -97,10 +97,10 @@
               } @else if (recentNotifications().length > 0) {
                 <div class="notification-list">
                   @for (notification of recentNotifications(); track notification.id) {
-                    <article>
+                    <button type="button" class="notification-item" (click)="openNotification(notification)">
                       <i [class]="'priority priority--' + notification.prioridad.toLowerCase()"></i>
                       <div><strong>{{ notification.titulo }}</strong><p>{{ notification.mensaje }}</p><small>{{ notification.creadoEn | fecha: 'relativa' }}</small></div>
-                    </article>
+                    </button>
                   }
                 </div>
               } @else {

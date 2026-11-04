@@ -125,12 +125,13 @@
 .notification-menu > header strong { color: var(--text-strong); font-size: 14px; }
 .notification-menu > header small { color: var(--text-muted); font-size: 12px; }
 .notification-list { display: grid; max-height: 340px; overflow-y: auto; padding-top: 4px; }
-.notification-list article { display: flex; gap: 10px; padding: 10px; border-radius: 10px; }
-.notification-list article:hover { background: var(--surface-muted); }
+.notification-list .notification-item { display: flex; width: 100%; gap: 10px; padding: 10px; border: 0; border-radius: 10px; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.notification-list .notification-item:hover { background: var(--surface-muted); }
+.notification-list .notification-item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .priority { width: 8px; height: 8px; flex: none; margin-top: 5px; border-radius: 50%; background: var(--color-primary); }
 .priority--alta, .priority--urgente { background: #d92d20; }
 .priority--baja { background: var(--text-subtle); }
-.notification-list article > div { display: grid; min-width: 0; gap: 2px; }
+.notification-list .notification-item > div { display: grid; min-width: 0; gap: 2px; }
 .notification-list strong { color: var(--text-strong); font-size: 13px; }
 .notification-list p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.4; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .notification-list small { color: var(--text-subtle); font-size: 12px; }
