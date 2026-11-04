@@ -79,7 +79,7 @@ export class ProjectsPage {
 
   readonly limitLabel = computed(() => {
     const c = this.company();
-    return c ? `${this.total()} de ${c.limiteProyectos} proyectos permitidos por su plan` : `${this.total()} proyectos`;
+    return c ? `${this.total()} de ${c.limiteProyectos} proyectos permitidos por tu plan` : `${this.total()} proyectos`;
   });
   readonly atLimit = computed(() => {
     const c = this.company();
@@ -129,6 +129,23 @@ export class ProjectsPage {
       },
     });
   }
+
+  /** Totales del portafolio con los resúmenes de inventario de los proyectos listados. */
+  readonly portfolio = computed(() => {
+    const listed = this.projects().map((p) => this.summaries()[p.id]).filter((s): s is InventorySummary => !!s);
+    const sum = (key: 'total' | 'vendidos' | 'reservados' | 'disponibles' | 'valorDisponible') =>
+      listed.reduce((acc, s) => acc + Number(s[key] ?? 0), 0);
+    const total = sum('total');
+    return {
+      activos: this.projects().filter((p) => p.estado === 'ACTIVO').length,
+      lotes: total,
+      vendidos: sum('vendidos'),
+      reservados: sum('reservados'),
+      disponibles: sum('disponibles'),
+      valorDisponible: sum('valorDisponible'),
+      pctVendido: total ? Math.round((sum('vendidos') / total) * 1000) / 10 : 0,
+    };
+  });
 
   summary(id: number): InventorySummary | undefined {
     return this.summaries()[id];

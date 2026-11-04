@@ -233,7 +233,7 @@
       }
 
       @case ('tickets') {
-        <section class="nx-card nx-card--pad nx-card--stack"><app-tickets-tab [projects]="projects()" [draft]="ticketDraft()" /></section>
+        <section class="nx-card nx-card--pad nx-card--stack"><app-tickets-tab [projects]="projects()" [draft]="ticketDraft()" [openId]="ticketToOpen()" /></section>
       }
 
       @case ('conocimiento') {

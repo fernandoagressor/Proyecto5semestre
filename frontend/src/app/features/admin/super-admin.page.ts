@@ -31,6 +31,7 @@ import { AdminService } from '../../core/services/admin.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 import { InsightChartComponent, InsightChartPoint } from '../../shared/components/insight-chart.component';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 type AdminTab = 'resumen' | 'empresas' | 'proyectos' | 'usuarios' | 'roles';
 type ModalType = 'empresa' | 'usuario' | 'rol' | 'proyecto' | 'selector_empresa' | null;
@@ -46,7 +47,7 @@ interface IssuedCredentials {
 
 @Component({
   selector: 'app-super-admin-page',
-  imports: [ReactiveFormsModule, AppIconComponent, InsightChartComponent],
+  imports: [ReactiveFormsModule, AppIconComponent, InsightChartComponent, PhoneInputComponent],
   templateUrl: './super-admin.page.html',
   styleUrls: ['./super-admin.page.scss', './company-wizard.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -221,7 +222,7 @@ export class SuperAdminPage {
     direccion: [''],
     ciudad: [''],
     departamento: [''],
-    telefono: [''],
+    telefono: ['', phoneValidator],
     correo: ['', Validators.email],
     logoUrl: [''],
     zonaHoraria: ['America/Bogota', Validators.required],
@@ -242,7 +243,7 @@ export class SuperAdminPage {
     numeroDocumento: [''],
     nombres: ['', Validators.required],
     apellidos: [''],
-    telefono: [''],
+    telefono: ['', phoneValidator],
     nombreUsuario: [''],
     correo: ['', [Validators.required, Validators.email]],
     passwordTemporal: [''],

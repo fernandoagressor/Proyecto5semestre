@@ -11,7 +11,7 @@
   </div>
 
   <nx-state [loading]="loading()" [error]="error()" [empty]="rows().length === 0" (retry)="load()"
-    emptyIcon="users" emptyTitle="Sin prospectos" emptyText="Cree un prospecto o cambie los filtros.">
+    emptyIcon="users" emptyTitle="Sin prospectos" emptyText="Crea un prospecto o cambia los filtros.">
     <div class="nx-table-wrap">
       <table class="nx-table">
         <thead>
@@ -96,7 +96,7 @@
         <label class="nx-field">
           <span>Proyecto</span>
           <select class="nx-select" formControlName="proyectoId">
-            <option value="">Seleccione…</option>
+            <option value="">Selecciona…</option>
             @for (p of projects(); track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
           </select>
         </label>
@@ -119,7 +119,7 @@
       <label class="nx-field">
         <span>Nuevo asesor</span>
         <select class="nx-select" [value]="reassignTo()" (change)="reassignTo.set($any($event.target).value)">
-          <option value="">Seleccione…</option>
+          <option value="">Selecciona…</option>
           @for (m of team.advisors(); track m.id) { <option [value]="m.id">{{ m.nombre }}</option> }
         </select>
       </label>

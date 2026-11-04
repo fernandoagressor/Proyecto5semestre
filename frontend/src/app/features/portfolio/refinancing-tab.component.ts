@@ -54,7 +54,7 @@ import { apiErrorMessage, NX_UI, todayIso, ToastService } from '../../shared/ui'
         <label class="nx-field">
           <span>Contrato</span>
           <select class="nx-select" [(ngModel)]="contractId">
-            <option [ngValue]="null">Seleccione…</option>
+            <option [ngValue]="null">Selecciona…</option>
             @for (c of withBalance(); track c.contratoId) { <option [ngValue]="c.contratoId">{{ c.contratoCodigo }} · {{ c.clienteNombre }} · saldo {{ c.saldoPendiente | cop: 'compact' }}</option> }
           </select>
         </label>

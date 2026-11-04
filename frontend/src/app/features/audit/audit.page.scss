@@ -2,6 +2,7 @@
 
 .alert-card { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; }
 .alert-card--closed { opacity: .72; }
+.alert-card--focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .alert-card__top { display: flex; justify-content: space-between; gap: 8px; color: var(--text-muted); font-size: 12px; font-weight: 600; }
 .alert-card b { font-size: 15px; }
 .alert-card p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.45; }

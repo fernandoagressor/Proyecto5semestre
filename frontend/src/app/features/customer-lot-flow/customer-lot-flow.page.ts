@@ -14,10 +14,11 @@ import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 @Component({
   selector: 'app-customer-lot-flow-page',
-  imports: [ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective],
+  imports: [ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective, PhoneInputComponent],
   templateUrl: './customer-lot-flow.page.html',
   styleUrl: './customer-lot-flow.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,7 +58,7 @@ export class CustomerLotFlowPage {
     numeroDocumento: ['', [Validators.required, Validators.maxLength(40)]],
     nombres: ['', [Validators.required, Validators.maxLength(120)]],
     apellidos: ['', [Validators.maxLength(120)]],
-    telefono: ['', [Validators.maxLength(40)]],
+    telefono: ['', [Validators.maxLength(40), phoneValidator]],
     correo: ['', [Validators.email, Validators.maxLength(180)]],
     direccion: ['', [Validators.maxLength(240)]],
     origen: ['VENTAS', [Validators.maxLength(80)]],
@@ -110,6 +111,48 @@ export class CustomerLotFlowPage {
     `${this.customerFirstName()} ${this.customerLastName()}`.trim() || 'Nuevo cliente',
   );
 
+  private readonly customerValue = toSignal(this.customerForm.valueChanges, {
+    initialValue: this.customerForm.getRawValue(),
+  });
+  private readonly reservationValue = toSignal(this.reservationForm.valueChanges, {
+    initialValue: this.reservationForm.getRawValue(),
+  });
+  readonly personType = computed(() => this.customerValue().tipoPersona ?? 'NATURAL');
+  readonly observationsLength = computed(() => (this.customerValue().observaciones ?? '').length);
+  readonly today = new Date();
+
+  /** Lo que el panel lateral marca como listo; usa las mismas reglas que bloquean cada paso. */
+  readonly checklist = computed(() => {
+    const customer = this.customerValue();
+    const controls = this.customerForm.controls;
+    const contact = !!(customer.telefono?.trim() || customer.correo?.trim());
+    this.reservationValue();
+    return [
+      {
+        label: this.personType() === 'JURIDICA' ? 'Información de la empresa' : 'Datos personales completos',
+        done: !!customer.numeroDocumento?.trim() && !!customer.nombres?.trim() && controls.numeroDocumento.valid && controls.nombres.valid,
+      },
+      { label: 'Contacto válido', done: contact && controls.correo.valid && controls.telefono.valid },
+      { label: 'Lote seleccionado', done: !!this.selectedLot() },
+      { label: 'Reserva configurada', done: this.reservationForm.valid },
+    ];
+  });
+  readonly progress = computed(() => {
+    const items = this.checklist();
+    return Math.round((items.filter((item) => item.done).length / items.length) * 100);
+  });
+
+  /** Cambia el tipo de persona y ajusta el documento sugerido sin pisar lo que el usuario eligió. */
+  setPersonType(type: 'NATURAL' | 'JURIDICA'): void {
+    const { tipoDocumento } = this.customerForm.getRawValue();
+    this.customerForm.patchValue({
+      tipoPersona: type,
+      ...(type === 'JURIDICA' && tipoDocumento === 'CC' ? { tipoDocumento: 'NIT' } : {}),
+      ...(type === 'NATURAL' && tipoDocumento === 'NIT' ? { tipoDocumento: 'CC' } : {}),
+      ...(type === 'JURIDICA' ? { apellidos: '' } : {}),
+    });
+  }
+
   constructor() {
     this.loadProjects();
   }
@@ -118,7 +161,9 @@ export class CustomerLotFlowPage {
     this.error.set(null);
     if (this.customerForm.invalid) {
       this.customerForm.markAllAsTouched();
-      this.error.set('Completa los datos obligatorios del cliente para continuar.');
+      this.error.set(this.customerForm.controls.telefono.invalid
+        ? 'El teléfono debe tener entre 7 y 10 dígitos.'
+        : 'Completa los datos obligatorios del cliente para continuar.');
       return;
     }
     const { telefono, correo } = this.customerForm.getRawValue();

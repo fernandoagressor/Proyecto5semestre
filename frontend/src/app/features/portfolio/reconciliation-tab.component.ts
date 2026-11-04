@@ -28,7 +28,7 @@ import { apiErrorMessage, formatCop, NX_UI, todayIso, ToastService } from '../..
       </div>
     </div>
 
-    <nx-state [loading]="loading()" [error]="error()" [empty]="!current()" (retry)="load()" emptyIcon="wallet" emptyTitle="Sin conciliaciones" emptyText="Cree una por cuenta y periodo para cargar el extracto.">
+    <nx-state [loading]="loading()" [error]="error()" [empty]="!current()" (retry)="load()" emptyIcon="wallet" emptyTitle="Sin conciliaciones" emptyText="Crea una por cuenta y periodo para cargar el extracto.">
       @if (current(); as c) {
         <div class="recon-head">
           <span><b>{{ c.cuentaBancaria }}</b> · {{ c.fechaDesde | fecha }} – {{ c.fechaHasta | fecha }} · <nx-badge [status]="c.estado" /></span>
@@ -36,7 +36,7 @@ import { apiErrorMessage, formatCop, NX_UI, todayIso, ToastService } from '../..
         </div>
         <div class="nx-table-wrap">
           <table class="nx-table">
-            <thead><tr><th>Fecha</th><th>Movimiento del banco</th><th class="nx-right">Valor</th><th>Pago en NEXORA</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Movimiento del banco</th><th class="nx-right">Valor</th><th>Pago registrado</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
             <tbody>
               @for (m of c.movimientos; track m.id) {
                 <tr>
@@ -63,7 +63,7 @@ import { apiErrorMessage, formatCop, NX_UI, todayIso, ToastService } from '../..
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="6" class="nx-subtle">Sin movimientos. Agregue los del extracto.</td></tr>
+                <tr><td colspan="6" class="nx-subtle">Sin movimientos. Agrega los del extracto.</td></tr>
               }
             </tbody>
           </table>
@@ -77,7 +77,7 @@ import { apiErrorMessage, formatCop, NX_UI, todayIso, ToastService } from '../..
             <button type="button" class="nx-btn nx-btn--sm" (click)="addMovement()" [disabled]="busy() || !mRef.trim() || !mValue">Agregar</button>
           </div>
           <div class="nx-row nx-row--end">
-            <button type="button" class="nx-btn nx-btn--sm" (click)="close()" [disabled]="busy() || counts().pending > 0" [title]="counts().pending > 0 ? 'Concilie o ignore los pendientes antes de cerrar' : ''">Cerrar conciliación</button>
+            <button type="button" class="nx-btn nx-btn--sm" (click)="close()" [disabled]="busy() || counts().pending > 0" [title]="counts().pending > 0 ? 'Concilia o ignora los pendientes antes de cerrar' : ''">Cerrar conciliación</button>
           </div>
         }
       }
@@ -180,7 +180,7 @@ export class ReconciliationTabComponent {
   create(): void {
     this.run(
       this.api.createReconciliation({ cuentaBancaria: this.account.trim(), fechaDesde: this.from, fechaHasta: this.to, saldoExtracto: Number(this.balance ?? 0) }),
-      'Conciliación creada. Agregue los movimientos del extracto.',
+      'Conciliación creada. Agrega los movimientos del extracto.',
       (c) => {
         this.newOpen.set(false);
         this.selectedId.set((c as Reconciliation).id);

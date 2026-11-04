@@ -8,18 +8,21 @@ import { CompanyModuleCode } from '../core/models/company-module.models';
 import { Company } from '../core/models/empresa.models';
 import { AuthService } from '../core/services/auth.service';
 import { CompanyService } from '../core/services/company.service';
-import { AppNotification, NotificationService } from '../core/services/notification.service';
+import { AppNotification, notificationLink, NotificationService } from '../core/services/notification.service';
 import { ThemeService } from '../core/services/theme.service';
 import { AppIconComponent } from '../shared/components/app-icon.component';
-import { BrandMarkComponent } from '../shared/components/brand-mark.component';
 import { FechaPipe, statusLabel, ToasterComponent } from '../shared/ui';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, BrandMarkComponent, FechaPipe, ToasterComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppIconComponent, FechaPipe, ToasterComponent],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:click)': 'closeMenusOnOutsideClick($event)',
+    '(document:keydown.escape)': 'closeMenus()',
+  },
 })
 export class AppShellComponent {
   readonly auth = inject(AuthService);
@@ -34,8 +37,7 @@ export class AppShellComponent {
   readonly notificationOpen = signal(false);
   readonly company = signal<Company | null>(null);
   readonly logoFailed = signal(false);
-  readonly companyName = computed(() => this.company()?.nombre ?? 'Nexora Core');
-  readonly companyInitial = computed(() => this.companyName().charAt(0).toUpperCase());
+  readonly companyName = computed(() => this.company()?.nombre ?? 'Nexora');
   readonly companyModules = computed<readonly CompanyModuleCode[] | null>(() => this.company()?.modulos ?? null);
   readonly isGlobalScope = computed(() => this.auth.hasAuthority('ROLE_SUPER_ADMIN') && !this.auth.user()?.empresaId);
   readonly roleLabel = computed(() => {
@@ -131,6 +133,32 @@ export class AppShellComponent {
       .subscribe((page) => this.recentNotifications.set(page?.contenido ?? []));
   }
 
+  /** Marca la notificación como leída y abre la pantalla de lo que avisa. */
+  openNotification(notification: AppNotification): void {
+    this.notificationOpen.set(false);
+    this.recentNotifications.update((list) => list.filter((n) => n.id !== notification.id));
+    this.unreadNotifications.update((count) => Math.max(0, count - 1));
+    this.notifications
+      .markRead(notification.id)
+      .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe();
+    const link = notificationLink(notification);
+    if (link) void this.router.navigate([link.path], { queryParams: link.queryParams });
+  }
+
+  /** Cierra notificaciones y perfil cuando el clic cae fuera de su botón y su ventana. */
+  closeMenusOnOutsideClick(event: MouseEvent): void {
+    if (!this.notificationOpen() && !this.profileOpen()) return;
+    const target = event.target as Element | null;
+    if (!target?.closest('.notifications')) this.notificationOpen.set(false);
+    if (!target?.closest('.profile')) this.profileOpen.set(false);
+  }
+
+  closeMenus(): void {
+    this.notificationOpen.set(false);
+    this.profileOpen.set(false);
+  }
+
   private finishLogout(): void {
     this.auth.clearSession();
     this.loggingOut.set(false);
@@ -140,6 +168,6 @@ export class AppShellComponent {
   private updatePageTitle(): void {
     let activeRoute = this.router.routerState.snapshot.root;
     while (activeRoute.firstChild) activeRoute = activeRoute.firstChild;
-    this.pageTitle.set((activeRoute.data?.['title'] as string | undefined) ?? 'Nexora Core');
+    this.pageTitle.set((activeRoute.data?.['title'] as string | undefined) ?? 'Nexora');
   }
 }

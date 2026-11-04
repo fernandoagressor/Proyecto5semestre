@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -107,6 +109,8 @@ async function setup(overrides: Record<string, unknown> = {}): Promise<{
   await TestBed.configureTestingModule({
     imports: [CustomerServicePage],
     providers: [
+      provideHttpClient(),
+      provideHttpClientTesting(),
       { provide: CustomerServiceService, useValue: service },
       {
         provide: AuthService,

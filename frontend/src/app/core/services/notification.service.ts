@@ -30,4 +30,30 @@ export class NotificationService {
       params: { leida: false, pagina: 0, tamano: 5 },
     });
   }
+
+  markRead(id: number) {
+    return this.http.patch<AppNotification>(`${API_BASE_URL}/notificaciones/${id}/leer`, {});
+  }
+}
+
+/** Pantalla que muestra lo que avisa la notificación, según la entidad a la que apunta. */
+export function notificationLink(notification: Pick<AppNotification, 'entidadTipo' | 'entidadId'>): {
+  path: string;
+  queryParams: Record<string, string | number>;
+} | null {
+  const id = notification.entidadId;
+  switch (notification.entidadTipo) {
+    case 'SOLICITUD_PQRS':
+      return { path: '/servicio', queryParams: id ? { pestana: 'solicitudes', solicitud: id } : { pestana: 'solicitudes' } };
+    case 'CITA_SERVICIO':
+      return { path: '/servicio', queryParams: { pestana: 'citas' } };
+    case 'TICKET_SOPORTE':
+      return { path: '/servicio', queryParams: id ? { pestana: 'tickets', ticket: id } : { pestana: 'tickets' } };
+    case 'ALERTA_ANOMALIA':
+      return { path: '/auditoria', queryParams: id ? { alerta: id } : {} };
+    case 'SOLICITUD_CAMBIO_DATOS':
+      return { path: '/servicio', queryParams: {} };
+    default:
+      return null;
+  }
 }

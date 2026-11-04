@@ -2,82 +2,89 @@
 @use './styles/nx';
 
 /*
- * Sistema visual de NEXORA CORE (rediseño 0.5.0).
- * Fuente: tablero "NEXORA CORE — Vistas propuestas". Manrope para títulos, Inter para el texto,
- * JetBrains Mono para bitácoras y códigos; acento índigo sobre fondo claro.
+ * Sistema visual de Nexora Technologies.
+ * Colores tomados del logo: azul marino (#0b2545) para lo que pesa, azul océano (#1f5c99) para lo
+ * interactivo, celeste (#7cc4ea) para los acentos y plata para las superficies. Una sola familia,
+ * Manrope, para títulos y texto; JetBrains Mono solo para códigos y bitácoras.
  * Las piezas reutilizables llevan el prefijo `nx-` (clases aquí y componentes en shared/ui).
  */
 html {
   @include mat.theme((
     color: (
-      primary: mat.$violet-palette,
+      primary: mat.$azure-palette,
       tertiary: mat.$cyan-palette,
     ),
-    typography: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+    typography: 'Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
     density: 0,
   ));
 
-  --font-display: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: Manrope, ui-sans-serif, system-ui, sans-serif;
+  --font-body: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-primary: #4f46e5;
-  --color-primary-hover: #3730a3;
-  --color-primary-soft: #eef0ff;
-  --color-primary-strong: #3730a3;
-  --color-on-primary: #ffffff;
-  --color-accent: #20d3b0;
-  --surface-page: #f4f6fb;
-  --surface-card: #ffffff;
-  --surface-muted: #f8fafc;
-  --surface-sunken: #eef1f6;
-  --text-strong: #071426;
-  --text-muted: #526079;
-  --text-subtle: #8a96a9;
-  --border-faint: #eef1f6;
-  --border-soft: #e6eaf3;
-  --border-medium: #cdd5e1;
+  --brand-navy: #0b2545;
+  --brand-ocean: #1f5c99;
+  --brand-aqua: #7cc4ea;
+  --brand-silver: #c9d3de;
 
-  --tone-success-bg: #e7f6f1;
-  --tone-success-fg: #0f6e55;
-  --tone-warning-bg: #fff8eb;
-  --tone-warning-fg: #9a4b06;
-  --tone-danger-bg: #fde2e2;
+  --color-primary: #1f5c99;
+  --color-primary-hover: #0b2545;
+  --color-primary-soft: #e8f1f9;
+  --color-primary-strong: #0b2545;
+  --color-on-primary: #ffffff;
+  --color-accent: #7cc4ea;
+  --surface-page: #f4f7fa;
+  --surface-card: #ffffff;
+  --surface-muted: #f6f9fb;
+  --surface-sunken: #edf2f6;
+  --text-strong: #0b1b2e;
+  --text-muted: #586474;
+  --text-subtle: #6b7785;
+  --border-faint: #edf1f5;
+  --border-soft: #e2e8ee;
+  --border-medium: #c9d3de;
+
+  --tone-success-bg: #e6f5ef;
+  --tone-success-fg: #0f6b52;
+  --tone-warning-bg: #fff6e6;
+  --tone-warning-fg: #8f4a06;
+  --tone-danger-bg: #fdecec;
   --tone-danger-fg: #b42318;
-  --tone-info-bg: #eef0ff;
-  --tone-info-fg: #3730a3;
-  --tone-neutral-bg: #eef1f6;
-  --tone-neutral-fg: #526079;
+  --tone-info-bg: #e8f1f9;
+  --tone-info-fg: #1a4f85;
+  --tone-neutral-bg: #edf2f6;
+  --tone-neutral-fg: #586474;
 
   --radius-card: 16px;
-  --radius-control: 10px;
+  --radius-control: 12px;
   --radius-pill: 999px;
   --control-height: 44px;
-  --sidebar-width: 248px;
+  --sidebar-width: 256px;
 
-  --shadow-sm: 0 .45rem 1.4rem rgba(32, 44, 78, .045);
-  --shadow-lg: 0 1rem 2.4rem rgba(42, 52, 89, .11);
-  --shadow-xl: 0 1.3rem 3.2rem rgba(15, 23, 42, .16);
+  /* Superficies planas: solo flota lo que de verdad flota (menús, diálogos). */
+  --shadow-sm: none;
+  --shadow-lg: 0 .8rem 2rem rgba(11, 37, 69, .10);
+  --shadow-xl: 0 1.2rem 3rem rgba(11, 37, 69, .16);
   color-scheme: light;
   font-size: 16px;
 }
 
 html[data-theme='dark'] {
-  --color-primary: #818cf8;
-  --color-primary-hover: #a5b4fc;
-  --color-primary-soft: rgba(99, 102, 241, .16);
-  --color-primary-strong: #c7d2fe;
-  --color-on-primary: #0b1020;
-  --surface-page: #0a1120;
-  --surface-card: #111a2c;
-  --surface-muted: #152036;
-  --surface-sunken: #1a263d;
-  --text-strong: #eef2f8;
-  --text-muted: #a9b5c9;
-  --text-subtle: #75839a;
-  --border-faint: #1a263d;
-  --border-soft: #22304a;
-  --border-medium: #33445f;
+  --color-primary: #7cc4ea;
+  --color-primary-hover: #a9dbf4;
+  --color-primary-soft: rgba(124, 196, 234, .14);
+  --color-primary-strong: #cfeaf8;
+  --color-on-primary: #061528;
+  --surface-page: #061528;
+  --surface-card: #0b2038;
+  --surface-muted: #102a46;
+  --surface-sunken: #13304f;
+  --text-strong: #eef4f9;
+  --text-muted: #aebccb;
+  --text-subtle: #8c9bad;
+  --border-faint: #13304f;
+  --border-soft: #1b3a5c;
+  --border-medium: #2a4c72;
 
   --tone-success-bg: rgba(16, 185, 129, .14);
   --tone-success-fg: #6ee7b7;
@@ -85,12 +92,12 @@ html[data-theme='dark'] {
   --tone-warning-fg: #fcd34d;
   --tone-danger-bg: rgba(239, 68, 68, .15);
   --tone-danger-fg: #fca5a5;
-  --tone-info-bg: rgba(99, 102, 241, .16);
-  --tone-info-fg: #c7d2fe;
-  --tone-neutral-bg: #1a263d;
-  --tone-neutral-fg: #a9b5c9;
+  --tone-info-bg: rgba(124, 196, 234, .14);
+  --tone-info-fg: #cfeaf8;
+  --tone-neutral-bg: #13304f;
+  --tone-neutral-fg: #aebccb;
 
-  --shadow-sm: 0 .35rem 1.2rem rgba(0, 0, 0, .15);
+  --shadow-sm: none;
   --shadow-lg: 0 .9rem 2.2rem rgba(0, 0, 0, .22);
   --shadow-xl: 0 1.3rem 3.2rem rgba(0, 0, 0, .3);
   color-scheme: dark;
@@ -119,7 +126,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-::selection { color: #fff; background: #4f46e5; }
+::selection { color: #0b2545; background: #7cc4ea; }
 ::-webkit-scrollbar { width: .65rem; height: .65rem; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 1rem; background: color-mix(in srgb, var(--text-subtle) 45%, transparent); background-clip: padding-box; }

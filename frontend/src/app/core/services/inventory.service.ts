@@ -46,6 +46,10 @@ export class InventoryService {
     return this.http.post<Block>(`${this.projectUrl(projectId)}/etapas/${stageId}/manzanas`, payload);
   }
 
+  updateBlock(projectId: number, stageId: number, blockId: number, payload: BlockPayload): Observable<Block> {
+    return this.http.put<Block>(`${this.projectUrl(projectId)}/etapas/${stageId}/manzanas/${blockId}`, payload);
+  }
+
   listLots(options: {
     projectId: number;
     state?: string;

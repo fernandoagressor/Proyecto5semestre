@@ -2,19 +2,25 @@
 
 .search { min-width: min(320px, 100%); }
 
-.board { display: grid; grid-auto-columns: minmax(240px, 1fr); grid-auto-flow: column; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
-.board__col { display: flex; flex-direction: column; gap: 8px; min-height: 220px; padding: 10px; border: 1px solid var(--border-soft); border-radius: var(--radius-card); background: var(--surface-muted); }
-.board__col > header { display: flex; flex-direction: column; gap: 2px; padding: 4px 4px 8px; border-bottom: 2px solid var(--stage); }
-.board__col > header b { display: flex; align-items: center; gap: 6px; font-size: 14px; }
-.board__col > header i { width: 8px; height: 8px; border-radius: 50%; background: var(--stage); }
-.board__col > header span { color: var(--text-muted); font-size: 12px; font-weight: 600; }
-.board__empty { margin: 12px 0; color: var(--text-subtle); font-size: 13px; text-align: center; }
-.opp-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); background: var(--surface-card); box-shadow: var(--shadow-sm); text-align: left; cursor: pointer; }
-.opp-card:hover { border-color: var(--color-primary); transform: translateY(-1px); }
-.opp-card > b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+/* Tablero: cada columna lleva arriba la barra de color de su etapa; las tarjetas son planas. */
+.board { display: grid; grid-auto-columns: minmax(250px, 1fr); grid-auto-flow: column; gap: 12px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: thin; }
+.board__col { display: flex; flex-direction: column; gap: 8px; min-height: 240px; padding: 0 10px 10px; overflow: hidden; border: 1px solid var(--border-soft); border-radius: var(--radius-card); background: var(--surface-muted); }
+.board__col > header { display: flex; flex-direction: column; gap: 4px; margin: 0 -10px 4px; padding: 0 14px 12px; }
+.board__bar { display: block; height: 4px; margin: 0 -14px 10px; background: var(--stage); }
+.board__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.board__head b { font-size: 15px; font-weight: 800; }
+.board__count { display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 8px; border-radius: 999px; color: var(--text-strong); background: var(--surface-card); font-size: 12px; font-weight: 800; }
+.board__meta { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.board__empty { margin: 12px 0; color: var(--text-muted); font-size: 13px; text-align: center; }
+.opp-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); background: var(--surface-card); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s ease, transform .15s cubic-bezier(.16, 1, .3, 1); }
+.opp-card:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+.opp-card:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.opp-card > b { overflow: hidden; font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .opp-card > small { color: var(--text-muted); font-size: 12px; }
-.opp-card__top { display: flex; justify-content: space-between; gap: 6px; color: var(--text-subtle); }
-.opp-card__top .late { color: var(--tone-danger-fg); font-size: 11px; font-weight: 700; }
-.opp-card__foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
-.opp-card__foot .nx-avatar { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+.opp-card__top { display: flex; justify-content: space-between; gap: 6px; color: var(--text-muted); }
+.opp-card__top .late { padding: 1px 8px; border-radius: 999px; color: var(--tone-danger-fg); background: var(--tone-danger-bg); font-size: 11px; font-weight: 700; }
+.opp-card__foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border-faint); }
+.opp-card__foot > b { font-family: var(--font-display); font-size: 15px; font-weight: 800; }
+.opp-card__foot .nx-avatar { width: 28px; height: 28px; font-size: 11px; }
 .late-text { color: var(--tone-danger-fg); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .opp-card:hover { transform: none; } }

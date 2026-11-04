@@ -129,7 +129,7 @@
   }
 
   <footer class="foot">
-    <div class="wrap">{{ company()?.nombre }}{{ company()?.correo ? ' · ' + company()!.correo : '' }} · Precios sujetos a disponibilidad · Con tecnología de NEXORA CORE</div>
+    <div class="wrap">{{ company()?.nombre }}{{ company()?.correo ? ' · ' + company()!.correo : '' }} · Precios sujetos a disponibilidad · Con tecnología de Nexora</div>
   </footer>
 </div>
 
@@ -146,7 +146,7 @@
       <p class="nx-muted small">{{ selectedLot() ? 'Lote ' + selectedLot()!.codigo + ' · ' : '' }}Le respondemos por teléfono o correo, sin compromiso.</p>
       <form class="nx-stack" [formGroup]="form" (ngSubmit)="send()">
         <label class="nx-field"><span>Nombre completo</span><input class="nx-input" formControlName="nombres" autocomplete="name" /></label>
-        <label class="nx-field"><span>Teléfono / WhatsApp</span><input class="nx-input" formControlName="telefono" inputmode="tel" autocomplete="tel" /></label>
+        <label class="nx-field"><span>Teléfono / WhatsApp</span><nx-phone-input formControlName="telefono" label="Teléfono o WhatsApp" /></label>
         <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" autocomplete="email" /></label>
         <label class="nx-field"><span>Mensaje</span><textarea class="nx-textarea" rows="3" formControlName="mensaje"></textarea></label>
         <label class="hp" aria-hidden="true">No llenar <input tabindex="-1" autocomplete="off" formControlName="sitioWeb" /></label>

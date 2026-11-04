@@ -33,6 +33,7 @@ import { SalesService } from '../../core/services/sales.service';
 import { NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { WithdrawalsTabComponent } from './withdrawals-tab.component';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 type SalesTab = 'reservas' | 'contratos' | 'clientes' | 'desistimientos';
 type SalesModal =
@@ -51,7 +52,7 @@ type SalesModal =
 
 @Component({
   selector: 'app-sales-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, WithdrawalsTabComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, WithdrawalsTabComponent, PhoneInputComponent],
   templateUrl: './sales.page.html',
   styleUrl: './sales.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,7 +99,7 @@ export class SalesPage implements OnInit {
     numeroDocumento: ['', [Validators.required, Validators.maxLength(40)]],
     nombres: ['', [Validators.required, Validators.maxLength(120)]],
     apellidos: ['', Validators.maxLength(120)],
-    telefono: ['', Validators.maxLength(40)],
+    telefono: ['', [Validators.maxLength(40), phoneValidator]],
     correo: ['', [Validators.email, Validators.maxLength(180)]],
     direccion: ['', Validators.maxLength(240)],
     origen: ['VENTAS', Validators.maxLength(80)],

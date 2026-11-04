@@ -1,5 +1,5 @@
 <div class="nx-page">
-  <nx-page-header eyebrow="Ventas" title="Reservas y contratos" description="Del pago de la reserva a la firma del contrato y la activación de la venta.">
+  <nx-page-header title="Reservas y contratos" description="Del pago de la reserva a la firma del contrato y la activación de la venta.">
     <label class="nx-field">
       <span>Proyecto</span>
       <select class="nx-select" [value]="selectedProjectId() ?? ''" (change)="changeProject($any($event.target).value)">
@@ -48,7 +48,7 @@
           <option value="">Todos los estados</option><option value="PENDIENTE_PAGO">Pendiente de pago</option><option value="ACTIVA">Activa</option><option value="CONVERTIDA">Convertida</option><option value="VENCIDA">Vencida</option><option value="CANCELADA">Cancelada</option>
         </select>
       </div>
-      <nx-state [empty]="reservations().length === 0" emptyIcon="calendar" emptyTitle="No hay reservas con este filtro" emptyText="Cree el cliente y elija uno de los lotes disponibles.">
+      <nx-state [empty]="reservations().length === 0" emptyIcon="calendar" emptyTitle="No hay reservas con este filtro" emptyText="Crea el cliente y elige uno de los lotes disponibles.">
         <div class="nx-table-wrap">
           <table class="nx-table">
             <thead><tr><th>Reserva</th><th>Cliente</th><th>Proyecto / lote</th><th class="nx-right">Separación</th><th>Vence</th><th>Pago</th><th>Estado</th><th class="nx-actions"></th></tr></thead>
@@ -155,7 +155,10 @@
   [subtitle]="selectedReservation() ? customerName(selectedReservation()!.clienteId) + ' · ' + projectName(selectedReservation()!.proyectoId) : ''">
   @if (selectedReservation(); as reservation) {
     <div class="nx-stack detail">
-      <div class="nx-row"><nx-badge [status]="reservation.estado" [text]="reservationLabel(reservation.estado)" /><nx-badge [status]="reservation.estadoPago" /></div>
+      <div class="price-hero">
+        <div><small>Valor de la separación</small><b class="nx-num">{{ reservation.valorReserva | cop }}</b></div>
+        <div class="price-hero__badges"><nx-badge [status]="reservation.estado" [text]="reservationLabel(reservation.estado)" /><nx-badge [status]="reservation.estadoPago" /></div>
+      </div>
       <dl class="facts">
         <div><dt>Separación</dt><dd>{{ reservation.valorReserva | cop }}</dd></div>
         <div><dt>Forma de pago</dt><dd>{{ reservation.formaPago }}</dd></div>
@@ -186,7 +189,10 @@
   [subtitle]="selectedContract() ? customerName(selectedContract()!.clientePrincipalId) + ' · ' + projectName(selectedContract()!.proyectoId) + ' · Lote #' + selectedContract()!.loteId : ''">
   @if (selectedContract(); as contract) {
     <div class="nx-stack detail">
-      <div class="nx-row"><nx-badge [status]="contract.estado" [text]="contractLabel(contract.estado)" /><span class="nx-muted">{{ contractTypeLabel(contract.tipoContrato) }}</span></div>
+      <div class="price-hero">
+        <div><small>Valor total · {{ contractTypeLabel(contract.tipoContrato) }}</small><b class="nx-num">{{ contract.valorTotal | cop }}</b></div>
+        <div class="price-hero__badges"><nx-badge [status]="contract.estado" [text]="contractLabel(contract.estado)" /></div>
+      </div>
       @if (contract.estado !== 'ANULADO') {
         <ol class="flow" aria-label="Estado del contrato">
           @for (step of contractSteps; track step.value; let i = $index) {
@@ -224,7 +230,7 @@
         </div>
         @if (portalAccess(); as access) {
           @if (access.clienteId === contract.clientePrincipalId) {
-            <div class="nx-alert nx-alert--success"><app-icon name="key" /><span>Entregue al cliente por un canal seguro: usuario <code>{{ access.nombreUsuario }}</code>, contraseña temporal <code>{{ access.passwordTemporal }}</code>. Deberá cambiarla al ingresar.
+            <div class="nx-alert nx-alert--success"><app-icon name="key" /><span>Entrégale al cliente por un canal seguro: usuario <code>{{ access.nombreUsuario }}</code>, contraseña temporal <code>{{ access.passwordTemporal }}</code>. Deberá cambiarla al ingresar.
               <button type="button" class="nx-btn nx-btn--xs" (click)="copyText(access.passwordTemporal)">Copiar</button></span></div>
           }
         }
@@ -241,7 +247,7 @@
               @if (contract.estado === 'PENDIENTE_FIRMA' && signer.estado !== 'FIRMADA' && auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="openSignature(signer)">Registrar firma</button> }
             </span>
           </div>
-        } @empty { <p class="nx-muted">Sin firmantes. Agréguelos antes de enviar a firma.</p> }
+        } @empty { <p class="nx-muted">Sin firmantes. Agrégalos antes de enviar a firma.</p> }
       </div>
 
       <h3 class="nx-section-title small">Participantes</h3>
@@ -272,7 +278,7 @@
     <label class="nx-field"><span>Número de documento</span><input class="nx-input" formControlName="numeroDocumento" /></label>
     <label class="nx-field"><span>Nombres o razón social</span><input class="nx-input" formControlName="nombres" /></label>
     <label class="nx-field"><span>Apellidos</span><input class="nx-input" formControlName="apellidos" /></label>
-    <label class="nx-field"><span>Teléfono</span><input class="nx-input" formControlName="telefono" /></label>
+    <label class="nx-field"><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
     <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" /></label>
     <label class="nx-field"><span>Origen</span><input class="nx-input" formControlName="origen" /></label>
     <label class="nx-field nx-span-all"><span>Dirección</span><input class="nx-input" formControlName="direccion" /></label>
@@ -287,10 +293,10 @@
 <!-- Nueva reserva -->
 <nx-drawer [open]="modal() === 'reserva'" (openChange)="$event || closeModal()" title="Nueva reserva" subtitle="La oportunidad debe estar abierta y tener el lote vinculado desde Comercial." [dismissible]="!saving()">
   <form class="nx-form-grid" [formGroup]="reservationForm" (ngSubmit)="saveReservation()" id="reservation-form">
-    <label class="nx-field"><span>Proyecto</span><select class="nx-select" formControlName="projectId" (change)="reservationProjectChanged($any($event.target).value)"><option [value]="0">Seleccione…</option>@for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }</select></label>
-    <label class="nx-field"><span>Oportunidad</span><select class="nx-select" formControlName="opportunityId" (change)="opportunityChanged($any($event.target).value)"><option [value]="0">Seleccione…</option>@for (opportunity of opportunities(); track opportunity.id) { <option [value]="opportunity.id">{{ opportunity.codigo }}</option> }</select></label>
-    <label class="nx-field"><span>Cliente</span><select class="nx-select" formControlName="customerId"><option [value]="0">Seleccione…</option>@for (customer of activeCustomers(); track customer.id) { <option [value]="customer.id">{{ customer.nombreCompleto }} · {{ customer.numeroDocumento }}</option> }</select></label>
-    <label class="nx-field"><span>Lote vinculado</span><select class="nx-select" formControlName="lotId"><option [value]="0">Seleccione…</option>@for (lot of opportunityLots(); track lot.id) { <option [value]="lot.id">{{ lot.codigo }} · {{ lot.valorLista | cop: 'compact' }}</option> }</select></label>
+    <label class="nx-field"><span>Proyecto</span><select class="nx-select" formControlName="projectId" (change)="reservationProjectChanged($any($event.target).value)"><option [value]="0">Selecciona…</option>@for (project of projects(); track project.id) { <option [value]="project.id">{{ project.nombre }}</option> }</select></label>
+    <label class="nx-field"><span>Oportunidad</span><select class="nx-select" formControlName="opportunityId" (change)="opportunityChanged($any($event.target).value)"><option [value]="0">Selecciona…</option>@for (opportunity of opportunities(); track opportunity.id) { <option [value]="opportunity.id">{{ opportunity.codigo }}</option> }</select></label>
+    <label class="nx-field"><span>Cliente</span><select class="nx-select" formControlName="customerId"><option [value]="0">Selecciona…</option>@for (customer of activeCustomers(); track customer.id) { <option [value]="customer.id">{{ customer.nombreCompleto }} · {{ customer.numeroDocumento }}</option> }</select></label>
+    <label class="nx-field"><span>Lote vinculado</span><select class="nx-select" formControlName="lotId"><option [value]="0">Selecciona…</option>@for (lot of opportunityLots(); track lot.id) { <option [value]="lot.id">{{ lot.codigo }} · {{ lot.valorLista | cop: 'compact' }}</option> }</select></label>
     <label class="nx-field"><span>Simulación aceptada</span><select class="nx-select" formControlName="simulationId"><option [value]="0">Sin simulación</option>@for (simulation of simulations(); track simulation.id) { <option [value]="simulation.id">{{ simulation.codigo }} · {{ simulation.valorLote | cop: 'compact' }}</option> }</select></label>
     <label class="nx-field"><span>Vencimiento</span><input class="nx-input" type="datetime-local" formControlName="expiration" /></label>
     <label class="nx-field"><span>Valor de la separación</span><input class="nx-input" type="text" nexoraMoney formControlName="value" /></label>

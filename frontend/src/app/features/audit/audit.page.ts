@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { catchError, EMPTY, expand, map, of, reduce, switchMap } from 'rxjs';
 
 import { AnomalyAlert, AuditEvent, AuditEventQuery } from '../../core/models/auditoria.models';
@@ -51,6 +52,9 @@ export class AuditPage {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly team = inject(TeamService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  /** Alerta que pidió mostrar una notificación (`?alerta=`): se resalta y se desplaza hasta ella. */
+  readonly focusedAlert = signal<number | null>(Number(this.route?.snapshot.queryParamMap.get('alerta')) || null);
 
   readonly seesEvents = this.auth.hasAuthority('AUDITORIA_VER');
   readonly seesAlerts = this.auth.hasAuthority('ALERTAS_ANOMALIAS_VER');
@@ -240,6 +244,11 @@ export class AuditPage {
       next: (page) => {
         this.alerts.set(page.contenido);
         this.alertsLoading.set(false);
+        const focused = this.focusedAlert();
+        if (focused && page.contenido.some((a) => a.id === focused)) {
+          this.alertFilter.set('todas');
+          setTimeout(() => document.getElementById(`alerta-${focused}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+        }
       },
       error: (e) => {
         this.alertsError.set(apiErrorMessage(e, 'No se pudieron cargar las alertas.'));

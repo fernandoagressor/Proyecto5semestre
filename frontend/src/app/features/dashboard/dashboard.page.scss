@@ -1,12 +1,14 @@
 :host { display: block; }
 
-.periods { display: inline-flex; padding: 3px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-card); }
-.periods button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; color: var(--text-muted); background: transparent; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
-.periods button.on { color: var(--color-primary-strong); background: var(--color-primary-soft); }
+.periods { display: inline-flex; padding: 3px; border: 1px solid var(--border-soft); border-radius: 999px; background: var(--surface-card); }
+.periods button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--text-muted); background: transparent; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.periods button:hover { color: var(--text-strong); }
+.periods button.on { color: var(--color-on-primary); background: var(--color-primary-strong); }
 
 .views { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .views button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--border-soft); border-radius: 999px; color: var(--text-muted); background: var(--surface-card); font-size: 13px; font-weight: 600; cursor: pointer; }
 .views button app-icon { width: 16px; height: 16px; }
+.views button:hover { color: var(--text-strong); border-color: var(--border-medium); }
 .views button.on { color: var(--color-primary-strong); border-color: var(--color-primary); background: var(--color-primary-soft); }
 .sync { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; color: var(--text-muted); font-size: 12px; }
 .small { font-size: 12px; }
@@ -25,11 +27,11 @@
 @media (max-width: 1100px) { .grid-main { grid-template-columns: 1fr; } }
 
 .alerts { display: flex; flex-direction: column; gap: 8px; }
-.alert { display: flex; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface-muted); }
-.alert > span { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 10px; color: var(--tone-success-fg); background: var(--tone-success-bg); }
-.alert[data-tone='orange'] > span { color: var(--tone-warning-fg); background: var(--tone-warning-bg); }
-.alert[data-tone='violet'] > span { color: var(--tone-info-fg); background: var(--tone-info-bg); }
-.alert app-icon { width: 16px; height: 16px; }
+.alert { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--surface-muted); }
+/* Un punto de estado basta: el color dice bien o mal, el texto dice qué. */
+.alert > i { width: 10px; height: 10px; flex: none; margin-top: 5px; border-radius: 50%; background: var(--tone-success-fg); }
+.alert[data-tone='orange'] > i { background: #d97706; }
+.alert[data-tone='violet'] > i { background: var(--color-primary); }
 .alert div { display: flex; flex-direction: column; gap: 2px; }
 .alert b { font-size: 14px; }
 .alert small { color: var(--text-muted); font-size: 12px; }
@@ -58,19 +60,20 @@
 .inv__head span { color: var(--text-muted); font-size: 13px; }
 .inv__bar { display: flex; overflow: hidden; height: 12px; border-radius: 999px; background: var(--surface-sunken); }
 .inv__legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--text-muted); font-size: 12px; }
-.sold { background: var(--color-primary); }
-.res { background: #f59e0b; }
-.free { background: #10a37f; }
-.blocked { background: #8a96a9; }
+/* Estados del lote en los tonos de la marca; vecinos con luminosidad distinta. */
+.sold { background: var(--brand-navy); }
+.res { background: #d9a441; }
+.free { background: var(--brand-aqua); }
+.blocked { background: var(--brand-silver); }
 .legend { display: flex; gap: 14px; color: var(--text-muted); font-size: 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; }
 
 .actions { display: flex; flex-direction: column; gap: 8px; }
-.actions a { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); text-decoration: none; }
+.actions a { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); text-decoration: none; transition: border-color .15s ease, background-color .15s ease; }
 .actions a:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
-.actions a > span { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; color: var(--color-primary); background: var(--color-primary-soft); }
-.actions a > span app-icon { width: 16px; height: 16px; }
+.actions__icon { width: 20px; height: 20px; flex: none; color: var(--color-primary); }
 .actions a > div { display: flex; flex: 1; flex-direction: column; }
 .actions a small { color: var(--text-muted); font-size: 12px; }
-.actions a > app-icon { width: 14px; height: 14px; color: var(--text-subtle); }
+.actions__go { width: 14px; height: 14px; color: var(--text-subtle); transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+.actions a:hover .actions__go { transform: translateX(3px); }

@@ -16,7 +16,7 @@ import { AppIconComponent } from '../../shared/components/app-icon.component';
 
 const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/;
 const STRENGTH_LABELS = ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Muy fuerte'] as const;
-const COMMON = /(password|contrase|nexora|123456|qwerty|abc123|admin|inmobiliaria)/i;
+const COMMON = /(password|contrase|nexora|altamar|123456|qwerty|abc123|admin|inmobiliaria)/i;
 
 /** Puntaje de 0 a 4: reglas cumplidas y longitud, con castigo por patrones obvios. */
 export function passwordStrength(value: string): { score: number; label: string } {
