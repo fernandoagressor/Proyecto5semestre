@@ -3,15 +3,15 @@
     <div class="sidebar__brand">
       <a routerLink="/dashboard" class="brand" aria-label="Ir al dashboard">
         @if (isGlobalScope()) {
-          <img class="brand__emblem" src="brand/logo-altamar-emblema.png" alt="" width="50" height="47" />
-          <span class="brand__copy"><strong>E&amp;C Altamar</strong><small>Control global</small></span>
+          <img class="brand__emblem" src="brand/logo-nexora-emblema.png" alt="" width="46" height="46" />
+          <span class="brand__copy"><strong>Nexora</strong><small>Control global</small></span>
         } @else {
           @if (company()?.logoUrl && !logoFailed()) {
             <img class="brand__logo" [src]="company()!.logoUrl ?? ''" [alt]="companyName()" (error)="logoFailed.set(true)" />
           } @else {
-            <img class="brand__emblem" src="brand/logo-altamar-emblema.png" alt="" width="50" height="47" />
+            <img class="brand__emblem" src="brand/logo-nexora-emblema.png" alt="" width="46" height="46" />
           }
-          <span class="brand__copy"><strong>{{ companyName() }}</strong><small>Constructora</small></span>
+          <span class="brand__copy"><strong>{{ companyName() }}</strong><small>con Nexora</small></span>
         }
       </a>
       <button class="icon-button mobile-close" type="button" (click)="mobileMenuOpen.set(false)" aria-label="Cerrar menú">

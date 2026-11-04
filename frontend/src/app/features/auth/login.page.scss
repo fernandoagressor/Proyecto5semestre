@@ -1,4 +1,4 @@
-/* Login E&C Altamar: foto del proyecto + ola de la marca que abre el panel de acceso. */
+/* Login Nexora: foto del proyecto + ola de la marca que abre el panel de acceso. */
 :host {
   --al-navy: #0b2545;
   --al-navy-hover: #13355f;
@@ -39,7 +39,7 @@
 }
 .hero__brand { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
 .lockup { display: flex; align-items: center; gap: 14px; }
-.lockup img { display: block; width: 76px; height: auto; }
+.lockup img { display: block; box-sizing: border-box; width: 64px; height: 64px; padding: 7px; border-radius: 16px; background: #fff; object-fit: contain; }
 .lockup__name { font-size: 13px; font-weight: 700; line-height: 17px; letter-spacing: .14em; }
 .hero__divider { width: 1px; height: 36px; background: rgba(255, 255, 255, .35); }
 .hero__product { font-size: 18px; font-weight: 600; }
@@ -184,7 +184,7 @@
 @media (max-width: 640px) {
   .hero { min-height: 0; padding: 24px 16px 76px; gap: 22px; background-image: linear-gradient(180deg, rgba(5, 16, 32, .7) 0%, rgba(5, 16, 32, .35) 55%, rgba(5, 16, 32, .15) 100%), url('/brand/altamar-hero.webp'); background-position: 28% center; }
   .hero__divider, .hero__product { display: none; }
-  .lockup img { width: 62px; }
+  .lockup img { width: 54px; height: 54px; padding: 6px; }
   .hero__title { font-size: 26px; line-height: 1.08; letter-spacing: -.02em; }
   .hero__lead { font-size: 16px; line-height: 24px; }
   .benefits { display: none; }

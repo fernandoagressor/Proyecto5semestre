@@ -36,7 +36,7 @@
         <button type="button" class="card" [class.on]="selected()?.id === p.id" (click)="open(p)">
           <span class="card__img">
             @if (p.imagenPrincipalUrl) { <img [src]="p.imagenPrincipalUrl" [alt]="'Imagen de ' + p.nombre" loading="lazy" /> }
-            @else { <span class="placeholder"><img src="brand/logo-altamar-emblema.png" alt="" /><b>{{ initials(p.nombre) }}</b></span> }
+            @else { <span class="placeholder"><img src="brand/logo-nexora-emblema.png" alt="" /><b>{{ initials(p.nombre) }}</b></span> }
             <span class="card__tags"><span class="code">{{ p.codigo }}</span><nx-badge [status]="p.estado" [text]="statusLabel(p.estado)" /></span>
           </span>
           <span class="card__body">
@@ -69,7 +69,7 @@
     <div class="nx-stack detail">
       <div class="hero">
         @if (p.imagenPrincipalUrl) { <img [src]="p.imagenPrincipalUrl" [alt]="'Imagen de ' + p.nombre" /> }
-        @else { <span class="placeholder big"><img src="brand/logo-altamar-emblema.png" alt="" /><b>{{ initials(p.nombre) }}</b></span> }
+        @else { <span class="placeholder big"><img src="brand/logo-nexora-emblema.png" alt="" /><b>{{ initials(p.nombre) }}</b></span> }
       </div>
       @if (canEdit) {
         <label class="nx-field">

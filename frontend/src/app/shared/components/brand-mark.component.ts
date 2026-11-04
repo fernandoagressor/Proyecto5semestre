@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-/** Marca de E&C Altamar Constructora: emblema y, opcionalmente, el nombre al lado. */
+/** Marca de Nexora Technologies: emblema y, opcionalmente, el nombre al lado. */
 @Component({
   selector: 'app-brand-mark',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <img class="brand-symbol" src="brand/logo-altamar-emblema.png" [alt]="showText() ? '' : 'E&C Altamar Constructora'" width="46" height="43" />
+    <img class="brand-symbol" src="brand/logo-nexora-emblema.png" [alt]="showText() ? '' : 'Nexora'" width="46" height="46" />
     @if (showText()) {
       <span class="brand-copy">
-        <strong>E&amp;C ALTAMAR</strong>
-        <small>CONSTRUCTORA</small>
+        <strong>NEXORA</strong>
+        <small>TECHNOLOGIES</small>
       </span>
     }
   `,

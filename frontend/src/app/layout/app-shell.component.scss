@@ -43,7 +43,7 @@
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; color: #ffffff; text-decoration: none; }
 .brand:hover { color: #ffffff; }
 .brand__logo { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 10px; object-fit: cover; background: #ffffff; }
-.brand__emblem { display: block; width: 58px; height: auto; flex: none; }
+.brand__emblem { display: block; box-sizing: border-box; width: 46px; height: 46px; flex: none; padding: 5px; border-radius: 12px; background: #fff; object-fit: contain; }
 .brand__copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
 .brand__copy strong { overflow: hidden; font-family: var(--font-display); font-size: 17px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .brand__copy small { color: #c9d7e6; font-size: 12px; font-weight: 600; letter-spacing: .02em; }

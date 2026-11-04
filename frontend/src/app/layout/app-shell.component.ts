@@ -37,7 +37,7 @@ export class AppShellComponent {
   readonly notificationOpen = signal(false);
   readonly company = signal<Company | null>(null);
   readonly logoFailed = signal(false);
-  readonly companyName = computed(() => this.company()?.nombre ?? 'E&C Altamar');
+  readonly companyName = computed(() => this.company()?.nombre ?? 'Nexora');
   readonly companyModules = computed<readonly CompanyModuleCode[] | null>(() => this.company()?.modulos ?? null);
   readonly isGlobalScope = computed(() => this.auth.hasAuthority('ROLE_SUPER_ADMIN') && !this.auth.user()?.empresaId);
   readonly roleLabel = computed(() => {
@@ -155,6 +155,6 @@ export class AppShellComponent {
   private updatePageTitle(): void {
     let activeRoute = this.router.routerState.snapshot.root;
     while (activeRoute.firstChild) activeRoute = activeRoute.firstChild;
-    this.pageTitle.set((activeRoute.data?.['title'] as string | undefined) ?? 'E&C Altamar');
+    this.pageTitle.set((activeRoute.data?.['title'] as string | undefined) ?? 'Nexora');
   }
 }

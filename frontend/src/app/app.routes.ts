@@ -12,7 +12,7 @@ export const routes: Routes = [
     path: 'login',
     canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/login.page').then((m) => m.LoginPage),
-    title: 'Iniciar sesión | E&C Altamar',
+    title: 'Iniciar sesión | Nexora',
   },
   {
     path: 'catalogo/:empresa',
@@ -34,7 +34,7 @@ export const routes: Routes = [
     path: 'portal',
     canActivate: [authGuard, clientPortalGuard],
     loadComponent: () => import('./features/portal/portal.page').then((m) => m.PortalPage),
-    title: 'Mi portal | E&C Altamar',
+    title: 'Mi portal | Nexora',
   },
   {
     path: '',
@@ -48,7 +48,7 @@ export const routes: Routes = [
         data: { title: 'Cambiar contraseña' },
         loadComponent: () =>
           import('./features/auth/change-password.page').then((m) => m.ChangePasswordPage),
-        title: 'Cambiar contraseña | E&C Altamar',
+        title: 'Cambiar contraseña | Nexora',
       },
       {
         path: 'superadmin',
@@ -56,7 +56,7 @@ export const routes: Routes = [
         data: { permissions: ['ROLE_SUPER_ADMIN'], title: 'Superadministración' },
         loadComponent: () =>
           import('./features/admin/super-admin.page').then((m) => m.SuperAdminPage),
-        title: 'Superadministración | E&C Altamar',
+        title: 'Superadministración | Nexora',
       },
       {
         path: 'dashboard',
@@ -64,7 +64,7 @@ export const routes: Routes = [
         data: { permissions: ['DASHBOARD_VER'], title: 'Dashboard' },
         loadComponent: () =>
           import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage),
-        title: 'Dashboard | E&C Altamar',
+        title: 'Dashboard | Nexora',
       },
       {
         path: 'proyectos',
@@ -72,7 +72,7 @@ export const routes: Routes = [
         data: { permissions: ['PROYECTOS_VER'], module: 'PROYECTOS_INVENTARIO', title: 'Proyectos' },
         loadComponent: () =>
           import('./features/projects/projects.page').then((m) => m.ProjectsPage),
-        title: 'Proyectos | E&C Altamar',
+        title: 'Proyectos | Nexora',
       },
       {
         path: 'inventario',
@@ -80,7 +80,7 @@ export const routes: Routes = [
         data: { permissions: ['LOTES_VER'], module: 'PROYECTOS_INVENTARIO', title: 'Inventario' },
         loadComponent: () =>
           import('./features/inventory/inventory.page').then((m) => m.InventoryPage),
-        title: 'Inventario | E&C Altamar',
+        title: 'Inventario | Nexora',
       },
       {
         path: 'crm',
@@ -91,14 +91,14 @@ export const routes: Routes = [
           title: 'CRM comercial',
         },
         loadComponent: () => import('./features/crm/crm.page').then((m) => m.CrmPage),
-        title: 'CRM comercial | E&C Altamar',
+        title: 'CRM comercial | Nexora',
       },
       {
         path: 'simulador',
         canActivate: [permissionGuard, companyModuleGuard],
         data: { permissions: ['SIMULACIONES_VER'], module: 'CLIENTES_VENTAS', title: 'Simulador' },
         loadComponent: () => import('./features/simulator/simulator.page').then((m) => m.SimulatorPage),
-        title: 'Simulador | E&C Altamar',
+        title: 'Simulador | Nexora',
       },
       {
         path: 'clientes/nuevo',
@@ -122,7 +122,7 @@ export const routes: Routes = [
           import('./features/customer-lot-flow/customer-lot-flow.page').then(
             (m) => m.CustomerLotFlowPage,
           ),
-        title: 'Crear cliente y vincular lote | E&C Altamar',
+        title: 'Crear cliente y vincular lote | Nexora',
       },
       {
         path: 'ventas',
@@ -130,7 +130,7 @@ export const routes: Routes = [
         data: { permissions: ['RESERVAS_VER', 'CONTRATOS_VER'], module: 'CLIENTES_VENTAS', title: 'Ventas' },
         loadComponent: () =>
           import('./features/sales/sales.page').then((m) => m.SalesPage),
-        title: 'Ventas | E&C Altamar',
+        title: 'Ventas | Nexora',
       },
       {
         path: 'cartera',
@@ -138,7 +138,7 @@ export const routes: Routes = [
         data: { permissions: ['PAGOS_VER', 'CUOTAS_VER'], module: 'CARTERA_PAGOS', title: 'Cartera' },
         loadComponent: () =>
           import('./features/portfolio/portfolio.page').then((m) => m.PortfolioPage),
-        title: 'Cartera | E&C Altamar',
+        title: 'Cartera | Nexora',
       },
       {
         path: 'servicio',
@@ -148,7 +148,7 @@ export const routes: Routes = [
           import('./features/customer-service/customer-service.page').then(
             (m) => m.CustomerServicePage,
           ),
-        title: 'Servicio al cliente | E&C Altamar',
+        title: 'Servicio al cliente | Nexora',
       },
       {
         path: 'gerencia',
@@ -160,34 +160,34 @@ export const routes: Routes = [
         },
         loadComponent: () =>
           import('./features/management/management.page').then((m) => m.ManagementPage),
-        title: 'Gerencia y control | E&C Altamar',
+        title: 'Gerencia y control | Nexora',
       },
       {
         path: 'usuarios',
         canActivate: [permissionGuard, companyModuleGuard],
         data: { permissions: ['USUARIOS_VER', 'ROLES_VER'], module: 'ADMINISTRACION_SEGURIDAD', title: 'Usuarios y roles' },
         loadComponent: () => import('./features/users/users.page').then((m) => m.UsersPage),
-        title: 'Usuarios y roles | E&C Altamar',
+        title: 'Usuarios y roles | Nexora',
       },
       {
         path: 'auditoria',
         canActivate: [permissionGuard, companyModuleGuard],
         data: { permissions: ['AUDITORIA_VER'], module: 'ADMINISTRACION_SEGURIDAD', title: 'Auditoría' },
         loadComponent: () => import('./features/audit/audit.page').then((m) => m.AuditPage),
-        title: 'Auditoría | E&C Altamar',
+        title: 'Auditoría | Nexora',
       },
       {
         path: 'sin-acceso',
         data: { title: 'Acceso restringido' },
         loadComponent: () =>
           import('./features/status/access-denied.page').then((m) => m.AccessDeniedPage),
-        title: 'Acceso restringido | E&C Altamar',
+        title: 'Acceso restringido | Nexora',
       },
     ],
   },
   {
     path: '**',
     loadComponent: () => import('./features/status/not-found.page').then((m) => m.NotFoundPage),
-    title: 'Página no encontrada | E&C Altamar',
+    title: 'Página no encontrada | Nexora',
   },
 ];
