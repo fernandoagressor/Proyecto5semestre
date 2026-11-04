@@ -126,6 +126,21 @@ public class Proyecto extends EntidadAuditable {
         this.gerenteId = gerenteId;
     }
 
+    /** Un avance de obra nunca puede bajar el porcentaje ni pasar de 100. */
+    public void registrarAvance(BigDecimal nuevoPorcentaje) {
+        if (nuevoPorcentaje == null
+                || nuevoPorcentaje.compareTo(BigDecimal.ZERO) < 0
+                || nuevoPorcentaje.compareTo(new BigDecimal("100")) > 0) {
+            throw new ReglaNegocioException("El avance debe estar entre 0 y 100");
+        }
+        if (nuevoPorcentaje.compareTo(porcentajeAvance) < 0) {
+            throw new ReglaNegocioException(
+                    "El avance no puede ser menor al actual (" + porcentajeAvance + " %)"
+            );
+        }
+        this.porcentajeAvance = nuevoPorcentaje;
+    }
+
     public void cambiarEstado(EstadoProyecto estado) {
         if (estado == null) {
             throw new ReglaNegocioException("El estado del proyecto es obligatorio");
