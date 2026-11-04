@@ -14,10 +14,11 @@ import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 @Component({
   selector: 'app-customer-lot-flow-page',
-  imports: [ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective],
+  imports: [ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective, PhoneInputComponent],
   templateUrl: './customer-lot-flow.page.html',
   styleUrl: './customer-lot-flow.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,7 +58,7 @@ export class CustomerLotFlowPage {
     numeroDocumento: ['', [Validators.required, Validators.maxLength(40)]],
     nombres: ['', [Validators.required, Validators.maxLength(120)]],
     apellidos: ['', [Validators.maxLength(120)]],
-    telefono: ['', [Validators.maxLength(40)]],
+    telefono: ['', [Validators.maxLength(40), phoneValidator]],
     correo: ['', [Validators.email, Validators.maxLength(180)]],
     direccion: ['', [Validators.maxLength(240)]],
     origen: ['VENTAS', [Validators.maxLength(80)]],
@@ -160,7 +161,9 @@ export class CustomerLotFlowPage {
     this.error.set(null);
     if (this.customerForm.invalid) {
       this.customerForm.markAllAsTouched();
-      this.error.set('Completa los datos obligatorios del cliente para continuar.');
+      this.error.set(this.customerForm.controls.telefono.invalid
+        ? 'El teléfono debe tener entre 7 y 10 dígitos.'
+        : 'Completa los datos obligatorios del cliente para continuar.');
       return;
     }
     const { telefono, correo } = this.customerForm.getRawValue();

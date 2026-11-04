@@ -9,11 +9,12 @@ import { TeamService } from '../../core/services/team.service';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { apiErrorMessage, NX_UI, ToastService } from '../../shared/ui';
 import { SOURCES, TEMPERATURES } from './crm-labels';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 /** Crear o editar un prospecto en un panel lateral. */
 @Component({
   selector: 'app-prospect-form',
-  imports: [...NX_UI, ReactiveFormsModule, MoneyInputDirective],
+  imports: [...NX_UI, ReactiveFormsModule, MoneyInputDirective, PhoneInputComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nx-drawer [(open)]="open" [title]="prospect() ? 'Editar prospecto' : 'Nuevo prospecto'"
@@ -25,7 +26,7 @@ import { SOURCES, TEMPERATURES } from './crm-labels';
           @if (form.controls.nombres.touched && form.controls.nombres.invalid) { <span class="nx-field__error">Escribe el nombre.</span> }
         </label>
         <div class="nx-grid nx-grid--2">
-          <label class="nx-field"><span>Teléfono</span><input class="nx-input" type="tel" formControlName="telefono" /></label>
+          <label class="nx-field"><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
           <label class="nx-field">
             <span>Correo</span>
             <input class="nx-input" type="email" formControlName="correo" />
@@ -95,7 +96,7 @@ export class ProspectFormComponent {
 
   readonly form = this.fb.group({
     nombres: this.fb.control('', [Validators.required, Validators.maxLength(160)]),
-    telefono: this.fb.control('', Validators.maxLength(40)),
+    telefono: this.fb.control('', [Validators.maxLength(40), phoneValidator]),
     correo: this.fb.control('', [Validators.email, Validators.maxLength(180)]),
     fuente: this.fb.control<ProspectSource>('WEB'),
     temperatura: this.fb.control<ProspectTemperature>('TIBIO'),

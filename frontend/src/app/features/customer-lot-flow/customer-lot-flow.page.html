@@ -73,7 +73,7 @@
               <legend><app-icon name="location" /> {{ personType() === 'JURIDICA' ? 'Contacto de la empresa' : 'Contacto y ubicación' }}</legend>
               <div class="form-grid">
                 <label><span>{{ personType() === 'JURIDICA' ? 'Correo corporativo' : 'Correo electrónico' }}</span><input formControlName="correo" type="email" placeholder="cliente@correo.com" /></label>
-                <label><span>Teléfono</span><input formControlName="telefono" type="tel" placeholder="+57 300 000 0000" /></label>
+                <label><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
                 <label class="span-2"><span>{{ personType() === 'JURIDICA' ? 'Dirección fiscal' : 'Dirección' }}</span><input formControlName="direccion" placeholder="Ej. Carrera 15 # 93-47, Bogotá" /></label>
               </div>
               <p class="contact-hint"><app-icon name="info" /> Necesitas al menos teléfono o correo para mantener la trazabilidad comercial.</p>

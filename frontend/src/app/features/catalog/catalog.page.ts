@@ -8,11 +8,12 @@ import { finalize } from 'rxjs';
 import { CatalogCompany, CatalogLot, CatalogProject, CatalogProjectDetail } from '../../core/models/catalog.models';
 import { CatalogService } from '../../core/services/catalog.service';
 import { apiErrorMessage, NX_UI } from '../../shared/ui';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 /** Catálogo público de proyectos (vista "Catálogo-Proyectos"): sin sesión, para compartir el enlace. */
 @Component({
   selector: 'app-catalog-page',
-  imports: [...NX_UI, NgTemplateOutlet, ReactiveFormsModule, RouterLink],
+  imports: [...NX_UI, NgTemplateOutlet, ReactiveFormsModule, RouterLink, PhoneInputComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './catalog.page.html',
   styleUrl: './catalog.page.scss',
@@ -63,7 +64,7 @@ export class CatalogPage {
 
   readonly form = this.fb.group({
     nombres: this.fb.control('', [Validators.required, Validators.maxLength(160)]),
-    telefono: this.fb.control('', [Validators.maxLength(40), Validators.pattern(/^[0-9+()\s-]*$/)]),
+    telefono: this.fb.control('', [Validators.maxLength(40), phoneValidator]),
     correo: this.fb.control('', [Validators.email, Validators.maxLength(180)]),
     mensaje: this.fb.control('', Validators.maxLength(1000)),
     aceptaTratamiento: this.fb.control(false, Validators.requiredTrue),

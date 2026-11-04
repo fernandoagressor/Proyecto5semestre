@@ -132,7 +132,7 @@
                 <label><span>Ciudad</span><input formControlName="ciudad" /></label>
                 <label><span>Departamento</span><input formControlName="departamento" /></label>
                 <label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label>
-                <label><span>Teléfono</span><input formControlName="telefono" /></label>
+                <label><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
                 <label><span>Correo</span><input type="email" formControlName="correo" /></label>
                 <label><span>Máximo de proyectos *</span><input type="number" min="1" formControlName="limiteProyectos" /></label>
                 <label><span>Máximo de usuarios *</span><input type="number" min="1" formControlName="limiteUsuarios" /></label>
@@ -241,7 +241,7 @@
                       <label><span>Nombre o razón social *</span><input formControlName="nombre" placeholder="Inmobiliaria Altavista S.A.S." /></label>
                       <label><span>NIT *</span><input formControlName="nit" placeholder="901.884.220-1" /></label>
                       <label><span>Correo de contacto</span><input type="email" formControlName="correo" placeholder="contacto@empresa.co" /></label>
-                      <label><span>Teléfono</span><input formControlName="telefono" placeholder="+57 300 123 4567" /></label>
+                      <label><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
                       <label><span>Departamento</span><input formControlName="departamento" placeholder="Antioquia" /></label>
                       <label><span>Ciudad</span><input formControlName="ciudad" placeholder="Medellín" /></label>
                       <label class="span-2"><span>Dirección</span><input formControlName="direccion" /></label>
@@ -353,7 +353,7 @@
             <label><span>Documento *</span><input formControlName="numeroDocumento" [readOnly]="!!editingUser()" /></label>
             <label><span>Nombres *</span><input formControlName="nombres" /></label>
             <label><span>Apellidos</span><input formControlName="apellidos" /></label>
-            <label><span>Teléfono</span><input formControlName="telefono" /></label>
+            <label><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
             <label><span>Correo *</span><input type="email" formControlName="correo" /></label>
             <label><span>Nombre de usuario *</span><input formControlName="nombreUsuario" [readOnly]="!!editingUser()" /></label>
             @if (!editingUser()) {

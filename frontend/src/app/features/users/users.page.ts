@@ -18,6 +18,7 @@ import { CompanySecurityService } from '../../core/services/company-security.ser
 import { ProjectService } from '../../core/services/project.service';
 import { generateTemporaryPassword, STRONG_TEMPORARY_PASSWORD } from '../../core/utils/temporary-password';
 import { apiErrorMessage, ChipOption, NX_UI, TabItem, ToastService } from '../../shared/ui';
+import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
 interface IssuedCredentials {
   usuario: string;
@@ -46,7 +47,7 @@ const SCOPE_LABELS: Record<ScopeInput['tipo'], string> = {
 /** Usuarios y roles (vista "Usuarios-Roles" del diseño) para el administrador de la empresa. */
 @Component({
   selector: 'app-users-page',
-  imports: [...NX_UI, ReactiveFormsModule],
+  imports: [...NX_UI, ReactiveFormsModule, PhoneInputComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './users.page.html',
   styleUrl: './users.page.scss',
@@ -114,7 +115,7 @@ export class UsersPage {
     numeroDocumento: this.fb.control('', [Validators.required, Validators.maxLength(40)]),
     nombres: this.fb.control('', [Validators.required, Validators.maxLength(120)]),
     apellidos: this.fb.control('', Validators.maxLength(120)),
-    telefono: this.fb.control('', Validators.maxLength(40)),
+    telefono: this.fb.control('', [Validators.maxLength(40), phoneValidator]),
     nombreUsuario: this.fb.control('', [Validators.required, Validators.minLength(3), Validators.maxLength(80)]),
     correo: this.fb.control('', [Validators.required, Validators.email, Validators.maxLength(180)]),
     passwordTemporal: this.fb.control(''),

@@ -110,7 +110,7 @@
       <label class="nx-field"><span>Nombres</span><input class="nx-input" formControlName="nombres" (blur)="suggestUsername()" /></label>
       <label class="nx-field"><span>Apellidos</span><input class="nx-input" formControlName="apellidos" (blur)="suggestUsername()" /></label>
       <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" /></label>
-      <label class="nx-field"><span>Teléfono</span><input class="nx-input" formControlName="telefono" /></label>
+      <label class="nx-field"><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
       <label class="nx-field"><span>Nombre de usuario</span><input class="nx-input" formControlName="nombreUsuario" autocomplete="off" /></label>
       @if (!editingUser()) {
         <label class="nx-field"><span>Contraseña temporal</span>
