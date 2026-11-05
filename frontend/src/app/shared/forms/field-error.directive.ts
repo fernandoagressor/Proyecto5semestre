@@ -1,7 +1,7 @@
 import { AfterViewInit, DestroyRef, Directive, ElementRef, Renderer2, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormGroupDirective, NgControl, ValidationErrors } from '@angular/forms';
-import { EMPTY, merge } from 'rxjs';
+import { EMPTY, merge, Observable } from 'rxjs';
 
 let siguienteId = 1;
 const numero = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 });
@@ -31,7 +31,9 @@ export class FieldErrorDirective implements AfterViewInit {
   ngAfterViewInit(): void {
     const control = this.ngControl?.control;
     if (!control) return;
-    merge(control.events, this.formulario?.ngSubmit ?? EMPTY)
+    const cambios: Observable<unknown> = control.events;
+    const envios: Observable<unknown> = this.formulario ? this.formulario.ngSubmit : EMPTY;
+    merge(cambios, envios)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.actualizar(control));
     this.actualizar(control);
