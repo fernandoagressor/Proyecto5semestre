@@ -211,7 +211,9 @@ export class ReserveLotComponent {
    */
   private confirmPayment(reserva: Reservation): Observable<{ reserva: Reservation; pagoConfirmado: boolean }> {
     const file = this.receipt();
-    const upload = file ? this.sales.uploadDocument(reserva.proyectoId, file).pipe(map((d) => d.id)) : of(null);
+    const upload: Observable<number | null> = file
+      ? this.sales.uploadDocument(reserva.proyectoId, file).pipe(map((d) => d.id))
+      : of(null);
     return upload.pipe(
       switchMap((archivoId) => this.sales.confirmReservationPayment(reserva.id, archivoId)),
       map((confirmed) => ({ reserva: confirmed, pagoConfirmado: true })),
