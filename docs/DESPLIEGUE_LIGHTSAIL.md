@@ -32,6 +32,24 @@ desde él: la IP estática se pasa a la nueva y no hay que mover datos.
 Antes de una prueba de carga grande (k6 `estres` o `pico`), revise que haya crédito de ráfaga.
 Si no lo hay, los resultados salen peores de lo que sería el uso real.
 
+## Si Lightsail no deja crear el plan de 4 GiB
+
+Las cuentas nuevas reciben *"Your account can not create an instance using this Lightsail plan
+size"*. Hay que pedir el plan en **Support Center → Create case → Service limit increase →
+Lightsail**. Mientras tanto se puede achicar la EC2 actual sin mover datos. Así se hizo el
+5 nov: de m7i.xlarge a **t3a.medium** (2 vCPU, 4 GiB), unos USD 36 al mes con el disco de 60 GB y
+la IP.
+
+1. En el servidor: `git pull`, `cat deploy/capacidad-4gb.env >> .env`,
+   `sudo bash deploy/crear-swap.sh` y `bash deploy/desplegar.sh develop`. Así queda con la
+   memoria de 4 GiB **antes** de achicar.
+2. EC2 → la instancia → **Detener instancia**.
+3. **Acciones → Configuración de la instancia → Cambiar tipo de instancia** → `t3a.medium`.
+4. **Acciones → Configuración de la instancia → Cambiar las opciones de crédito** → desmarcar
+   **Modo ilimitado**. Así, si la CPU se usa a tope, el servidor se pone más lento en vez de
+   cobrar extra.
+5. **Iniciar instancia**. La Elastic IP, el disco, el rol y los respaldos siguen iguales.
+
 ## 1. Crear la instancia
 
 En la consola de AWS → **Lightsail** (región **Ohio, us-east-2**, la misma del bucket de respaldos):

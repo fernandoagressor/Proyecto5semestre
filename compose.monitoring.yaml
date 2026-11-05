@@ -125,8 +125,10 @@ services:
         condition: service_healthy
     command:
       - --mongodb.uri=mongodb://${MONGO_ROOT_USER:-nexora_root}:${MONGO_ROOT_PASSWORD}@mongodb:27017/admin?directConnection=true
-      - --collect-all
-      - --compatible-mode
+      # Solo serverStatus (conexiones, operaciones, memoria): es lo que usa el tablero. --collect-all
+      # lee estadísticas de cada colección en cada lectura y en un servidor de 2 vCPU gastaba más
+      # CPU que la propia base.
+      - --collector.diagnosticdata
     deploy:
       resources:
         limits:

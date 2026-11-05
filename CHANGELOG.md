@@ -13,6 +13,9 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   frontend, Caddy y Prometheus, la memoria de Java (`API_JAVA_OPTS`), los hilos de Tomcat y
   `performance_schema` de MySQL ahora se ajustan desde el `.env`. El humo de producción del CI
   corre con este perfil y falla si el stack pasa de 3000 MiB.
+- El exportador de MongoDB lee solo `serverStatus` (`--collector.diagnosticdata`), que es lo que
+  usa el tablero. Con `--collect-all` gastaba más CPU que la base en un servidor de 2 vCPU.
+  Prometheus queda con 512 MB en el perfil de 4 GiB.
 - **Desistimientos** (Reservas y contratos → pestaña Desistimientos, vista "Ventas-Desistimiento"):
   liquidación en vivo (pagado − cláusula penal − otros descuentos), registro, aprobación o rechazo
   y **acta en PDF**. Aprobar anula el contrato (libera el lote y reabre la oportunidad), cancela el
