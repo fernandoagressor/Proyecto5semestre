@@ -93,10 +93,13 @@ services:
           --authenticationDatabase admin
           --eval "try { rs.status(); } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}); }
           quit(db.hello().isWritablePrimary ? 0 : 1);"
-      interval: 10s
+      # Cada chequeo abre mongosh (~1 s de CPU). En 2 vCPU se espacia (MONGO_SALUD_INTERVALO);
+      # mientras arranca se revisa cada 5 s.
+      interval: ${MONGO_SALUD_INTERVALO:-10s}
       timeout: 10s
       retries: 18
-      start_period: 30s
+      start_period: 90s
+      start_interval: 5s
     deploy:
       resources:
         limits:
