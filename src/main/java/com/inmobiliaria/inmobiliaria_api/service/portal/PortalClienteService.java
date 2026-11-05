@@ -34,6 +34,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import com.inmobiliaria.inmobiliaria_api.service.ventas.contrato.ContratoService;
 
 @Service
 public class PortalClienteService {
@@ -48,6 +50,7 @@ public class PortalClienteService {
     private final SolicitudPqrsRepository solicitudRepository;
     private final CitaServicioRepository citaRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final ContratoService contratoService;
 
     public PortalClienteService(ServicioClienteAlcanceService alcanceService,
                                 SolicitudCambioDatosRepository cambioRepository,
@@ -57,7 +60,8 @@ public class PortalClienteService {
                                 DocumentoVentaService documentoVentaService,
                                 SolicitudPqrsRepository solicitudRepository,
                                 CitaServicioRepository citaRepository,
-                                JdbcTemplate jdbcTemplate) {
+                                JdbcTemplate jdbcTemplate,
+                                ContratoService contratoService) {
         this.alcanceService = alcanceService;
         this.cambioRepository = cambioRepository;
         this.personaRepository = personaRepository;
@@ -67,6 +71,12 @@ public class PortalClienteService {
         this.solicitudRepository = solicitudRepository;
         this.citaRepository = citaRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.contratoService = contratoService;
+    }
+
+    /** El cliente sube su contrato firmado; queda en revisión en Ventas. */
+    public void subirContratoFirmado(ContextoUsuario contexto, Long contratoId, MultipartFile archivo) {
+        contratoService.recibirFirmaDelCliente(contexto, clientePortal(contexto), contratoId, archivo);
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +156,18 @@ public class PortalClienteService {
                   AND d.visible_portal = 1 AND d.estado = 'VIGENTE'
                   AND dv.vigente = 1 AND dv.archivo_id = ?
                 """, Integer.class, contexto.empresaId(), cliente.getId(), archivoId);
+        if (disponibles == null || disponibles == 0) {
+            // También el contrato del cliente (para firmar o ya firmado): la versión vigente.
+            disponibles = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM contrato_versiones v
+                    JOIN contratos c ON c.id = v.contrato_id
+                    WHERE c.empresa_id = ? AND v.vigente = 1 AND v.archivo_id = ?
+                      AND c.estado NOT IN ('BORRADOR','ANULADO')
+                      AND (c.cliente_principal_id = ? OR EXISTS (
+                        SELECT 1 FROM contrato_clientes cc WHERE cc.contrato_id = c.id AND cc.cliente_id = ?))
+                    """, Integer.class, contexto.empresaId(), archivoId, cliente.getId(), cliente.getId());
+        }
         if (disponibles == null || disponibles == 0) {
             throw new RecursoNoEncontradoException("El documento no está disponible en el portal");
         }
@@ -270,13 +292,45 @@ public class PortalClienteService {
                               AND q.estado IN ('PENDIENTE','PARCIAL','VENCIDA')
                             """, BigDecimal.class, contratoId, proxima);
                     java.sql.Date firma = rs.getDate("fecha_firma");
+                    String[] firmaCliente = estadoFirmaDelCliente(contratoId, rs.getString("estado"), cliente.getPersonaId());
+                    Long archivoContrato = jdbcTemplate.query(
+                            "SELECT archivo_id FROM contrato_versiones WHERE contrato_id = ? AND vigente = 1 AND archivo_id IS NOT NULL",
+                            (r, i) -> r.getLong("archivo_id"), contratoId).stream().findFirst().orElse(null);
                     return new PortalDtos.Contrato(contratoId, rs.getString("codigo"), rs.getString("estado"),
                             rs.getString("proyecto"), rs.getString("ciudad"), rs.getString("lote"),
                             rs.getBigDecimal("area_m2"), rs.getBigDecimal("valor_total"), rs.getBigDecimal("pagado"),
                             rs.getBigDecimal("saldo_pendiente"), rs.getBigDecimal("saldo_vencido"),
                             rs.getLong("cuotas_pagadas"), rs.getLong("cuotas_totales"), proxima, valorProxima,
-                            firma == null ? null : firma.toLocalDate());
+                            firma == null ? null : firma.toLocalDate(), archivoContrato, firmaCliente[0], firmaCliente[1]);
                 }, contexto.empresaId(), cliente.getId(), cliente.getId());
+    }
+
+    /**
+     * Estado de la firma del cliente en su contrato: EN_PREPARACION, POR_FIRMAR, EN_REVISION,
+     * RECHAZADA (con el motivo) o FIRMADO.
+     */
+    private String[] estadoFirmaDelCliente(long contratoId, String estadoContrato, Long personaId) {
+        if ("VIGENTE".equals(estadoContrato) || "FINALIZADO".equals(estadoContrato)) {
+            return new String[] {"FIRMADO", null};
+        }
+        if (!"PENDIENTE_FIRMA".equals(estadoContrato)) {
+            return new String[] {"EN_PREPARACION", null};
+        }
+        List<String[]> filas = jdbcTemplate.query("""
+                SELECT f.estado, fc.estado_validacion, fc.motivo_rechazo
+                FROM contrato_firmantes f
+                LEFT JOIN firmas_contrato fc ON fc.id = (
+                    SELECT MAX(x.id) FROM firmas_contrato x WHERE x.contrato_firmante_id = f.id)
+                WHERE f.contrato_id = ? AND f.persona_id = ?
+                """, (r, i) -> new String[] {r.getString(1), r.getString(2), r.getString(3)}, contratoId, personaId);
+        if (filas.isEmpty()) {
+            return new String[] {"EN_PREPARACION", null};
+        }
+        String[] f = filas.get(0);
+        if ("FIRMADA".equals(f[0])) return new String[] {"FIRMADO", null};
+        if ("PENDIENTE".equals(f[1])) return new String[] {"EN_REVISION", null};
+        if ("INVALIDA".equals(f[1])) return new String[] {"RECHAZADA", f[2]};
+        return new String[] {"POR_FIRMAR", null};
     }
 
     /** Plan de pagos vigente de un contrato del cliente de la sesión. */

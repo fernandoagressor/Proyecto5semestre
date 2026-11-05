@@ -94,12 +94,27 @@
 @if (step() === 2 && contract(); as c) {
   <div class="known" role="status"><app-icon name="check" /><div>Contrato <b class="nx-mono">{{ c.codigo }}</b> creado por {{ money(c.valorTotal) }}. Falta la firma para activar la venta.</div></div>
   @if (canSign) {
-    <section class="sign-option">
-      <h3>Firmado en la oficina</h3>
-      <p class="nx-muted small">Sube el contrato firmado por el cliente (PDF o foto). La venta queda activa: el lote pasa a <b>vendido</b> y Cartera genera el plan de pagos.</p>
-      <label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="setSignedFile($event)" />
-        <app-icon name="upload" /><span>{{ signedFile()?.name || 'Adjuntar el contrato firmado' }}</span><small>PDF, PNG o JPG</small></label>
-    </section>
+    <div class="modes" role="radiogroup" aria-label="Cómo se firma">
+      <button type="button" role="radio" [attr.aria-checked]="signMode() === 'oficina'" [class.on]="signMode() === 'oficina'" (click)="setSignMode('oficina')">
+        <b>Firmado en la oficina</b><small>Ya firmó: subes el contrato firmado y la venta queda activa.</small></button>
+      @if (canSendToClient) {
+        <button type="button" role="radio" [attr.aria-checked]="signMode() === 'portal'" [class.on]="signMode() === 'portal'" (click)="setSignMode('portal')">
+          <b>Firma desde su casa</b><small>Le llega a su portal: lo descarga, lo firma y lo sube. Tú lo confirmas en Ventas.</small></button>
+      }
+    </div>
+    @if (signMode() === 'oficina') {
+      <section class="sign-option">
+        <p class="nx-muted small">Sube el contrato firmado por el cliente (PDF o foto). La venta queda activa: el lote pasa a <b>vendido</b>, Cartera genera el plan de pagos y el cliente ve su contrato firmado en el portal.</p>
+        <label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="setSignedFile($event)" />
+          <app-icon name="upload" /><span>{{ signedFile()?.name || 'Adjuntar el contrato firmado' }}</span><small>PDF, PNG o JPG</small></label>
+      </section>
+    } @else {
+      <section class="sign-option">
+        <p class="nx-muted small">Sube el contrato <b>sin firmar</b> (PDF). Le aparece al cliente en su portal para descargarlo y subirlo firmado; cuando lo suba te llega una notificación para revisarlo y confirmarlo.</p>
+        <label class="file-picker"><input type="file" accept="application/pdf" (change)="setSignedFile($event)" />
+          <app-icon name="upload" /><span>{{ signedFile()?.name || 'Adjuntar el contrato para firmar' }}</span><small>PDF</small></label>
+      </section>
+    }
     <p class="nx-muted small">¿Firma electrónica o con varios firmantes? Elige <b>Firmar después</b> y continúa desde Ventas → Contratos.</p>
   } @else {
     <p class="nx-muted small">Tu usuario no registra firmas: el contrato queda en borrador y la firma se hace desde Ventas → Contratos.</p>
@@ -113,6 +128,10 @@
       <h3>Venta activa</h3>
       <p>Contrato <b class="nx-mono">{{ c.codigo }}</b> firmado: el lote <b>{{ lotCode() }}</b> quedó vendido a <b>{{ customerName() }}</b>.</p>
       <p class="nx-muted small">Cartera ya tiene el plan de pagos{{ preview()?.inicialPendiente ? ', con la cuota inicial pendiente de ' + money(preview()!.inicialPendiente) + ' que vence hoy' : '' }}.</p>
+    } @else if (sentToClient()) {
+      <h3>Enviado al cliente</h3>
+      <p>El contrato <b class="nx-mono">{{ c.codigo }}</b> está en el portal de <b>{{ customerName() }}</b> para que lo firme desde su casa.</p>
+      <p class="nx-muted small">Cuando lo suba firmado te llegará una notificación; lo confirmas en Ventas → Contratos y la venta queda activa. El lote sigue reservado mientras tanto.</p>
     } @else {
       <h3>Contrato en borrador</h3>
       <p>Contrato <b class="nx-mono">{{ c.codigo }}</b> creado. El lote sigue reservado hasta que se firme.</p>
@@ -128,13 +147,16 @@
   }
   @if (step() === 2) {
     <button class="nx-btn" type="button" (click)="signLater()" [disabled]="busy()">Firmar después</button>
-    @if (canSign) {
+    @if (canSign && signMode() === 'oficina') {
       <button class="nx-btn nx-btn--primary" type="button" (click)="signNow()" [disabled]="busy() || !signedFile()">{{ busy() ? 'Activando…' : 'Firmado: activar venta' }}</button>
+    }
+    @if (canSendToClient && signMode() === 'portal') {
+      <button class="nx-btn nx-btn--primary" type="button" (click)="sendToClient()" [disabled]="busy() || !signedFile()">{{ busy() ? 'Enviando…' : 'Enviar al portal del cliente' }}</button>
     }
   }
   @if (step() === 3 && contract(); as c) {
     @if (signed() && auth.hasAuthority('CUOTAS_VER')) { <a class="nx-btn" routerLink="/cartera" [queryParams]="{ contrato: c.id }"><app-icon name="wallet" /> Ver plan de pagos</a> }
-    @if (!signed() && auth.hasAuthority('CONTRATOS_VER')) { <a class="nx-btn" routerLink="/ventas" [queryParams]="{ contrato: c.id }">Ir al contrato</a> }
+    @if (!signed() && !sentToClient() && auth.hasAuthority('CONTRATOS_VER')) { <a class="nx-btn" routerLink="/ventas" [queryParams]="{ contrato: c.id }">Ir al contrato</a> }
     <button class="nx-btn nx-btn--primary" type="button" (click)="close()">Listo</button>
   }
 </div>

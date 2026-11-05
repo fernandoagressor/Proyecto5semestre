@@ -51,3 +51,8 @@
 .done__icon app-icon { width: 26px; height: 26px; }
 
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft); }
+
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.modes button { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1px solid var(--border-soft); border-radius: 12px; color: var(--text-strong); background: var(--surface-card); text-align: left; cursor: pointer; font: inherit; }
+.modes button small { color: var(--text-muted); font-size: 12.5px; line-height: 1.4; }
+.modes button.on { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }

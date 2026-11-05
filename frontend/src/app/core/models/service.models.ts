@@ -165,6 +165,10 @@ export interface PortalContract {
   proximaCuotaFecha: string | null;
   proximaCuotaValor: number | null;
   fechaFirma: string | null;
+  /** Contrato vigente para descargar: el que hay que firmar o el ya firmado. */
+  archivoContratoId: number | null;
+  estadoFirma: 'EN_PREPARACION' | 'POR_FIRMAR' | 'EN_REVISION' | 'RECHAZADA' | 'FIRMADO';
+  motivoRechazoFirma: string | null;
 }
 
 export interface PortalInstallment {

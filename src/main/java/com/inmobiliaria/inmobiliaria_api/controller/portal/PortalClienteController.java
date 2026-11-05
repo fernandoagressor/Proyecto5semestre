@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/portal")
@@ -41,6 +43,15 @@ public class PortalClienteController {
     @PreAuthorize("hasAuthority('CONTRATOS_VER')")
     public List<PortalDtos.Contrato> contratos(@AuthenticationPrincipal Jwt jwt) {
         return service.contratos(ContextoUsuario.empresa(jwt));
+    }
+
+    /** El cliente sube su contrato firmado (PDF o foto); queda en revisión en Ventas. */
+    @PostMapping(value = "/contratos/{contratoId}/firma", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasAuthority('CONTRATOS_VER')")
+    public void subirContratoFirmado(@AuthenticationPrincipal Jwt jwt, @PathVariable Long contratoId,
+                                     @RequestPart("archivo") MultipartFile archivo) {
+        service.subirContratoFirmado(ContextoUsuario.empresa(jwt), contratoId, archivo);
     }
 
     @GetMapping("/contratos/{contratoId}/cuotas")

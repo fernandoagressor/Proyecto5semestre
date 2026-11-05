@@ -59,3 +59,6 @@
 .portal-box__text { display: flex; flex: 1; flex-direction: column; }
 .portal-box__text small { color: var(--text-muted); font-size: 12px; }
 .nx-alert code { padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, .7); font-family: var(--font-mono); user-select: all; }
+
+.portal-signature { flex-wrap: wrap; margin: 4px 0 8px; }
+.portal-signature > .nx-row { margin-left: auto; }

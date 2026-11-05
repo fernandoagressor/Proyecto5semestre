@@ -15,6 +15,8 @@ import { todayIso } from '../../shared/ui/format';
 export interface ContractCreated {
   contrato: Contract;
   firmado: boolean;
+  /** Quedó en el portal del cliente para que lo firme desde su casa. */
+  enviadoAlCliente?: boolean;
 }
 
 /**
@@ -55,6 +57,12 @@ export class CreateContractComponent implements OnInit {
   readonly signed = signal(false);
   readonly signedFile = signal<File | null>(null);
   readonly canSign = this.auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR');
+  /** Enviar al portal exige además adjuntar la versión del contrato (CONTRATOS_EDITAR). */
+  readonly canSendToClient = this.canSign && this.auth.hasAuthority('CONTRATOS_EDITAR');
+  /** Cómo se firma: en la oficina o el cliente desde su casa (portal). */
+  readonly signMode = signal<'oficina' | 'portal'>('oficina');
+  /** El contrato quedó enviado al portal del cliente para que lo firme. */
+  readonly sentToClient = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     tipoContrato: ['PROMESA_COMPRAVENTA' as ContractType, Validators.required],
@@ -145,6 +153,42 @@ export class CreateContractComponent implements OnInit {
       });
   }
 
+  /** Sube el contrato para firmar y lo envía al portal del cliente. */
+  sendToClient(): void {
+    const contract = this.contract();
+    const file = this.signedFile();
+    this.error.set('');
+    if (!contract || this.busy()) return;
+    if (!file) {
+      this.error.set('Adjunta el contrato para firmar (PDF).');
+      return;
+    }
+    this.busy.set(true);
+    this.sales
+      .uploadDocument(contract.proyectoId, file)
+      .pipe(
+        switchMap((document) => this.sales.attachContractDocument(contract.id, document.id, 'Contrato para firma del cliente')),
+        switchMap(() => this.sales.sendForSignature(contract.id)),
+        finalize(() => this.busy.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (updated) => {
+          this.contract.set(updated);
+          this.sentToClient.set(true);
+          this.signed.set(false);
+          this.step.set(3);
+        },
+        error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo enviar el contrato al cliente.')),
+      });
+  }
+
+  setSignMode(mode: 'oficina' | 'portal'): void {
+    this.signMode.set(mode);
+    this.signedFile.set(null);
+    this.error.set('');
+  }
+
   signLater(): void {
     this.signed.set(false);
     this.step.set(3);
@@ -152,7 +196,7 @@ export class CreateContractComponent implements OnInit {
 
   close(): void {
     const contract = this.contract();
-    this.done.emit(contract ? { contrato: contract, firmado: this.signed() } : null);
+    this.done.emit(contract ? { contrato: contract, firmado: this.signed(), enviadoAlCliente: this.sentToClient() } : null);
   }
 
   money(value: number | null | undefined): string {

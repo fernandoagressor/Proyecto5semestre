@@ -106,6 +106,11 @@ export interface SignatureEvent {
   ipOrigen: string | null;
   firmadaEn: string;
   estadoValidacion: SignatureValidation;
+  /** Archivo firmado (oficina o portal). */
+  archivoId: number | null;
+  origen: 'OFICINA' | 'PORTAL' | null;
+  motivoRechazo: string | null;
+  revisadaEn: string | null;
 }
 
 export interface ContractSigner {

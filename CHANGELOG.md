@@ -6,6 +6,20 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Firma del contrato desde la casa del cliente**:
+  - Al **enviar a firma**, el contrato le llega al cliente en su portal, con una notificación:
+    lo descarga, lo firma y lo sube (PDF o foto) con `POST /portal/contratos/{id}/firma`.
+  - La firma queda **en revisión** y les llega un aviso a quienes gestionan firmas. En Ventas →
+    contrato aparece "Firma recibida desde el portal" con *Ver archivo*, *Confirmar firma* y
+    *Rechazar* (con motivo).
+  - Al confirmarla, el archivo firmado queda como versión vigente y, si ya firmaron todos, la venta
+    se activa (contrato vigente, lote vendido, plan de pagos). Al rechazarla, el cliente ve el motivo
+    en su portal y puede subirlo de nuevo.
+  - "Generar contrato" ofrece en el paso de firma **Firmado en la oficina** o **Firma desde su
+    casa** (sube el contrato sin firmar y lo envía al portal).
+  - Firmado en la oficina o desde la casa, el cliente descarga su **contrato firmado** en el portal.
+  - Migración V34: `firmas_contrato` guarda el archivo, el origen (OFICINA/PORTAL), el motivo de
+    rechazo y quién la revisó.
 - **Acceso al portal automático al reservar**: si quien reserva puede habilitar portales
   (`PORTAL_CLIENTE_HABILITAR`), el cliente nuevo queda con su usuario y una contraseña temporal para
   ver su compra. Se muestran una sola vez al final de "Reservar este lote", con "Copiar mensaje" y

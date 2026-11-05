@@ -45,6 +45,23 @@ public class FirmaContrato extends EntidadAuditable {
     @Column(name = "estado_validacion", nullable = false, length = 20)
     private EstadoValidacionFirma estadoValidacion;
 
+    /** Archivo firmado que respalda esta firma (contrato firmado subido en la oficina o en el portal). */
+    @Column(name = "archivo_id")
+    private Long archivoId;
+
+    /** OFICINA o PORTAL; null en las firmas registradas antes de V34 o por proveedor externo. */
+    @Column(length = 20)
+    private String origen;
+
+    @Column(name = "motivo_rechazo", length = 400)
+    private String motivoRechazo;
+
+    @Column(name = "revisada_por")
+    private Long revisadaPor;
+
+    @Column(name = "revisada_en")
+    private LocalDateTime revisadaEn;
+
     protected FirmaContrato() {
     }
 
@@ -68,6 +85,30 @@ public class FirmaContrato extends EntidadAuditable {
         this.estadoValidacion = estadoValidacion;
     }
 
+    /** Asocia el archivo firmado y de dónde llegó (OFICINA o PORTAL). */
+    public FirmaContrato conArchivo(Long archivoId, String origen) {
+        this.archivoId = archivoId;
+        this.origen = origen;
+        return this;
+    }
+
+    /** Revisión de una firma que llegó por el portal: válida o rechazada con motivo. */
+    public void revisar(boolean valida, String motivo, Long usuarioId, LocalDateTime fecha) {
+        if (estadoValidacion != EstadoValidacionFirma.PENDIENTE) {
+            throw new com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegocioException(
+                    "Esta firma ya fue revisada");
+        }
+        estadoValidacion = valida ? EstadoValidacionFirma.VALIDA : EstadoValidacionFirma.INVALIDA;
+        motivoRechazo = valida ? null : motivo;
+        revisadaPor = usuarioId;
+        revisadaEn = fecha;
+    }
+
+    public Long getContratoFirmanteId() { return contratoFirmanteId; }
+    public Long getArchivoId() { return archivoId; }
+    public String getOrigen() { return origen; }
+    public String getMotivoRechazo() { return motivoRechazo; }
+    public LocalDateTime getRevisadaEn() { return revisadaEn; }
     public Long getId() { return id; }
     public MetodoFirma getMetodo() { return metodo; }
     public String getProveedor() { return proveedor; }

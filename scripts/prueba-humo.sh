@@ -205,6 +205,7 @@ if [[ "$PROYECTO_ID" != null ]]; then
   api PUT "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE2_ID" '{"codigo":"E01-M01-L02","numero":"2","areaM2":110,"valorLista":50000000}'
   api POST /api/v1/ventas/cliente-lote "$(jq -n --argjson p "$PROYECTO_ID" --argjson l "$LOTE2_ID" --argjson c "${COMPRADOR_ID:-null}" --arg v "$RES_VENCE" \
     '{cliente:null, clienteId:$c, proyectoId:$p, loteId:$l, fechaVencimiento:$v, valorReserva:1000000, formaPago:"EFECTIVO"}')"
+  RESERVA2_ID="$(cuerpo .reserva.id)"
   [[ "$STATUS" == 201 && "$(cuerpo .cliente.id)" == "$COMPRADOR_ID" ]] && paso "Reserva de otro lote para el mismo cliente, sin volver a crearlo" \
     || falla "Reservar con cliente existente respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
   [[ "$(cuerpo .portalExistente)" == true && "$(cuerpo .accesoPortal)" == null ]] && paso "Si ya tiene portal, no se le crea otro acceso" \
@@ -245,6 +246,65 @@ if [[ "$PROYECTO_ID" != null ]]; then
     || falla "Plan de pagos respondió $STATUS: $(head -c 400 "$TMP/cuerpo")"
   api POST "/api/v1/contratos/$CONTRATO_ID/firma-presencial" "$(jq -n --argjson a "${ARCHIVO_ID:-0}" '{archivoId:$a, firmadaEn:null}')"
   [[ "$STATUS" == 422 ]] && paso "Un contrato vigente no se vuelve a firmar" || falla "Firmar dos veces respondió $STATUS"
+  echo "4e. Firma desde la casa del cliente (portal → revisión en Ventas)"
+  subir() { # subir RUTA ARCHIVO → código HTTP (multipart, con el token actual)
+    curl -s "${CURL_EXTRA[@]}" -o "$TMP/cuerpo" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -F "archivo=@$2;type=application/pdf" "$BASE_URL$1"
+  }
+  api PATCH "/api/v1/reservas/$RESERVA2_ID/pago/confirmar" '{}'
+  api POST "/api/v1/reservas/$RESERVA2_ID/contrato" "$(condiciones 1000000)"
+  CONTRATO2_ID="$(cuerpo .id)"
+  printf '%%PDF-1.4\n%% Contrato para firmar %s\n%%%%EOF\n' "$SELLO" > "$TMP/para-firmar.pdf"
+  codigo="$(subir "/api/v1/ventas/documentos?proyectoId=$PROYECTO_ID&clasificacion=CONFIDENCIAL" "$TMP/para-firmar.pdf")"
+  PARA_FIRMAR_ID="$(cuerpo .id)"
+  api POST "/api/v1/contratos/$CONTRATO2_ID/versiones" "$(jq -n --argjson a "${PARA_FIRMAR_ID:-0}" '{archivoId:$a, motivo:"Contrato para firma del cliente"}')"
+  api PATCH "/api/v1/contratos/$CONTRATO2_ID/enviar-firma" '{}'
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == PENDIENTE_FIRMA ]] && paso "Contrato enviado a firma: le llega al portal del cliente" \
+    || falla "Enviar a firma respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+
+  TOKEN_ADMIN="$TOKEN"; TOKEN=""
+  COMPRADOR_CLAVE_NUEVA="Comprador-$SELLO-Nueva9!"
+  api POST /api/v1/auth/login "$(jq -n --arg u "$COMPRADOR_USUARIO" --arg p "$COMPRADOR_CLAVE" '{identificador:$u, password:$p}')"
+  TOKEN="$(cuerpo .accessToken)"
+  api POST /api/v1/auth/cambiar-password "$(jq -n --arg a "$COMPRADOR_CLAVE" --arg n "$COMPRADOR_CLAVE_NUEVA" '{passwordActual:$a, passwordNueva:$n, confirmacionPassword:$n}')"
+  TOKEN=""
+  api POST /api/v1/auth/login "$(jq -n --arg u "$COMPRADOR_USUARIO" --arg p "$COMPRADOR_CLAVE_NUEVA" '{identificador:$u, password:$p}')"
+  TOKEN_COMPRADOR="$(cuerpo .accessToken)"; TOKEN="$TOKEN_COMPRADOR"
+  firma_en_portal() { api GET /api/v1/portal/contratos; jq -r --argjson c "${CONTRATO2_ID:-0}" '.[] | select(.id == $c) | .estadoFirma' "$TMP/cuerpo"; }
+  [[ "$(firma_en_portal)" == POR_FIRMAR ]] && paso "En su portal el cliente ve el contrato por firmar" || falla "Portal: estado de firma $(firma_en_portal)"
+  ARCHIVO_CONTRATO="$(jq -r --argjson c "${CONTRATO2_ID:-0}" '.[] | select(.id == $c) | .archivoContratoId' "$TMP/cuerpo")"
+  codigo="$(curl -s "${CURL_EXTRA[@]}" -o "$TMP/bajado.pdf" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/portal/documentos/$ARCHIVO_CONTRATO/descargar")"
+  [[ "$codigo" == 200 ]] && paso "El cliente descarga el contrato para firmarlo" || falla "Descargar el contrato desde el portal respondió $codigo"
+  printf '%%PDF-1.4\n%% Contrato firmado en casa %s\n%%%%EOF\n' "$SELLO" > "$TMP/firmado-casa.pdf"
+  codigo="$(subir "/api/v1/portal/contratos/$CONTRATO2_ID/firma" "$TMP/firmado-casa.pdf")"
+  [[ "$codigo" == 202 && "$(firma_en_portal)" == EN_REVISION ]] && paso "El cliente sube el contrato firmado: queda en revisión" \
+    || falla "Subir la firma desde el portal respondió $codigo: $(head -c 300 "$TMP/cuerpo")"
+  codigo="$(subir "/api/v1/portal/contratos/$CONTRATO2_ID/firma" "$TMP/firmado-casa.pdf")"
+  [[ "$codigo" == 422 ]] && paso "No se puede subir otra firma mientras la anterior está en revisión" || falla "Segunda subida respondió $codigo"
+
+  TOKEN="$TOKEN_ADMIN"
+  firma_pendiente() { api GET "/api/v1/contratos/$CONTRATO2_ID"; jq -r '[.firmantes[].eventos[] | select(.origen == "PORTAL" and .estadoValidacion == "PENDIENTE")][0].id // empty' "$TMP/cuerpo"; }
+  FIRMA_ID="$(firma_pendiente)"
+  api PATCH "/api/v1/contratos/$CONTRATO2_ID/firmas/${FIRMA_ID:-0}/rechazar" '{"motivo":"Falta la firma en la página 2"}'
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == PENDIENTE_FIRMA ]] && paso "Ventas rechaza la firma con un motivo" || falla "Rechazar la firma respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  TOKEN="$TOKEN_COMPRADOR"
+  [[ "$(firma_en_portal)" == RECHAZADA ]] && jq -e '.[] | select(.motivoRechazoFirma == "Falta la firma en la página 2")' "$TMP/cuerpo" > /dev/null \
+    && paso "El cliente ve el motivo del rechazo en su portal" || falla "Portal tras el rechazo: $(head -c 300 "$TMP/cuerpo")"
+  codigo="$(subir "/api/v1/portal/contratos/$CONTRATO2_ID/firma" "$TMP/firmado-casa.pdf")"
+  [[ "$codigo" == 202 ]] && paso "El cliente vuelve a subir el contrato firmado" || falla "Subir de nuevo respondió $codigo: $(head -c 300 "$TMP/cuerpo")"
+
+  TOKEN="$TOKEN_ADMIN"
+  FIRMA_ID="$(firma_pendiente)"
+  api PATCH "/api/v1/contratos/$CONTRATO2_ID/firmas/${FIRMA_ID:-0}/confirmar" '{}'
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == VIGENTE ]] && paso "Ventas confirma la firma: contrato vigente" \
+    || falla "Confirmar la firma respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api GET "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE2_ID"
+  [[ "$(cuerpo .estado)" == VENDIDO ]] && paso "El segundo lote quedó VENDIDO" || falla "El segundo lote quedó en $(cuerpo .estado)"
+  TOKEN="$TOKEN_COMPRADOR"
+  [[ "$(firma_en_portal)" == FIRMADO ]] && paso "El cliente ve su contrato firmado en el portal" || falla "Portal tras confirmar: $(firma_en_portal)"
+  ARCHIVO_FIRMADO="$(jq -r --argjson c "${CONTRATO2_ID:-0}" '.[] | select(.id == $c) | .archivoContratoId' "$TMP/cuerpo")"
+  codigo="$(curl -s "${CURL_EXTRA[@]}" -o "$TMP/firmado-bajado.pdf" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/v1/portal/documentos/$ARCHIVO_FIRMADO/descargar")"
+  [[ "$codigo" == 200 && "$ARCHIVO_FIRMADO" != "$ARCHIVO_CONTRATO" ]] && paso "Y descarga la versión firmada" || falla "Descargar el contrato firmado respondió $codigo"
+  TOKEN="$TOKEN_ADMIN"
   inventario_auditado() { api GET "/api/v1/auditoria/eventos?accion=LOTE_EDITADO&tamano=50"; [[ "$STATUS" == 200 && "$(cuerpo '.totalElementos')" -ge 1 ]]; }
   esperar 15 inventario_auditado && paso "La edición del lote quedó en auditoría" || falla "No apareció el evento LOTE_EDITADO (HTTP $STATUS)"
   avisado() { api GET "/api/v1/notificaciones?tamano=50"; [[ "$STATUS" == 200 ]] && jq -e '[.contenido[] | select(.tipo == "INVENTARIO")] | length >= 1' "$TMP/cuerpo" > /dev/null; }
@@ -390,7 +450,7 @@ if [[ "$COMPOSE" == 1 ]]; then
   pendientes="$(mysql_q "SELECT COUNT(*) FROM crm_pendientes WHERE procesado_en IS NULL")"
   [[ "$pendientes" == 0 ]] && paso "crm_pendientes sin pendientes" || falla "crm_pendientes tiene $pendientes pendientes"
   version="$(mysql_q "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1")"
-  [[ "$version" == 33 ]] && paso "Flyway en V33" || falla "Flyway quedó en V$version"
+  [[ "$version" == 34 ]] && paso "Flyway en V34" || falla "Flyway quedó en V$version"
   errores="$(docker compose logs --no-color api 2>/dev/null | grep -c ' ERROR ' || true)"
   if [[ "$errores" == 0 ]]; then paso "Sin líneas ERROR en el log de la API"
   else

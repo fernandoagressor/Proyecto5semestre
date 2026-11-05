@@ -105,6 +105,16 @@ export class SalesService {
     return this.http.post<Contract>(`${API_BASE_URL}/contratos/${id}/firma-presencial`, { archivoId, firmadaEn: null });
   }
 
+  /** Confirma el contrato firmado que el cliente subió desde su portal. */
+  confirmClientSignature(contractId: number, signatureId: number): Observable<Contract> {
+    return this.http.patch<Contract>(`${API_BASE_URL}/contratos/${contractId}/firmas/${signatureId}/confirmar`, {});
+  }
+
+  /** Rechaza el contrato firmado que subió el cliente; él ve el motivo en su portal. */
+  rejectClientSignature(contractId: number, signatureId: number, motivo: string): Observable<Contract> {
+    return this.http.patch<Contract>(`${API_BASE_URL}/contratos/${contractId}/firmas/${signatureId}/rechazar`, { motivo });
+  }
+
   contracts(options: { status?: ContractStatus | ''; projectId?: number | null; page?: number; size?: number } = {}): Observable<PageResponse<Contract>> {
     let params = this.pageParams(options.page, options.size);
     if (options.status) params = params.set('estado', options.status);

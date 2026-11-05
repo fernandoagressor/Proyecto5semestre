@@ -94,3 +94,12 @@ tr.late td { background: color-mix(in srgb, var(--tone-danger-bg) 60%, transpare
   .bottom button app-icon { width: 20px; height: 20px; }
   .bottom button.on { color: var(--color-primary-strong); }
 }
+
+.sign-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-bottom: 16px; padding: 16px 18px; border: 1px solid var(--border-soft); border-left: 4px solid var(--color-primary); border-radius: 14px; background: var(--surface-card); }
+.sign-card b { font-size: 16px; }
+.sign-card p { margin: 4px 0 0; color: var(--text-muted); line-height: 1.45; }
+.sign-card--warn { border-left-color: var(--tone-warning-fg); }
+.sign-card--ok { border-left-color: var(--tone-success-fg); }
+.sign-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sign-card__actions label { cursor: pointer; }
+.sign-card__actions label.disabled { opacity: .6; pointer-events: none; }
