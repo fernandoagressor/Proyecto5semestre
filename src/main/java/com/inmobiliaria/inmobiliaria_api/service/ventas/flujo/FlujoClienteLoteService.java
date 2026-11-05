@@ -76,31 +76,36 @@ public class FlujoClienteLoteService {
                             + (request.clienteId() != null ? ": agrégalo en su ficha de Clientes" : "")
             );
         }
-        ProspectoResponse prospecto = prospectoService.crear(
-                contexto,
-                new ProspectoRequest(
-                        request.proyectoId(),
-                        null,
-                        cliente.nombreCompleto(),
-                        cliente.telefono(),
-                        cliente.correo(),
-                        FuenteProspecto.OTRO,
-                        null,
-                        TemperaturaProspecto.CALIENTE,
-                        "Registro técnico creado desde el flujo simplificado cliente-lote"
-                )
-        );
-        Long prospectoId = prospecto.id();
-        compensarSiFalla(() -> prospectoService.eliminarPorCompensacion(prospectoId));
-        prospecto = prospectoService.calificar(
-                contexto,
-                prospecto.id(),
-                new ProspectoCalificacionRequest(
-                        EstadoProspecto.CALIFICADO,
-                        TemperaturaProspecto.CALIENTE,
-                        "Cliente listo para vinculación y reserva"
-                )
-        );
+        ProspectoResponse prospecto = prospectoReutilizable(contexto, request.proyectoId(), cliente);
+        if (prospecto == null) {
+            prospecto = prospectoService.crearRegistroTecnico(
+                    contexto,
+                    new ProspectoRequest(
+                            request.proyectoId(),
+                            null,
+                            cliente.nombreCompleto(),
+                            cliente.telefono(),
+                            cliente.correo(),
+                            FuenteProspecto.OTRO,
+                            null,
+                            TemperaturaProspecto.CALIENTE,
+                            "Registro técnico creado desde el flujo simplificado cliente-lote"
+                    )
+            );
+            Long prospectoId = prospecto.id();
+            compensarSiFalla(() -> prospectoService.eliminarPorCompensacion(prospectoId));
+        }
+        if (prospecto.estado() != EstadoProspecto.CALIFICADO) {
+            prospecto = prospectoService.calificar(
+                    contexto,
+                    prospecto.id(),
+                    new ProspectoCalificacionRequest(
+                            EstadoProspecto.CALIFICADO,
+                            TemperaturaProspecto.CALIENTE,
+                            "Cliente listo para vinculación y reserva"
+                    )
+            );
+        }
 
         OportunidadResponse oportunidad = oportunidadService.crear(
                 contexto,
@@ -183,6 +188,25 @@ public class FlujoClienteLoteService {
         }
         return clienteService.buscarPorDocumento(contexto, datos.tipoDocumento(), datos.numeroDocumento())
                 .orElseGet(() -> clienteService.crear(contexto, datos));
+    }
+
+    /**
+     * Si el CRM ya tiene a esta persona como prospecto activo (mismo teléfono o correo), de este
+     * proyecto o sin proyecto, y sin una oportunidad abierta, la reserva se registra sobre él en vez
+     * de duplicarlo. Si su prospecto ya está en otra venta abierta (por ejemplo, reservó otro lote),
+     * se crea un registro técnico nuevo: cada reserva lleva su propia oportunidad.
+     */
+    private ProspectoResponse prospectoReutilizable(
+            ContextoUsuario contexto,
+            Long proyectoId,
+            ClienteResponse cliente
+    ) {
+        return prospectoService.buscarActivosPorContacto(contexto, cliente.telefono(), cliente.correo())
+                .stream()
+                .filter(p -> p.proyectoId() == null || p.proyectoId().equals(proyectoId))
+                .filter(p -> !oportunidadService.tieneAbierta(p.id()))
+                .findFirst()
+                .orElse(null);
     }
 
     private static void compensarSiFalla(Runnable compensacion) {

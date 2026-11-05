@@ -97,6 +97,41 @@ public class ProspectoService {
             ContextoUsuario contexto,
             ProspectoRequest request
     ) {
+        return registrar(contexto, request, true);
+    }
+
+    /**
+     * Prospecto técnico de un flujo de venta (reservar un lote): como {@link #crear}, pero sin
+     * rechazar un correo o teléfono repetido, porque el cliente ya está identificado por su
+     * documento y cada reserva lleva su propia oportunidad.
+     */
+    @Transactional
+    public ProspectoResponse crearRegistroTecnico(
+            ContextoUsuario contexto,
+            ProspectoRequest request
+    ) {
+        return registrar(contexto, request, false);
+    }
+
+    /** Prospectos activos con ese teléfono o correo que el usuario puede ver, del más reciente al más antiguo. */
+    @Transactional(readOnly = true)
+    public List<ProspectoResponse> buscarActivosPorContacto(
+            ContextoUsuario contexto,
+            String telefono,
+            String correo
+    ) {
+        return prospectoRepository.buscarContactosActivos(
+                crmAlcanceService.filtroMongo(contexto),
+                correo(correo),
+                normalizar(telefono)
+        ).stream().map(ProspectoResponse::from).toList();
+    }
+
+    private ProspectoResponse registrar(
+            ContextoUsuario contexto,
+            ProspectoRequest request,
+            boolean rechazarDuplicados
+    ) {
         validarContacto(request.telefono(), request.correo());
         Long asesorId = crmAlcanceService.validarAsesor(
                 contexto,
@@ -107,12 +142,14 @@ public class ProspectoService {
                 request.proyectoId(),
                 asesorId
         );
-        validarDuplicado(
-                contexto.empresaId(),
-                request.correo(),
-                request.telefono(),
-                null
-        );
+        if (rechazarDuplicados) {
+            validarDuplicado(
+                    contexto.empresaId(),
+                    request.correo(),
+                    request.telefono(),
+                    null
+            );
+        }
 
         Prospecto prospecto = new Prospecto(
                 contexto.empresaId(),

@@ -108,6 +108,12 @@ public class OportunidadService {
         return OportunidadResponse.from(obtenerAutorizada(contexto, oportunidadId));
     }
 
+    /** Si el prospecto ya tiene una oportunidad abierta (solo puede tener una a la vez). */
+    @Transactional(readOnly = true)
+    public boolean tieneAbierta(Long prospectoId) {
+        return oportunidadRepository.existsByProspectoIdAndEstado(prospectoId, EstadoOportunidad.ABIERTA);
+    }
+
     @Transactional
     public OportunidadResponse crear(ContextoUsuario contexto, OportunidadRequest request) {
         Prospecto prospecto = prospectoService.obtenerAutorizado(contexto, request.prospectoId());

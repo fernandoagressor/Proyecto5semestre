@@ -64,18 +64,37 @@ public class ProspectoRepository implements IndicesMongo {
      * distinguir mayúsculas) o el mismo teléfono.
      */
     public long contarContactosActivos(Long empresaId, String correo, String telefono, Long excluirId) {
+        Criteria filtro = contactoActivo(where("empresaId").is(empresaId), correo, telefono, excluirId);
+        return filtro == null ? 0 : mongoTemplate.count(new Query(filtro), Prospecto.class);
+    }
+
+    /**
+     * Prospectos activos con el mismo correo (sin distinguir mayúsculas) o el mismo teléfono, dentro
+     * del {@code alcance} indicado (empresa y registros que el usuario puede ver), del más reciente
+     * al más antiguo.
+     */
+    public List<Prospecto> buscarContactosActivos(Criteria alcance, String correo, String telefono) {
+        Criteria filtro = contactoActivo(alcance, correo, telefono, null);
+        if (filtro == null) {
+            return List.of();
+        }
+        return mongoTemplate.find(new Query(filtro).with(Sort.by(Sort.Direction.DESC, "creadoEn")).limit(20),
+                Prospecto.class);
+    }
+
+    private static Criteria contactoActivo(Criteria base, String correo, String telefono, Long excluirId) {
         List<Criteria> contacto = new ArrayList<>();
         if (correo != null) contacto.add(where("correo").regex("^" + Pattern.quote(correo) + "$", "i"));
         if (telefono != null) contacto.add(where("telefono").is(telefono));
         if (contacto.isEmpty()) {
-            return 0;
+            return null;
         }
         List<Criteria> condiciones = new ArrayList<>();
-        condiciones.add(where("empresaId").is(empresaId));
+        condiciones.add(base);
         condiciones.add(where("estado").nin(EstadoProspecto.DESCARTADO.name(), EstadoProspecto.CONVERTIDO.name()));
         if (excluirId != null) condiciones.add(where("id").ne(excluirId));
         condiciones.add(new Criteria().orOperator(contacto));
-        return mongoTemplate.count(new Query(new Criteria().andOperator(condiciones)), Prospecto.class);
+        return new Criteria().andOperator(condiciones);
     }
 
     /** Crea los índices de la colección; es idempotente. */
