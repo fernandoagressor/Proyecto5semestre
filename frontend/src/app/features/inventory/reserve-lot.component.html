@@ -77,6 +77,23 @@
     }
     <p class="nx-muted small">Nadie más puede reservar este lote mientras la reserva esté vigente.</p>
   </div>
+  @if (r.acceso; as a) {
+    <section class="access" aria-label="Acceso del cliente a su portal">
+      <h4><app-icon name="key" /> Acceso del cliente a su portal</h4>
+      <p class="nx-muted small">Con esto {{ r.cliente }} ve su lote, su contrato, sus cuotas y sus pagos. <b>La contraseña se muestra solo ahora</b>: entrégasela y al entrar deberá cambiarla.</p>
+      <dl>
+        <div><dt>Dirección</dt><dd class="nx-mono">{{ portalUrl }}</dd></div>
+        <div><dt>Usuario</dt><dd class="nx-mono">{{ a.nombreUsuario }}</dd></div>
+        <div><dt>Contraseña temporal</dt><dd class="nx-mono">{{ a.passwordTemporal }}</dd></div>
+      </dl>
+      <div class="access__actions">
+        <button type="button" class="nx-btn nx-btn--sm" (click)="copyAccess(a)">{{ copied() ? '✓ Copiado' : 'Copiar mensaje' }}</button>
+        @if (whatsappLink(a); as link) { <a class="nx-btn nx-btn--sm" [href]="link" target="_blank" rel="noopener">Enviar por WhatsApp</a> }
+      </div>
+    </section>
+  } @else if (r.portalExistente) {
+    <p class="nx-muted small access-note">{{ r.cliente }} ya tenía acceso a su portal: verá esta reserva al entrar.</p>
+  }
 }
 
 <div class="actions">

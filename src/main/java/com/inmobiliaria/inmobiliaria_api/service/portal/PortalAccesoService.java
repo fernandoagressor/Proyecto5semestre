@@ -71,15 +71,22 @@ public class PortalAccesoService {
         }
         Persona persona = personaRepository.findById(cliente.getPersonaId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("La persona del cliente no existe"));
+        // Usuario: el correo del cliente; si no tiene o ya lo usa otra cuenta, su número de documento.
         String correo = persona.getCorreo() == null ? "" : persona.getCorreo().trim().toLowerCase(Locale.ROOT);
-        if (correo.isBlank()) {
-            throw new ReglaNegocioException("Registre un correo del cliente antes de habilitar el portal");
-        }
-        Long ocupados = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM usuarios WHERE LOWER(nombre_usuario) = ? OR LOWER(correo) = ?",
-                Long.class, correo, correo);
-        if (ocupados != null && ocupados > 0) {
-            throw new ConflictoException("Ya existe una cuenta con el correo " + correo);
+        String documento = persona.getNumeroDocumento() == null ? "" : persona.getNumeroDocumento().trim();
+        String nombreUsuario;
+        String correoCuenta;
+        if (!correo.isBlank() && !ocupado(correo)) {
+            nombreUsuario = correo;
+            correoCuenta = correo;
+        } else if (!documento.isBlank() && !ocupado(documento)
+                && !ocupado(correoTecnico(documento))) {
+            // La cuenta exige un correo único: sin correo real se guarda uno técnico que no recibe
+            // mensajes (dominio .invalid, reservado); el cliente entra con su documento.
+            nombreUsuario = documento;
+            correoCuenta = null;
+        } else {
+            throw new ConflictoException("Ya existe una cuenta con el correo o el documento de este cliente");
         }
         Long rolCliente = jdbc.queryForObject(
                 "SELECT id FROM roles WHERE codigo = 'CLIENTE' AND empresa_id IS NULL AND activo = 1",
@@ -87,7 +94,8 @@ public class PortalAccesoService {
 
         String password = passwordTemporal();
         Usuario usuario = usuarioRepository.saveAndFlush(new Usuario(
-                ctx.empresaId(), persona.getId(), correo, correo, passwordEncoder.encode(password)));
+                ctx.empresaId(), persona.getId(), nombreUsuario,
+                correoCuenta == null ? correoTecnico(documento) : correoCuenta, passwordEncoder.encode(password)));
         jdbc.update("UPDATE usuarios SET tipo_usuario = 'CLIENTE' WHERE id = ?", usuario.getId());
         jdbc.update("""
                 INSERT INTO usuario_roles (usuario_id, rol_id, principal, asignado_por, creado_en, actualizado_en)
@@ -105,8 +113,42 @@ public class PortalAccesoService {
             throw new ConflictoException("El cliente cambió mientras se habilitaba el portal; intente de nuevo");
         }
         auditoria.registrar(ctx, null, "CLIENTES", "PORTAL_HABILITADO", "CLIENTE", clienteId,
-                "Acceso al portal creado para " + correo, null, "usuario " + usuario.getId());
-        return new PortalDtos.Acceso(clienteId, usuario.getId(), correo, correo, password);
+                "Acceso al portal creado para " + nombreUsuario, null, "usuario " + usuario.getId());
+        return new PortalDtos.Acceso(clienteId, usuario.getId(), nombreUsuario, correoCuenta, password);
+    }
+
+    /**
+     * Al reservar: crea el acceso al portal si el cliente todavía no lo tiene. Devuelve null si ya
+     * tenía acceso o si no se puede crear (cliente inactivo, correo y documento ya usados por otra
+     * cuenta); en ese caso la reserva sigue normal y el acceso se habilita a mano en Ventas.
+     */
+    @Transactional
+    public PortalDtos.Acceso habilitarSiFalta(ContextoUsuario ctx, Long clienteId) {
+        Cliente cliente = clienteRepository.findByIdAndEmpresaId(clienteId, ctx.empresaId()).orElse(null);
+        if (cliente == null || cliente.getUsuarioId() != null || !"ACTIVO".equals(cliente.getEstado())) {
+            return null;
+        }
+        Persona persona = personaRepository.findById(cliente.getPersonaId()).orElse(null);
+        if (persona == null) {
+            return null;
+        }
+        String correo = persona.getCorreo() == null ? "" : persona.getCorreo().trim().toLowerCase(Locale.ROOT);
+        String documento = persona.getNumeroDocumento() == null ? "" : persona.getNumeroDocumento().trim();
+        boolean hayUsuarioLibre = (!correo.isBlank() && !ocupado(correo))
+                || (!documento.isBlank() && !ocupado(documento) && !ocupado(correoTecnico(documento)));
+        return hayUsuarioLibre ? habilitar(ctx, clienteId) : null;
+    }
+
+    static String correoTecnico(String documento) {
+        return documento.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "") + "@cliente-sin-correo.invalid";
+    }
+
+    private boolean ocupado(String identificador) {
+        String valor = identificador.toLowerCase(Locale.ROOT);
+        Long ocupados = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM usuarios WHERE LOWER(nombre_usuario) = ? OR LOWER(correo) = ?",
+                Long.class, valor, valor);
+        return ocupados != null && ocupados > 0;
     }
 
     @Transactional
@@ -119,8 +161,10 @@ public class PortalAccesoService {
         String password = passwordTemporal();
         usuarios.reiniciarCredenciales(ctx.usuarioId(), ctx.empresaId(), cliente.getUsuarioId(),
                 new AdministracionDtos.ReinicioCredencialesRequest(password, "Reenvío de acceso al portal del cliente"));
-        String correo = jdbc.queryForObject("SELECT correo FROM usuarios WHERE id = ?", String.class, cliente.getUsuarioId());
-        return new PortalDtos.Acceso(clienteId, cliente.getUsuarioId(), correo, correo, password);
+        var cuenta = jdbc.queryForMap("SELECT nombre_usuario, correo FROM usuarios WHERE id = ?", cliente.getUsuarioId());
+        String correoCuenta = (String) cuenta.get("correo");
+        return new PortalDtos.Acceso(clienteId, cliente.getUsuarioId(), (String) cuenta.get("nombre_usuario"),
+                correoCuenta != null && correoCuenta.endsWith(".invalid") ? null : correoCuenta, password);
     }
 
     static String passwordTemporal() {

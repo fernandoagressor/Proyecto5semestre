@@ -21,6 +21,8 @@ import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.cliente.ClienteService;
 import com.inmobiliaria.inmobiliaria_api.service.crm.OportunidadService;
 import com.inmobiliaria.inmobiliaria_api.service.crm.ProspectoService;
+import com.inmobiliaria.inmobiliaria_api.service.portal.PortalAccesoService;
+import com.inmobiliaria.inmobiliaria_api.dto.portal.PortalDtos;
 import com.inmobiliaria.inmobiliaria_api.service.ventas.reserva.ReservaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,19 +41,22 @@ public class FlujoClienteLoteService {
     private final OportunidadService oportunidadService;
     private final ReservaService reservaService;
     private final LoteRepository loteRepository;
+    private final PortalAccesoService portalAccesoService;
 
     public FlujoClienteLoteService(
             ClienteService clienteService,
             ProspectoService prospectoService,
             OportunidadService oportunidadService,
             ReservaService reservaService,
-            LoteRepository loteRepository
+            LoteRepository loteRepository,
+            PortalAccesoService portalAccesoService
     ) {
         this.clienteService = clienteService;
         this.prospectoService = prospectoService;
         this.oportunidadService = oportunidadService;
         this.reservaService = reservaService;
         this.loteRepository = loteRepository;
+        this.portalAccesoService = portalAccesoService;
     }
 
     /**
@@ -67,6 +72,19 @@ public class FlujoClienteLoteService {
     public FlujoClienteLoteResponse crear(
             ContextoUsuario contexto,
             FlujoClienteLoteRequest request
+    ) {
+        return crear(contexto, request, false);
+    }
+
+    /**
+     * @param habilitarPortal si quien reserva puede habilitar el portal: el cliente queda con su
+     *                        usuario y contraseña temporal para ver su compra.
+     */
+    @Transactional
+    public FlujoClienteLoteResponse crear(
+            ContextoUsuario contexto,
+            FlujoClienteLoteRequest request,
+            boolean habilitarPortal
     ) {
         verificarLoteDisponible(contexto, request);
         ClienteResponse cliente = resolverCliente(contexto, request);
@@ -144,7 +162,11 @@ public class FlujoClienteLoteService {
                         request.formaPago()
                 )
         );
-        return new FlujoClienteLoteResponse(cliente, oportunidad, reserva);
+        boolean portalExistente = cliente.usuarioId() != null;
+        PortalDtos.Acceso acceso = habilitarPortal && !portalExistente
+                ? portalAccesoService.habilitarSiFalta(contexto, cliente.id())
+                : null;
+        return new FlujoClienteLoteResponse(cliente, oportunidad, reserva, acceso, portalExistente);
     }
 
     /**

@@ -29,3 +29,14 @@
 .done__icon app-icon { width: 26px; height: 26px; }
 
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft); }
+
+.access { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-muted); }
+.access h4 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; }
+.access h4 app-icon { width: 18px; height: 18px; color: var(--color-primary); }
+.access p { margin: 0; line-height: 1.45; }
+.access dl { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.access dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.access dt { color: var(--text-muted); font-size: 13px; }
+.access dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.access__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.access-note { margin: 0; text-align: center; }

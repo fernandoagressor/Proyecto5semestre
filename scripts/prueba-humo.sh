@@ -185,6 +185,17 @@ if [[ "$PROYECTO_ID" != null ]]; then
   RESERVA_ID="$(cuerpo .reserva.id)"; COMPRADOR_ID="$(cuerpo .cliente.id)"
   [[ "$STATUS" == 201 && "$(cuerpo .reserva.estado)" == PENDIENTE_PAGO ]] && paso "Lote reservado desde el inventario con un cliente nuevo" \
     || falla "Reservar el lote respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  COMPRADOR_USUARIO="$(cuerpo .accesoPortal.nombreUsuario)"; COMPRADOR_CLAVE="$(cuerpo .accesoPortal.passwordTemporal)"
+  if [[ "$COMPRADOR_USUARIO" != null && "$COMPRADOR_CLAVE" != null ]]; then
+    paso "Al reservar, el cliente recibe su acceso al portal (usuario $COMPRADOR_USUARIO, sin correo: su documento)"
+    TOKEN_ADMIN="$TOKEN"; TOKEN=""
+    api POST /api/v1/auth/login "$(jq -n --arg u "$COMPRADOR_USUARIO" --arg p "$COMPRADOR_CLAVE" '{identificador:$u, password:$p}')"
+    [[ "$STATUS" == 200 ]] && paso "El comprador entra al portal con la contraseña temporal" \
+      || falla "El comprador no pudo iniciar sesión (HTTP $STATUS: $(head -c 200 "$TMP/cuerpo"))"
+    TOKEN="$TOKEN_ADMIN"
+  else
+    falla "La reserva no creó el acceso al portal: $(head -c 300 "$TMP/cuerpo")"
+  fi
   api GET "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE_ID"
   [[ "$(cuerpo .estado)" == RESERVADO ]] && paso "El lote queda RESERVADO de inmediato" || falla "El lote quedó en $(cuerpo .estado)"
   api POST /api/v1/ventas/cliente-lote "$(jq -n --argjson p "$PROYECTO_ID" --argjson l "$LOTE_ID" --argjson c "${COMPRADOR_ID:-null}" --arg v "$RES_VENCE" \
@@ -196,6 +207,8 @@ if [[ "$PROYECTO_ID" != null ]]; then
     '{cliente:null, clienteId:$c, proyectoId:$p, loteId:$l, fechaVencimiento:$v, valorReserva:1000000, formaPago:"EFECTIVO"}')"
   [[ "$STATUS" == 201 && "$(cuerpo .cliente.id)" == "$COMPRADOR_ID" ]] && paso "Reserva de otro lote para el mismo cliente, sin volver a crearlo" \
     || falla "Reservar con cliente existente respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  [[ "$(cuerpo .portalExistente)" == true && "$(cuerpo .accesoPortal)" == null ]] && paso "Si ya tiene portal, no se le crea otro acceso" \
+    || falla "Segunda reserva: portalExistente=$(cuerpo .portalExistente) accesoPortal=$(cuerpo .accesoPortal)"
   api PATCH "/api/v1/reservas/$RESERVA_ID/pago/confirmar" '{}'
   [[ "$STATUS" == 200 && "$(cuerpo .estado)" == ACTIVA ]] && paso "Pago de la reserva confirmado: reserva activa" \
     || falla "Confirmar el pago respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"

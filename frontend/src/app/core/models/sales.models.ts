@@ -212,6 +212,6 @@ export interface PortalAccess {
   clienteId: number;
   usuarioId: number;
   nombreUsuario: string;
-  correo: string;
+  correo: string | null;
   passwordTemporal: string;
 }

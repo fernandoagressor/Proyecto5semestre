@@ -1,5 +1,5 @@
 import { Opportunity } from './crm.models';
-import { Customer, CustomerPayload, Reservation } from './sales.models';
+import { Customer, CustomerPayload, PortalAccess, Reservation } from './sales.models';
 
 /** Reservar un lote de una vez: con `clienteId` (ya existe) o con `cliente` (nuevo). */
 export interface CustomerLotFlowPayload {
@@ -16,4 +16,8 @@ export interface CustomerLotFlowResult {
   cliente: Customer;
   oportunidad: Opportunity;
   reserva: Reservation;
+  /** Usuario y contraseña temporal del portal creados al reservar (se muestran una sola vez). */
+  accesoPortal: PortalAccess | null;
+  /** El cliente ya tenía acceso a su portal. */
+  portalExistente: boolean;
 }

@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, finalize, map, Observable, of, switchMap } from 'rxjs';
 
 import { Lot } from '../../core/models/inventory.models';
-import { Customer, Reservation } from '../../core/models/sales.models';
+import { Customer, PortalAccess, Reservation } from '../../core/models/sales.models';
 import { AuthService } from '../../core/services/auth.service';
 import { CustomerLotFlowService } from '../../core/services/customer-lot-flow.service';
 import { SalesService } from '../../core/services/sales.service';
@@ -18,6 +18,10 @@ export interface LotReserved {
   reserva: Reservation;
   cliente: string;
   pagoConfirmado: boolean;
+  /** Acceso al portal creado con esta reserva (usuario y contraseña temporal), si lo hubo. */
+  acceso?: PortalAccess | null;
+  /** El cliente ya tenía su acceso al portal. */
+  portalExistente?: boolean;
   /** Al terminar, seguir de inmediato con el contrato (solo si el pago quedó confirmado). */
   generarContrato?: boolean;
 }
@@ -58,6 +62,7 @@ export class ReserveLotComponent {
   readonly receipt = signal<File | null>(null);
   readonly canConfirmPayment = this.auth.hasAuthority('PAGOS_CONFIRMAR');
   readonly canConvert = this.auth.hasAuthority('RESERVAS_CONVERTIR_CONTRATO');
+  readonly portalUrl = `${window.location.origin}/login`;
 
   readonly customerForm = this.fb.nonNullable.group({
     tipoDocumento: ['CC', Validators.required],
@@ -183,13 +188,17 @@ export class ReserveLotComponent {
         formaPago: conditions.formaPago,
       })
       .pipe(
-        switchMap(({ reserva }) => (confirmNow ? this.confirmPayment(reserva) : of({ reserva, pagoConfirmado: false }))),
+        switchMap(({ reserva, accesoPortal, portalExistente }) =>
+          (confirmNow ? this.confirmPayment(reserva) : of({ reserva, pagoConfirmado: false })).pipe(
+            map((r) => ({ ...r, acceso: accesoPortal, portalExistente })),
+          ),
+        ),
         finalize(() => this.busy.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: ({ reserva, pagoConfirmado }) => {
-          this.result.set({ reserva, cliente: name, pagoConfirmado });
+        next: ({ reserva, pagoConfirmado, acceso, portalExistente }) => {
+          this.result.set({ reserva, cliente: name, pagoConfirmado, acceso, portalExistente });
           this.step.set(3);
         },
         error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo reservar el lote.')),
@@ -198,6 +207,29 @@ export class ReserveLotComponent {
 
   close(): void {
     this.done.emit(this.result());
+  }
+
+  readonly copied = signal(false);
+
+  /** Mensaje para entregar el acceso al cliente (copiar o WhatsApp). */
+  accessMessage(acceso: PortalAccess): string {
+    return `Hola ${this.result()?.cliente ?? ''}. Ya puedes ver tu compra en el portal de clientes: ${window.location.origin}/login\n`
+      + `Usuario: ${acceso.nombreUsuario}\nContraseña temporal: ${acceso.passwordTemporal}\n`
+      + 'Al entrar te pedirá crear tu propia contraseña.';
+  }
+
+  copyAccess(acceso: PortalAccess): void {
+    navigator.clipboard?.writeText(this.accessMessage(acceso)).then(
+      () => this.copied.set(true),
+      () => this.copied.set(false),
+    );
+  }
+
+  whatsappLink(acceso: PortalAccess): string | null {
+    const digits = (this.customerForm.getRawValue().telefono || this.existing()?.telefono || '').replace(/\D/g, '');
+    if (!digits) return null;
+    const phone = digits.length === 10 ? '57' + digits : digits;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(this.accessMessage(acceso))}`;
   }
 
   /** Cierra la reserva y abre "Generar contrato" con esta misma reserva. */
