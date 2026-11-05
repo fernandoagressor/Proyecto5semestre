@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, map, merge, Observable, of, switchMap } from 'rxjs';
 
@@ -19,12 +19,14 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
-import { apiErrorMessage, NX_UI } from '../../shared/ui';
+import { aplicarErroresDelServidor, apiErrorMessage, NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { LotConsecutive, nextLotConsecutive } from './lot-consecutive';
 
 type InventoryView = 'lotes' | 'estructura';
-type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | null;
+type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | 'cantidad' | null;
+/** Qué se genera con el diálogo de cantidad: manzanas de una etapa o lotes de una manzana. */
+type QuantityTarget = { mode: 'manzanas'; stage: ProjectStage } | { mode: 'lotes'; stage: ProjectStage; block: Block };
 
 @Component({
   selector: 'app-inventory-page',
@@ -91,6 +93,31 @@ export class InventoryPage {
   readonly submitting = signal(false);
   readonly error = signal(false);
   readonly feedback = signal('');
+  /** Error del último guardado, dentro del panel abierto (para no tener que cerrarlo para leerlo). */
+  readonly formError = signal('');
+  /** Destino del diálogo "¿cuántas manzanas / cuántos lotes?". */
+  readonly quantityTarget = signal<QuantityTarget | null>(null);
+  readonly canGenerateLots = this.auth.hasAuthority('LOTES_CREAR');
+  readonly canEditLots = this.auth.hasAuthority('LOTES_EDITAR');
+  /** Lotes de cada manzana (todos y por completar), con todos los lotes del proyecto. */
+  readonly lotCountByBlock = computed(() => {
+    const counts = new Map<number, { total: number; pendientes: number }>();
+    for (const lot of this.allLots()) {
+      const c = counts.get(lot.manzanaId) ?? { total: 0, pendientes: 0 };
+      c.total++;
+      if (lot.estado === 'PENDIENTE') c.pendientes++;
+      counts.set(lot.manzanaId, c);
+    }
+    return counts;
+  });
+  /** Siguiente lote por completar de la misma manzana (para "Guardar y seguir"). */
+  readonly nextPendingLot = computed(() => {
+    const current = this.editingLot();
+    if (!current) return null;
+    return this.allLots()
+      .filter((lot) => lot.manzanaId === current.manzanaId && lot.estado === 'PENDIENTE' && lot.id !== current.id)
+      .sort((a, b) => a.numero.localeCompare(b.numero, 'es', { numeric: true }))[0] ?? null;
+  });
 
   readonly search = new FormControl('', { nonNullable: true });
   /** Rango de precio de lista; el API ya filtra por valor mínimo y máximo. */
@@ -106,27 +133,35 @@ export class InventoryPage {
     manzanaId: [0, [Validators.required, Validators.min(1)]],
     codigo: ['', [Validators.required, Validators.maxLength(50)]],
     numero: ['', [Validators.required, Validators.maxLength(30)]],
-    areaM2: [0, [Validators.required, Validators.min(0.01)]],
-    frenteM: [0],
-    fondoM: [0],
-    valorLista: [0, [Validators.required, Validators.min(0)]],
+    areaM2: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01)]),
+    frenteM: [0, Validators.min(0)],
+    fondoM: [0, Validators.min(0)],
+    valorLista: this.fb.control<number | null>(null, [Validators.required, Validators.min(0)]),
     ubicacionReferencia: ['', Validators.maxLength(300)],
     descripcion: ['', Validators.maxLength(10000)],
   });
   readonly stageForm = this.fb.nonNullable.group({
-    codigo: ['', [Validators.required, Validators.maxLength(30)]],
+    codigo: ['', Validators.maxLength(30)],
     nombre: ['', [Validators.required, Validators.maxLength(120)]],
-    secuencia: [1, [Validators.required, Validators.min(1)]],
     fechaInicio: [''],
     fechaFin: [''],
     estado: ['ACTIVA' as StageStatus, Validators.required],
-  });
+    cantidadManzanas: [10, [Validators.min(0), Validators.max(100)]],
+  }, { validators: (group: AbstractControl) => {
+    const inicio = group.get('fechaInicio')?.value;
+    const fin = group.get('fechaFin')?.value;
+    const error = inicio && fin && fin < inicio ? { server: 'El cierre no puede ser antes del inicio.' } : null;
+    group.get('fechaFin')?.setErrors(error);
+    return null;
+  } });
   readonly blockForm = this.fb.nonNullable.group({
     etapaId: [0, [Validators.required, Validators.min(1)]],
     codigo: ['', [Validators.required, Validators.maxLength(30)]],
     nombre: ['', [Validators.required, Validators.maxLength(120)]],
-    secuencia: [1, [Validators.required, Validators.min(1)]],
     estado: ['ACTIVA' as StageStatus, Validators.required],
+  });
+  readonly quantityForm = this.fb.nonNullable.group({
+    cantidad: [20, [Validators.required, Validators.min(1), Validators.max(500)]],
   });
   readonly priceForm = this.fb.nonNullable.group({
     valor: [0, [Validators.required, Validators.min(0)]],
@@ -269,7 +304,7 @@ export class InventoryPage {
     this.lotForm.reset({
       etapaId: this.stageFilter() ?? 0,
       manzanaId: this.blockFilter() ?? 0,
-      codigo: '', numero: '', areaM2: 0, frenteM: 0, fondoM: 0, valorLista: 0,
+      codigo: '', numero: '', areaM2: null, frenteM: 0, fondoM: 0, valorLista: null,
       ubicacionReferencia: '', descripcion: '',
     });
     if (this.lotForm.controls.etapaId.value) this.loadBlocks(this.lotForm.controls.etapaId.value);
@@ -311,10 +346,10 @@ export class InventoryPage {
       manzanaId: lot.manzanaId,
       codigo: lot.codigo,
       numero: lot.numero,
-      areaM2: Number(lot.areaM2),
+      areaM2: lot.areaM2 == null ? null : Number(lot.areaM2),
       frenteM: Number(lot.frenteM ?? 0),
       fondoM: Number(lot.fondoM ?? 0),
-      valorLista: Number(lot.valorLista),
+      valorLista: lot.valorLista == null ? null : Number(lot.valorLista),
       ubicacionReferencia: lot.ubicacionReferencia ?? '',
       descripcion: lot.descripcion ?? '',
     });
@@ -324,34 +359,101 @@ export class InventoryPage {
 
   openCreateStage(): void {
     this.editingStage.set(null);
-    this.stageForm.reset({ codigo: '', nombre: '', secuencia: this.stages().length + 1, fechaInicio: '', fechaFin: '', estado: 'ACTIVA' });
+    this.stageForm.reset({ codigo: '', nombre: `Etapa ${this.stages().length + 1}`, fechaInicio: '', fechaFin: '', estado: 'ACTIVA', cantidadManzanas: 10 });
     this.panel.set('etapa');
+  }
+
+  /** Código que tendrá la etapa nueva si no se escribe uno (el backend lo confirma). */
+  nextStageCode(): string {
+    const max = Math.max(0, ...this.stages().map((stage) => stage.secuencia));
+    return `E${String(max + 1).padStart(2, '0')}`;
   }
 
   openEditStage(stage: ProjectStage): void {
     this.editingStage.set(stage);
     this.stageForm.reset({
-      codigo: stage.codigo, nombre: stage.nombre, secuencia: stage.secuencia,
-      fechaInicio: stage.fechaInicio ?? '', fechaFin: stage.fechaFin ?? '', estado: stage.estado,
+      codigo: stage.codigo, nombre: stage.nombre,
+      fechaInicio: stage.fechaInicio ?? '', fechaFin: stage.fechaFin ?? '', estado: stage.estado, cantidadManzanas: 0,
     });
     this.panel.set('etapa');
   }
 
+  /** "+ Manzanas": pregunta cuántas agregar a la etapa. */
   openCreateBlock(stageId?: number): void {
-    this.editingBlock.set(null);
-    const id = stageId ?? this.stageFilter() ?? this.stages()[0]?.id ?? 0;
-    this.blockForm.reset({ etapaId: id, codigo: '', nombre: '', secuencia: this.blocks().length + 1, estado: 'ACTIVA' });
-    this.panel.set('manzana');
+    const stage = this.stages().find((s) => s.id === (stageId ?? this.stageFilter()));
+    if (!stage) return;
+    this.quantityTarget.set({ mode: 'manzanas', stage });
+    this.quantityForm.reset({ cantidad: 5 });
+    this.panel.set('cantidad');
+  }
+
+  /** Pregunta cuántos lotes crear en la manzana. */
+  openGenerateLots(block: Block): void {
+    const stage = this.stages().find((s) => s.id === block.etapaId);
+    if (!stage || !this.canGenerateLots) return;
+    this.quantityTarget.set({ mode: 'lotes', stage, block });
+    this.quantityForm.reset({ cantidad: 20 });
+    this.panel.set('cantidad');
+  }
+
+  /**
+   * Elegir una manzana muestra sus lotes; si todavía no tiene, pregunta de una vez cuántos crear.
+   */
+  selectBlock(block: Block): void {
+    this.changeBlockFilter(`${block.id}`);
+    if (!this.lotCountByBlock().get(block.id)?.total) this.openGenerateLots(block);
+  }
+
+  stageCodeOf(block: Block): string {
+    return this.stages().find((stage) => stage.id === block.etapaId)?.codigo ?? '';
+  }
+
+  lotsInBlock(blockId: number): number {
+    return this.lotCountByBlock().get(blockId)?.total ?? 0;
+  }
+
+  pendingInBlock(blockId: number): number {
+    return this.lotCountByBlock().get(blockId)?.pendientes ?? 0;
+  }
+
+  submitQuantity(): void {
+    const projectId = this.selectedProjectId();
+    const target = this.quantityTarget();
+    if (!projectId || !target || this.quantityForm.invalid || this.submitting()) {
+      this.quantityForm.markAllAsTouched();
+      return;
+    }
+    const cantidad = this.quantityForm.getRawValue().cantidad;
+    if (target.mode === 'manzanas') {
+      this.runMutation(
+        this.inventory.generateBlocks(projectId, target.stage.id, cantidad),
+        (blocks: Block[]) => `Se agregaron ${blocks.length} manzanas a ${target.stage.nombre} (${blocks[0]?.codigo} a ${blocks[blocks.length - 1]?.codigo}). Elige una para crear sus lotes.`,
+        () => this.changeStageFilter(`${target.stage.id}`),
+        this.quantityForm,
+      );
+      return;
+    }
+    this.runMutation(
+      this.inventory.generateLots(projectId, target.stage.id, target.block.id, cantidad),
+      (lots: Lot[]) => `Se crearon ${lots.length} lotes en ${target.block.nombre} (${lots[0]?.codigo} a ${lots[lots.length - 1]?.codigo}). Toca cada lote para ponerle medidas y precio.`,
+      () => {
+        this.stageFilter.set(target.stage.id);
+        this.blockFilter.set(target.block.id);
+        this.loadBlocks(target.stage.id);
+      },
+      this.quantityForm,
+    );
   }
 
   openEditBlock(block: Block): void {
     this.editingBlock.set(block);
-    this.blockForm.reset({ etapaId: block.etapaId, codigo: block.codigo, nombre: block.nombre, secuencia: block.secuencia, estado: block.estado });
+    this.blockForm.reset({ etapaId: block.etapaId, codigo: block.codigo, nombre: block.nombre, estado: block.estado });
     this.panel.set('manzana');
   }
 
   closePanel(): void {
     this.panel.set(null);
+    this.quantityTarget.set(null);
     this.selectedLot.set(null);
     this.editingLot.set(null);
     this.stateHistory.set([]);
@@ -369,6 +471,10 @@ export class InventoryPage {
   showLot(lot: Lot): void {
     const projectId = this.selectedProjectId();
     if (!projectId) return;
+    if (lot.estado === 'PENDIENTE' && this.canEditLots) {
+      this.openEditLot(lot);
+      return;
+    }
     this.selectedLot.set(lot);
     this.panel.set('detalle');
     this.priceForm.reset({ valor: Number(lot.valorLista), motivo: '' });
@@ -384,7 +490,8 @@ export class InventoryPage {
       });
   }
 
-  submitLot(): void {
+  /** Guarda el lote; con `andNext` abre el siguiente lote por completar de la misma manzana. */
+  submitLot(andNext = false): void {
     const projectId = this.selectedProjectId();
     if (!projectId || this.lotForm.invalid || this.submitting()) {
       this.lotForm.markAllAsTouched();
@@ -394,7 +501,7 @@ export class InventoryPage {
     const details = {
       codigo: value.codigo.trim(),
       numero: value.numero.trim(),
-      areaM2: Number(value.areaM2),
+      areaM2: value.areaM2 == null ? null : Number(value.areaM2),
       frenteM: value.frenteM || null,
       fondoM: value.fondoM || null,
       ubicacionReferencia: value.ubicacionReferencia.trim() || null,
@@ -403,9 +510,15 @@ export class InventoryPage {
     const editing = this.editingLot();
 
     if (editing) {
+      const next = andNext ? this.nextPendingLot() : null;
+      const wasPending = editing.estado === 'PENDIENTE';
       this.runMutation(
-        this.inventory.updateLot(projectId, editing.id, details),
-        'Lote actualizado correctamente.',
+        this.inventory.updateLot(projectId, editing.id, { ...details, valorLista: value.valorLista == null ? null : Number(value.valorLista) }),
+        (lot: Lot) => wasPending && lot.estado === 'DISPONIBLE'
+          ? `Lote ${lot.codigo} completo: ya está disponible para la venta.`
+          : `Lote ${lot.codigo} actualizado.`,
+        () => { if (next) this.openEditLot(next); },
+        this.lotForm,
       );
       return;
     }
@@ -413,11 +526,14 @@ export class InventoryPage {
     this.runMutation(
       this.inventory.createLot(projectId, {
         ...details,
+        areaM2: Number(value.areaM2),
         etapaId: value.etapaId,
         manzanaId: value.manzanaId,
         valorLista: Number(value.valorLista),
       }),
       'Lote creado correctamente.',
+      undefined,
+      this.lotForm,
     );
   }
 
@@ -428,11 +544,23 @@ export class InventoryPage {
       return;
     }
     const value = this.stageForm.getRawValue();
-    const payload = { ...value, fechaInicio: value.fechaInicio || null, fechaFin: value.fechaFin || null };
     const editing = this.editingStage();
+    const payload = {
+      codigo: value.codigo.trim() || null,
+      nombre: value.nombre.trim(),
+      secuencia: editing?.secuencia ?? null,
+      fechaInicio: value.fechaInicio || null,
+      fechaFin: value.fechaFin || null,
+      estado: value.estado,
+      cantidadManzanas: editing ? null : Number(value.cantidadManzanas) || 0,
+    };
     this.runMutation(
       editing ? this.inventory.updateStage(projectId, editing.id, payload) : this.inventory.createStage(projectId, payload),
-      editing ? 'Etapa actualizada correctamente.' : 'Etapa creada correctamente.',
+      (stage: ProjectStage) => editing
+        ? `Etapa ${stage.nombre} actualizada.`
+        : `Etapa ${stage.nombre} (${stage.codigo}) creada${payload.cantidadManzanas ? ` con ${payload.cantidadManzanas} manzanas. Elige una manzana para crear sus lotes.` : '.'}`,
+      (stage: ProjectStage) => this.changeStageFilter(`${stage.id}`),
+      this.stageForm,
     );
   }
 
@@ -442,13 +570,16 @@ export class InventoryPage {
       this.blockForm.markAllAsTouched();
       return;
     }
-    const { etapaId, ...payload } = this.blockForm.getRawValue();
+    const { etapaId, ...value } = this.blockForm.getRawValue();
     const editing = this.editingBlock();
+    const payload = { ...value, codigo: value.codigo.trim() || null, nombre: value.nombre.trim(), secuencia: editing?.secuencia ?? null };
     this.runMutation(
       editing
         ? this.inventory.updateBlock(projectId, editing.etapaId, editing.id, payload)
         : this.inventory.createBlock(projectId, etapaId, payload),
       editing ? 'Manzana actualizada correctamente.' : 'Manzana creada correctamente.',
+      undefined,
+      this.blockForm,
     );
   }
 
@@ -509,6 +640,7 @@ export class InventoryPage {
   }
 
   statusLabel(status: string): string {
+    if (status === 'PENDIENTE') return 'Por completar';
     return status.replaceAll('_', ' ').toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
   }
 
@@ -548,6 +680,10 @@ export class InventoryPage {
         const selected = page.contenido.some((project) => project.id === requested) ? requested : page.contenido[0]?.id;
         this.selectedProjectId.set(selected ?? null);
         if (selected) this.loadProject();
+        if (selected && this.route.snapshot.queryParamMap.get('accion') === 'nueva-etapa' && this.auth.hasAuthority('ETAPAS_GESTIONAR')) {
+          this.openCreateStage();
+          void this.router.navigate([], { relativeTo: this.route, queryParams: { accion: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        }
       });
   }
 
@@ -611,21 +747,37 @@ export class InventoryPage {
       .subscribe((blocks) => this.blocks.set(blocks));
   }
 
-  private runMutation(request: Observable<unknown>, message: string): void {
+  /**
+   * Ejecuta un guardado: cierra el panel, recarga el proyecto y muestra el resultado. Si la API
+   * rechaza los datos, deja el panel abierto, marca los campos con su error y muestra el motivo.
+   */
+  private runMutation<T>(
+    request: Observable<T>,
+    message: string | ((result: T) => string),
+    onDone?: (result: T) => void,
+    form?: AbstractControl,
+  ): void {
     this.submitting.set(true);
     this.feedback.set('');
+    this.formError.set('');
     request
       .pipe(
         finalize(() => this.submitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
-          this.feedback.set(message);
+        next: (result) => {
+          this.feedback.set(typeof message === 'function' ? message(result) : message);
           this.closePanel();
           this.loadProject();
+          onDone?.(result);
         },
-        error: (e) => this.feedback.set(apiErrorMessage(e)),
+        error: (e) => {
+          if (form) aplicarErroresDelServidor(form, e);
+          const text = apiErrorMessage(e);
+          if (this.panel()) this.formError.set(text);
+          else this.feedback.set(text);
+        },
       });
   }
 }

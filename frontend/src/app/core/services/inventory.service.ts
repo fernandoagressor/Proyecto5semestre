@@ -50,6 +50,19 @@ export class InventoryService {
     return this.http.put<Block>(`${this.projectUrl(projectId)}/etapas/${stageId}/manzanas/${blockId}`, payload);
   }
 
+  /** Agrega `cantidad` manzanas con código automático a la etapa. */
+  generateBlocks(projectId: number, stageId: number, cantidad: number): Observable<Block[]> {
+    return this.http.post<Block[]>(`${this.projectUrl(projectId)}/etapas/${stageId}/manzanas/generar`, { cantidad });
+  }
+
+  /** Crea `cantidad` lotes por completar (sin medidas ni precio) en la manzana. */
+  generateLots(projectId: number, stageId: number, blockId: number, cantidad: number): Observable<Lot[]> {
+    return this.http.post<Lot[]>(
+      `${this.projectUrl(projectId)}/etapas/${stageId}/manzanas/${blockId}/lotes/generar`,
+      { cantidad },
+    );
+  }
+
   listLots(options: {
     projectId: number;
     state?: string;

@@ -44,6 +44,7 @@
 .stat--value:active { transform: none; }
 i.free, i.res, i.sold, i.blocked { width: 10px; height: 10px; flex: none; border-radius: 3px; }
 i.free { background: var(--free); } i.res { background: var(--res); } i.sold { background: var(--sold); } i.blocked { background: var(--blocked); }
+i.pending { width: 10px; height: 10px; flex: none; border: 1.5px dashed var(--text-subtle); border-radius: 3px; }
 
 /* ---------- Estructura y lotes ---------- */
 .layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -98,6 +99,9 @@ i.free { background: var(--free); } i.res { background: var(--res); } i.sold { b
 .lot[data-state='RESERVADO'] { color: var(--res-ink); background: var(--res); }
 .lot[data-state='VENDIDO'] { color: var(--sold-ink); background: var(--sold); }
 .lot[data-state='BLOQUEADO'] { color: var(--blocked-ink); background: var(--blocked); }
+/* Por completar: generado en bloque, sin medidas o precio. */
+.lot[data-state='PENDIENTE'] { color: var(--text-muted); background: var(--surface-card); border: 1.5px dashed var(--border-medium); }
+.lot[data-state='PENDIENTE']:hover { color: var(--color-primary-strong); border-color: var(--color-primary); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--text-muted); font-size: 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--text-muted); font-size: 13px; }
@@ -159,3 +163,9 @@ i.free { background: var(--free); } i.res { background: var(--res); } i.sold { b
 @media (prefers-reduced-motion: reduce) {
   .lot:hover { transform: none; }
 }
+
+.block small { margin-left: 4px; padding: 0 6px; border-radius: 999px; color: var(--text-subtle); background: var(--surface-muted); font-size: 11px; }
+.block.empty { border-style: dashed; }
+.block.empty small { color: var(--color-primary-strong); background: var(--color-primary-soft); }
+.first-step { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px dashed var(--border-medium); border-radius: 12px; background: var(--surface-muted); }
+.first-step p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.45; }
