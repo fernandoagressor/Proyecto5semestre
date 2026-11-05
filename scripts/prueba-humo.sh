@@ -171,7 +171,7 @@ if [[ "$PROYECTO_ID" != null ]]; then
   [[ "$STATUS" == 422 ]] && grep -q "puedes crear 7" "$TMP/cuerpo" && paso "Respeta el máximo de lotes del proyecto (10)" \
     || falla "Pasar el máximo de lotes respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
   api PUT "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE_ID" '{"codigo":"E01-M01-L01","numero":"1","frenteM":8,"fondoM":15,"valorLista":54000000}'
-  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == DISPONIBLE && "$(cuerpo .areaM2)" == 120 ]] \
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == DISPONIBLE ]] && jq -e '.areaM2 == 120' "$TMP/cuerpo" > /dev/null \
     && paso "Al poner medidas y precio el lote queda disponible (120 m²)" || falla "Completar lote respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
   api GET "/api/v1/proyectos/$PROYECTO_ID/inventario/resumen"
   [[ "$STATUS" == 200 && "$(cuerpo .pendientes)" == 2 && "$(cuerpo .disponibles)" == 1 ]] && paso "Resumen: 1 disponible y 2 por completar" \
