@@ -5,6 +5,7 @@ el frontend, Caddy con HTTPS, el monitoreo (Prometheus y Grafana) y los respaldo
 Es el mismo `compose.prod.yaml` de [DESPLIEGUE_AWS.md](DESPLIEGUE_AWS.md), con la capacidad de
 [`deploy/capacidad-4gb.env`](../deploy/capacidad-4gb.env). El CI levanta el stack de producción
 con ese perfil y falla si los contenedores pasan de 3000 MiB o si alguno se cierra por memoria.
+En la primera corrida, después de la prueba de humo, todo el stack usó 1279 MiB de 4096.
 
 ## Costo mensual
 
@@ -137,7 +138,7 @@ cd /opt/nexora
 docker compose ps                                # todo healthy
 BASE_URL=https://<DOMINIO> ADMIN_USUARIO=SUPERADMIN ADMIN_PASSWORD='<contraseña>' COMPOSE=1 \
   bash scripts/prueba-humo.sh                    # "Prueba de humo superada"
-docker stats --no-stream                         # suma de MEM USAGE cerca de 2,5 GiB
+docker stats --no-stream                         # suma de MEM USAGE entre 1,5 y 2,5 GiB
 free -h                                          # swap casi sin usar
 bash deploy/probar-restauracion.sh               # "Prueba de restauración superada"
 ```

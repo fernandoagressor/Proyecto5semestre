@@ -130,7 +130,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128m
+          memory: ${MONGO_EXPORTER_MEMORIA:-192m}
     logging: *logging
 
   redis-exporter:
