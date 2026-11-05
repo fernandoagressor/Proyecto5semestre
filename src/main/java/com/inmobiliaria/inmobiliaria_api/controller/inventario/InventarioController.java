@@ -5,6 +5,7 @@ import com.inmobiliaria.inmobiliaria_api.dto.inventario.CambioEstadoLoteRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.CambioPrecioLoteRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.EtapaRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.EtapaResponse;
+import com.inmobiliaria.inmobiliaria_api.dto.inventario.GenerarRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.HistorialEstadoLoteResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.HistorialPrecioLoteResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.InventarioResumenResponse;
@@ -58,7 +59,10 @@ public class InventarioController {
 
     @PostMapping("/etapas")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('ETAPAS_GESTIONAR')")
+    @PreAuthorize("""
+            hasAuthority('ETAPAS_GESTIONAR') and (#request.cantidadManzanas() == null
+                or #request.cantidadManzanas() == 0 or hasAuthority('MANZANAS_GESTIONAR'))
+            """)
     public EtapaResponse crearEtapa(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long proyectoId,
@@ -134,6 +138,33 @@ public class InventarioController {
                 manzanaId,
                 request
         );
+    }
+
+    /** Agrega {@code cantidad} manzanas con código automático a la etapa. */
+    @PostMapping("/etapas/{etapaId}/manzanas/generar")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('MANZANAS_GESTIONAR')")
+    public List<ManzanaResponse> generarManzanas(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long proyectoId,
+            @PathVariable Long etapaId,
+            @Valid @RequestBody GenerarRequest request
+    ) {
+        return inventarioService.generarManzanas(ContextoUsuario.empresa(jwt), proyectoId, etapaId, request);
+    }
+
+    /** Crea {@code cantidad} lotes por completar (sin medidas ni precio) en la manzana. */
+    @PostMapping("/etapas/{etapaId}/manzanas/{manzanaId}/lotes/generar")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('LOTES_CREAR')")
+    public List<LoteResponse> generarLotes(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long proyectoId,
+            @PathVariable Long etapaId,
+            @PathVariable Long manzanaId,
+            @Valid @RequestBody GenerarRequest request
+    ) {
+        return inventarioService.generarLotes(ContextoUsuario.empresa(jwt), proyectoId, etapaId, manzanaId, request);
     }
 
     @GetMapping("/lotes")

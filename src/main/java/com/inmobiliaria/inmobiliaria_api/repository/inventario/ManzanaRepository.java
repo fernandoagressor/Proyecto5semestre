@@ -4,6 +4,8 @@ import com.inmobiliaria.inmobiliaria_api.entity.inventario.Manzana;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ManzanaRepository extends JpaRepository<Manzana, Long> {
 
@@ -33,4 +35,10 @@ public interface ManzanaRepository extends JpaRepository<Manzana, Long> {
             String codigo,
             Long id
     );
+
+    @Query("select coalesce(max(m.secuencia), 0) from Manzana m where m.etapaId = :etapaId")
+    int maxSecuencia(@Param("etapaId") Long etapaId);
+
+    @Query("select upper(m.codigo) from Manzana m where m.etapaId = :etapaId")
+    List<String> codigosDeEtapa(@Param("etapaId") Long etapaId);
 }

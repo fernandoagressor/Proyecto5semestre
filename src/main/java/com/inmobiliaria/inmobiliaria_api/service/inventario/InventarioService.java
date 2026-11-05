@@ -5,6 +5,7 @@ import com.inmobiliaria.inmobiliaria_api.dto.inventario.CambioEstadoLoteRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.CambioPrecioLoteRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.EtapaRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.EtapaResponse;
+import com.inmobiliaria.inmobiliaria_api.dto.inventario.GenerarRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.HistorialEstadoLoteResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.HistorialPrecioLoteResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.inventario.InventarioResumenResponse;
@@ -34,10 +35,14 @@ import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoE
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -56,6 +61,7 @@ public class InventarioService {
     private final LoteRepository loteRepository;
     private final LotePrecioHistorialRepository precioRepository;
     private final LoteHistorialEstadoRepository estadoRepository;
+    private final InventarioAvisos avisos;
 
     public InventarioService(
             ProyectoService proyectoService,
@@ -63,7 +69,8 @@ public class InventarioService {
             ManzanaRepository manzanaRepository,
             LoteRepository loteRepository,
             LotePrecioHistorialRepository precioRepository,
-            LoteHistorialEstadoRepository estadoRepository
+            LoteHistorialEstadoRepository estadoRepository,
+            InventarioAvisos avisos
     ) {
         this.proyectoService = proyectoService;
         this.etapaRepository = etapaRepository;
@@ -71,6 +78,7 @@ public class InventarioService {
         this.loteRepository = loteRepository;
         this.precioRepository = precioRepository;
         this.estadoRepository = estadoRepository;
+        this.avisos = avisos;
     }
 
     @Transactional(readOnly = true)
@@ -89,6 +97,10 @@ public class InventarioService {
                 .toList();
     }
 
+    /**
+     * Crea la etapa con código y secuencia automáticos si no llegan (E01, E02…) y, si se pide,
+     * sus manzanas de una vez (M01…Mnn), todo en la misma transacción.
+     */
     @Transactional
     public EtapaResponse crearEtapa(
             ContextoUsuario contexto,
@@ -97,22 +109,17 @@ public class InventarioService {
     ) {
         Proyecto proyecto = proyectoService.obtenerAutorizado(contexto, proyectoId);
         verificarProyectoOperable(proyecto);
-        String codigo = codigo(request.codigo());
-        if (etapaRepository.existsByProyectoIdAndCodigoIgnoreCase(
-                proyectoId,
-                codigo
-        )) {
-            throw new ConflictoException(
-                    "Ya existe una etapa con el código indicado"
-            );
+        int secuencia = request.secuencia() != null
+                ? request.secuencia()
+                : etapaRepository.maxSecuencia(proyectoId) + 1;
+        if (etapaRepository.existsByProyectoIdAndSecuencia(proyectoId, secuencia)) {
+            throw new ConflictoException("Ya existe una etapa con la secuencia indicada");
         }
-        if (etapaRepository.existsByProyectoIdAndSecuencia(
-                proyectoId,
-                request.secuencia()
-        )) {
-            throw new ConflictoException(
-                    "Ya existe una etapa con la secuencia indicada"
-            );
+        String codigo = vacio(request.codigo())
+                ? codigoEtapaLibre(proyectoId, secuencia)
+                : codigo(request.codigo());
+        if (etapaRepository.existsByProyectoIdAndCodigoIgnoreCase(proyectoId, codigo)) {
+            throw new ConflictoException("Ya existe una etapa con el código " + codigo);
         }
         EstadoEtapa estado = request.estado() == null
                 ? EstadoEtapa.ACTIVA
@@ -122,19 +129,29 @@ public class InventarioService {
                 proyectoId,
                 codigo,
                 requerido(request.nombre()),
-                request.secuencia(),
+                secuencia,
                 request.fechaInicio(),
                 request.fechaFin()
         );
         etapa.actualizar(
                 codigo,
                 requerido(request.nombre()),
-                request.secuencia(),
+                secuencia,
                 request.fechaInicio(),
                 request.fechaFin(),
                 estado
         );
-        return EtapaResponse.from(etapaRepository.save(etapa));
+        etapa = etapaRepository.save(etapa);
+        int cantidad = request.cantidadManzanas() == null ? 0 : request.cantidadManzanas();
+        List<Manzana> manzanas = cantidad > 0
+                ? crearManzanasAutomaticas(contexto, etapa, cantidad)
+                : List.of();
+        avisos.registrar(contexto, proyecto, "ETAPA_CREADA", "ETAPA", etapa.getId(),
+                "Etapa " + etapa.getNombre() + " creada",
+                "creó la etapa " + etapa.getNombre() + " (" + codigo + ")"
+                        + (manzanas.isEmpty() ? "" : " con " + manzanas.size() + " manzanas " + rango(manzanas)),
+                null, datosEtapa(etapa));
+        return EtapaResponse.from(etapa);
     }
 
     @Transactional
@@ -150,19 +167,21 @@ public class InventarioService {
         );
         verificarProyectoOperable(proyecto);
         EtapaProyecto etapa = etapa(contexto, proyectoId, etapaId);
-        String codigo = codigo(request.codigo());
+        Map<String, Object> antes = datosEtapa(etapa);
+        String codigo = vacio(request.codigo()) ? etapa.getCodigo() : codigo(request.codigo());
+        int secuencia = request.secuencia() == null ? etapa.getSecuencia() : request.secuencia();
         if (etapaRepository.existsByProyectoIdAndCodigoIgnoreCaseAndIdNot(
                 proyectoId,
                 codigo,
                 etapaId
         )) {
             throw new ConflictoException(
-                    "Ya existe una etapa con el código indicado"
+                    "Ya existe una etapa con el código " + codigo
             );
         }
         if (etapaRepository.existsByProyectoIdAndSecuenciaAndIdNot(
                 proyectoId,
-                request.secuencia(),
+                secuencia,
                 etapaId
         )) {
             throw new ConflictoException(
@@ -172,11 +191,18 @@ public class InventarioService {
         etapa.actualizar(
                 codigo,
                 requerido(request.nombre()),
-                request.secuencia(),
+                secuencia,
                 request.fechaInicio(),
                 request.fechaFin(),
                 request.estado() == null ? etapa.getEstado() : request.estado()
         );
+        Map<String, Object> despues = datosEtapa(etapa);
+        if (!antes.equals(despues)) {
+            avisos.registrar(contexto, proyecto, "ETAPA_EDITADA", "ETAPA", etapa.getId(),
+                    "Etapa " + etapa.getNombre() + " actualizada",
+                    "actualizó la etapa " + etapa.getNombre() + " (" + cambios(antes, despues) + ")",
+                    antes, despues);
+        }
         return EtapaResponse.from(etapa);
     }
 
@@ -214,13 +240,18 @@ public class InventarioService {
                     "Solo se pueden agregar manzanas a una etapa activa"
             );
         }
-        String codigo = codigo(request.codigo());
+        int secuencia = request.secuencia() != null
+                ? request.secuencia()
+                : manzanaRepository.maxSecuencia(etapaId) + 1;
+        String codigo = vacio(request.codigo())
+                ? siguienteCodigo("M", secuencia, new HashSet<>(manzanaRepository.codigosDeEtapa(etapaId)))
+                : codigo(request.codigo());
         if (manzanaRepository.existsByEtapaIdAndCodigoIgnoreCase(
                 etapaId,
                 codigo
         )) {
             throw new ConflictoException(
-                    "Ya existe una manzana con el código indicado"
+                    "Ya existe una manzana con el código " + codigo + " en esta etapa"
             );
         }
         Manzana manzana = new Manzana(
@@ -229,17 +260,22 @@ public class InventarioService {
                 etapaId,
                 codigo,
                 requerido(request.nombre()),
-                request.secuencia()
+                secuencia
         );
         if (request.estado() != null) {
             manzana.actualizar(
                     codigo,
                     requerido(request.nombre()),
-                    request.secuencia(),
+                    secuencia,
                     request.estado()
             );
         }
-        return ManzanaResponse.from(manzanaRepository.save(manzana));
+        manzana = manzanaRepository.save(manzana);
+        avisos.registrar(contexto, proyecto, "MANZANA_CREADA", "MANZANA", manzana.getId(),
+                manzana.getNombre() + " creada",
+                "creó la manzana " + manzana.getNombre() + " (" + codigo + ") en la etapa " + etapa.getNombre(),
+                null, datosManzana(manzana));
+        return ManzanaResponse.from(manzana);
     }
 
     @Transactional
@@ -257,23 +293,124 @@ public class InventarioService {
         verificarProyectoOperable(proyecto);
         etapa(contexto, proyectoId, etapaId);
         Manzana manzana = manzana(contexto, proyectoId, etapaId, manzanaId);
-        String codigo = codigo(request.codigo());
+        Map<String, Object> antes = datosManzana(manzana);
+        String codigo = vacio(request.codigo()) ? manzana.getCodigo() : codigo(request.codigo());
+        int secuencia = request.secuencia() == null ? manzana.getSecuencia() : request.secuencia();
         if (manzanaRepository.existsByEtapaIdAndCodigoIgnoreCaseAndIdNot(
                 etapaId,
                 codigo,
                 manzanaId
         )) {
             throw new ConflictoException(
-                    "Ya existe una manzana con el código indicado"
+                    "Ya existe una manzana con el código " + codigo + " en esta etapa"
             );
         }
         manzana.actualizar(
                 codigo,
                 requerido(request.nombre()),
-                request.secuencia(),
+                secuencia,
                 request.estado() == null ? manzana.getEstado() : request.estado()
         );
+        Map<String, Object> despues = datosManzana(manzana);
+        if (!antes.equals(despues)) {
+            avisos.registrar(contexto, proyecto, "MANZANA_EDITADA", "MANZANA", manzana.getId(),
+                    manzana.getNombre() + " actualizada",
+                    "actualizó la manzana " + manzana.getNombre() + " (" + cambios(antes, despues) + ")",
+                    antes, despues);
+        }
         return ManzanaResponse.from(manzana);
+    }
+
+    /** Agrega a la etapa {@code cantidad} manzanas con código automático (sigue la numeración). */
+    @Transactional
+    public List<ManzanaResponse> generarManzanas(
+            ContextoUsuario contexto,
+            Long proyectoId,
+            Long etapaId,
+            GenerarRequest request
+    ) {
+        Proyecto proyecto = proyectoService.obtenerAutorizado(contexto, proyectoId);
+        verificarProyectoOperable(proyecto);
+        EtapaProyecto etapa = etapa(contexto, proyectoId, etapaId);
+        if (etapa.getEstado() != EstadoEtapa.ACTIVA) {
+            throw new ReglaNegocioException("Solo se pueden agregar manzanas a una etapa activa");
+        }
+        if (request.cantidad() > 100) {
+            throw new ReglaNegocioException("Máximo 100 manzanas en una sola vez");
+        }
+        List<Manzana> manzanas = crearManzanasAutomaticas(contexto, etapa, request.cantidad());
+        avisos.registrar(contexto, proyecto, "MANZANAS_GENERADAS", "ETAPA", etapa.getId(),
+                manzanas.size() + " manzanas nuevas en " + etapa.getNombre(),
+                "agregó " + manzanas.size() + " manzanas " + rango(manzanas) + " a la etapa " + etapa.getNombre(),
+                null, Map.of("manzanas", manzanas.stream().map(Manzana::getCodigo).toList()));
+        return manzanas.stream().map(ManzanaResponse::from).toList();
+    }
+
+    /**
+     * Crea {@code cantidad} lotes en la manzana, numerados después del último (1, 2, 3…) y con
+     * código ETAPA-MANZANA-Lnn. Nacen PENDIENTES: sin medidas ni precio, no se pueden reservar
+     * hasta completarlos.
+     */
+    @Transactional
+    public List<LoteResponse> generarLotes(
+            ContextoUsuario contexto,
+            Long proyectoId,
+            Long etapaId,
+            Long manzanaId,
+            GenerarRequest request
+    ) {
+        Proyecto proyecto = proyectoService.obtenerAutorizado(contexto, proyectoId);
+        verificarProyectoOperable(proyecto);
+        EtapaProyecto etapa = etapa(contexto, proyectoId, etapaId);
+        Manzana manzana = manzana(contexto, proyectoId, etapaId, manzanaId);
+        if (etapa.getEstado() != EstadoEtapa.ACTIVA || manzana.getEstado() != EstadoEtapa.ACTIVA) {
+            throw new ReglaNegocioException("La etapa y la manzana deben estar activas para agregar lotes");
+        }
+        int cantidad = request.cantidad();
+        long existentes = loteRepository.countByProyectoIdAndEmpresaId(proyectoId, contexto.empresaId());
+        if (proyecto.getMaxLotes() != null && existentes + cantidad > proyecto.getMaxLotes()) {
+            long libres = Math.max(0, proyecto.getMaxLotes() - existentes);
+            throw new ReglaNegocioException("El proyecto admite máximo " + proyecto.getMaxLotes()
+                    + " lotes y ya tiene " + existentes + ": puedes crear " + libres + " más");
+        }
+        String prefijo = etapa.getCodigo() + "-" + manzana.getCodigo() + "-L";
+        Set<String> numerosUsados = new HashSet<>();
+        int ultimo = 0;
+        for (String numero : loteRepository.numerosDeManzana(manzanaId)) {
+            numerosUsados.add(numero.trim().toUpperCase(Locale.ROOT));
+            ultimo = Math.max(ultimo, entero(numero));
+        }
+        int ancho = Math.max(2, String.valueOf(ultimo + cantidad).length());
+        if (prefijo.length() + ancho > 50) {
+            throw new ReglaNegocioException("Los códigos de la etapa y la manzana son muy largos para"
+                    + " armar el código de los lotes; acórtalos a menos de 20 caracteres");
+        }
+        Set<String> codigosUsados = new HashSet<>(loteRepository.codigosConPrefijo(
+                proyectoId, prefijo.toUpperCase(Locale.ROOT) + "%"));
+        List<Lote> nuevos = new ArrayList<>();
+        int n = ultimo;
+        while (nuevos.size() < cantidad) {
+            n++;
+            String numero = String.valueOf(n);
+            String codigo = (prefijo + String.format("%0" + ancho + "d", n)).toUpperCase(Locale.ROOT);
+            if (numerosUsados.contains(numero) || codigosUsados.contains(codigo)) {
+                continue;
+            }
+            nuevos.add(Lote.pendiente(contexto.empresaId(), proyectoId, etapaId, manzanaId, codigo, numero));
+        }
+        List<Lote> guardados = loteRepository.saveAll(nuevos);
+        estadoRepository.saveAll(guardados.stream()
+                .map(lote -> new LoteHistorialEstado(lote.getId(), null, EstadoLote.PENDIENTE,
+                        "GENERACION_LOTE", lote.getId(), "Generado en bloque: faltan medidas y precio",
+                        contexto.usuarioId()))
+                .toList());
+        avisos.registrar(contexto, proyecto, "LOTES_GENERADOS", "MANZANA", manzana.getId(),
+                guardados.size() + " lotes nuevos en " + manzana.getNombre(),
+                "creó " + guardados.size() + " lotes (" + guardados.get(0).getCodigo() + " a "
+                        + guardados.get(guardados.size() - 1).getCodigo() + ") en " + manzana.getNombre()
+                        + " de " + etapa.getNombre() + "; quedan por completar medidas y precio",
+                null, Map.of("lotes", guardados.stream().map(Lote::getCodigo).toList()));
+        return guardados.stream().map(LoteResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -434,6 +571,9 @@ public class InventarioService {
                 "Creación del inventario",
                 contexto.usuarioId()
         ));
+        avisos.registrar(contexto, proyecto, "LOTE_CREADO", "LOTE", lote.getId(),
+                "Lote " + lote.getCodigo() + " creado",
+                "creó el lote " + lote.getCodigo(), null, datosLote(lote));
         return LoteResponse.from(lote);
     }
 
@@ -456,6 +596,7 @@ public class InventarioService {
                     "No se pueden modificar los datos físicos de un lote reservado o vendido"
             );
         }
+        Map<String, Object> antes = datosLote(lote);
         String codigo = codigo(request.codigo());
         validarIdentidadLote(
                 proyectoId,
@@ -473,6 +614,21 @@ public class InventarioService {
                 normalizarOpcional(request.ubicacionReferencia()),
                 normalizarOpcional(request.descripcion())
         );
+        if (request.valorLista() != null
+                && (lote.getValorLista() == null || request.valorLista().compareTo(lote.getValorLista()) != 0)) {
+            String motivo = normalizarOpcional(request.motivoPrecio());
+            registrarPrecio(contexto, lote, request.valorLista(), motivo != null
+                    ? motivo
+                    : lote.getValorLista() == null ? "Precio inicial del lote" : "Ajuste desde la edición del lote");
+        }
+        habilitarSiEstaCompleto(contexto, lote);
+        Map<String, Object> despues = datosLote(lote);
+        if (!antes.equals(despues)) {
+            avisos.registrar(contexto, proyecto, "LOTE_EDITADO", "LOTE", lote.getId(),
+                    "Lote " + lote.getCodigo() + " actualizado",
+                    "actualizó el lote " + lote.getCodigo() + " (" + cambios(antes, despues) + ")",
+                    antes, despues);
+        }
         return LoteResponse.from(lote);
     }
 
@@ -500,6 +656,11 @@ public class InventarioService {
                     requerido(request.motivo()),
                     contexto.usuarioId()
             ));
+            avisos.registrar(contexto, proyecto, "LOTE_ESTADO", "LOTE", lote.getId(),
+                    "Lote " + lote.getCodigo() + ": " + etiqueta(anterior) + " → " + etiqueta(request.estado()),
+                    "cambió el lote " + lote.getCodigo() + " de " + etiqueta(anterior) + " a "
+                            + etiqueta(request.estado()) + " (" + requerido(request.motivo()) + ")",
+                    Map.of("estado", anterior.name()), Map.of("estado", request.estado().name()));
         }
         return LoteResponse.from(lote);
     }
@@ -517,21 +678,14 @@ public class InventarioService {
         );
         verificarProyectoOperable(proyecto);
         Lote lote = loteParaActualizar(contexto, proyectoId, loteId);
-        LocalDateTime ahora = LocalDateTime.now(BOGOTA);
-        BigDecimal anterior = lote.cambiarPrecio(request.valor());
-        precioRepository
-                .findFirstByLoteIdAndVigenteHastaIsNullOrderByVigenteDesdeDesc(
-                        loteId
-                )
-                .ifPresent(historial -> historial.cerrar(ahora));
-        precioRepository.save(new LotePrecioHistorial(
-                loteId,
-                anterior,
-                request.valor(),
-                ahora,
-                requerido(request.motivo()),
-                contexto.usuarioId()
-        ));
+        BigDecimal anterior = lote.getValorLista();
+        registrarPrecio(contexto, lote, request.valor(), requerido(request.motivo()));
+        habilitarSiEstaCompleto(contexto, lote);
+        avisos.registrar(contexto, proyecto, "LOTE_PRECIO", "LOTE", lote.getId(),
+                "Precio del lote " + lote.getCodigo() + " actualizado",
+                "cambió el precio del lote " + lote.getCodigo() + " de " + pesos(anterior) + " a "
+                        + pesos(request.valor()) + " (" + requerido(request.motivo()) + ")",
+                datos("valorLista", anterior), datos("valorLista", request.valor()));
         return LoteResponse.from(lote);
     }
 
@@ -583,16 +737,18 @@ public class InventarioService {
         long reservados = cantidades.getOrDefault(EstadoLote.RESERVADO, 0L);
         long vendidos = cantidades.getOrDefault(EstadoLote.VENDIDO, 0L);
         long bloqueados = cantidades.getOrDefault(EstadoLote.BLOQUEADO, 0L);
+        long pendientes = cantidades.getOrDefault(EstadoLote.PENDIENTE, 0L);
         BigDecimal valor = loteRepository.sumarValorDisponible(
                 contexto.empresaId(),
                 proyectoId
         );
         return new InventarioResumenResponse(
-                disponibles + reservados + vendidos + bloqueados,
+                disponibles + reservados + vendidos + bloqueados + pendientes,
                 disponibles,
                 reservados,
                 vendidos,
                 bloqueados,
+                pendientes,
                 valor == null ? BigDecimal.ZERO : valor
         );
     }
@@ -701,6 +857,167 @@ public class InventarioService {
                     "Ya existe un lote con ese número dentro de la manzana"
             );
         }
+    }
+
+    /** Crea las manzanas siguiendo la numeración de la etapa: M01, M02… "Manzana 1", "Manzana 2"… */
+    private List<Manzana> crearManzanasAutomaticas(
+            ContextoUsuario contexto,
+            EtapaProyecto etapa,
+            int cantidad
+    ) {
+        Set<String> usados = new HashSet<>(manzanaRepository.codigosDeEtapa(etapa.getId()));
+        int secuencia = manzanaRepository.maxSecuencia(etapa.getId());
+        List<Manzana> nuevas = new ArrayList<>();
+        for (int i = 0; i < cantidad; i++) {
+            secuencia++;
+            String codigo = siguienteCodigo("M", secuencia, usados);
+            usados.add(codigo);
+            nuevas.add(new Manzana(contexto.empresaId(), etapa.getProyectoId(), etapa.getId(), codigo,
+                    "Manzana " + entero(codigo), secuencia));
+        }
+        return manzanaRepository.saveAll(nuevas);
+    }
+
+    private String codigoEtapaLibre(Long proyectoId, int desde) {
+        int n = desde;
+        String codigo = "E" + String.format("%02d", n);
+        while (etapaRepository.existsByProyectoIdAndCodigoIgnoreCase(proyectoId, codigo)) {
+            n++;
+            codigo = "E" + String.format("%02d", n);
+        }
+        return codigo;
+    }
+
+    /** Primer código libre del tipo PREFIJO + número de dos cifras, empezando en {@code desde}. */
+    private static String siguienteCodigo(String prefijo, int desde, Set<String> usados) {
+        int n = Math.max(desde, 1);
+        String codigo = prefijo + String.format("%02d", n);
+        while (usados.contains(codigo)) {
+            n++;
+            codigo = prefijo + String.format("%02d", n);
+        }
+        return codigo;
+    }
+
+    /** Cambia el precio (o pone el primero) y lo deja en el historial de precios. */
+    private void registrarPrecio(ContextoUsuario contexto, Lote lote, BigDecimal valor, String motivo) {
+        LocalDateTime ahora = LocalDateTime.now(BOGOTA);
+        BigDecimal anterior = lote.cambiarPrecio(valor);
+        precioRepository
+                .findFirstByLoteIdAndVigenteHastaIsNullOrderByVigenteDesdeDesc(lote.getId())
+                .ifPresent(historial -> historial.cerrar(ahora));
+        precioRepository.save(new LotePrecioHistorial(
+                lote.getId(),
+                anterior,
+                valor,
+                ahora,
+                motivo,
+                contexto.usuarioId()
+        ));
+    }
+
+    /** Un lote PENDIENTE con área y precio pasa a DISPONIBLE y queda en su historial. */
+    private void habilitarSiEstaCompleto(ContextoUsuario contexto, Lote lote) {
+        EstadoLote anterior = lote.habilitarSiEstaCompleto();
+        if (anterior != null) {
+            estadoRepository.save(new LoteHistorialEstado(
+                    lote.getId(),
+                    anterior,
+                    EstadoLote.DISPONIBLE,
+                    "DATOS_COMPLETOS",
+                    lote.getId(),
+                    "Medidas y precio registrados: el lote queda disponible",
+                    contexto.usuarioId()
+            ));
+        }
+    }
+
+    private static Map<String, Object> datosEtapa(EtapaProyecto etapa) {
+        return datos("codigo", etapa.getCodigo(), "nombre", etapa.getNombre(), "secuencia", etapa.getSecuencia(),
+                "fechaInicio", etapa.getFechaInicio(), "fechaFin", etapa.getFechaFin(),
+                "estado", etapa.getEstado() == null ? null : etapa.getEstado().name());
+    }
+
+    private static Map<String, Object> datosManzana(Manzana manzana) {
+        return datos("codigo", manzana.getCodigo(), "nombre", manzana.getNombre(),
+                "secuencia", manzana.getSecuencia(),
+                "estado", manzana.getEstado() == null ? null : manzana.getEstado().name());
+    }
+
+    private static Map<String, Object> datosLote(Lote lote) {
+        return datos("codigo", lote.getCodigo(), "numero", lote.getNumero(),
+                "areaM2", lote.getAreaM2(), "frenteM", lote.getFrenteM(), "fondoM", lote.getFondoM(),
+                "valorLista", lote.getValorLista(), "estado", lote.getEstado().name(),
+                "ubicacionReferencia", lote.getUbicacionReferencia(), "descripcion", lote.getDescripcion());
+    }
+
+    /** Mapa ordenado que admite valores nulos; los BigDecimal se normalizan para comparar. */
+    private static Map<String, Object> datos(Object... claveValor) {
+        Map<String, Object> mapa = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < claveValor.length; i += 2) {
+            Object valor = claveValor[i + 1];
+            if (valor instanceof BigDecimal decimal) {
+                valor = decimal.stripTrailingZeros().toPlainString();
+            }
+            mapa.put((String) claveValor[i], valor);
+        }
+        return mapa;
+    }
+
+    /** "nombre: Etapa 1 → Etapa Norte, valorLista: — → 45000000". */
+    private static String cambios(Map<String, Object> antes, Map<String, Object> despues) {
+        List<String> partes = new ArrayList<>();
+        for (Map.Entry<String, Object> entrada : despues.entrySet()) {
+            Object previo = antes.get(entrada.getKey());
+            if (!java.util.Objects.equals(previo, entrada.getValue())) {
+                partes.add(entrada.getKey() + ": " + (previo == null ? "—" : previo) + " → "
+                        + (entrada.getValue() == null ? "—" : entrada.getValue()));
+            }
+        }
+        return String.join(", ", partes);
+    }
+
+    private static String rango(List<Manzana> manzanas) {
+        if (manzanas.isEmpty()) {
+            return "";
+        }
+        return manzanas.size() == 1
+                ? "(" + manzanas.get(0).getCodigo() + ")"
+                : "(" + manzanas.get(0).getCodigo() + " a " + manzanas.get(manzanas.size() - 1).getCodigo() + ")";
+    }
+
+    private static String etiqueta(EstadoLote estado) {
+        return switch (estado) {
+            case PENDIENTE -> "por completar";
+            case DISPONIBLE -> "disponible";
+            case RESERVADO -> "reservado";
+            case VENDIDO -> "vendido";
+            case BLOQUEADO -> "bloqueado";
+        };
+    }
+
+    private static String pesos(BigDecimal valor) {
+        if (valor == null) {
+            return "sin precio";
+        }
+        return "$" + String.format(Locale.forLanguageTag("es-CO"), "%,.0f", valor);
+    }
+
+    /** Número entero al final del texto ("M07" → 7, "12" → 12); 0 si no hay. */
+    private static int entero(String texto) {
+        String digitos = texto == null ? "" : texto.replaceAll("^.*?(\\d+)$", "$1");
+        if (digitos.isEmpty() || !digitos.chars().allMatch(Character::isDigit)) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(digitos);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static boolean vacio(String valor) {
+        return valor == null || valor.isBlank();
     }
 
     private void verificarProyectoOperable(Proyecto proyecto) {

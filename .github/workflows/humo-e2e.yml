@@ -230,7 +230,7 @@ jobs:
           bash deploy/respaldar.sh
           r="$(find /var/lib/nexora/respaldos -mindepth 1 -maxdepth 1 -type d -name 'nexora-*' | sort | tail -1)"
           cat "$r/MANIFIESTO.txt"; ls -la "$r"
-          grep -qx 'flyway=31' "$r/MANIFIESTO.txt" || mal "El manifiesto no dice flyway=31"
+          grep -qx 'flyway=32' "$r/MANIFIESTO.txt" || mal "El manifiesto no dice flyway=32"
           echo "::endgroup::"
 
           echo "::group::Prueba de restauración (temporales, sin tocar los datos)"

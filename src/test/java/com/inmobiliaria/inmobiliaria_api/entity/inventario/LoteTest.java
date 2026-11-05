@@ -132,4 +132,49 @@ class LoteTest {
                 null
         );
     }
+
+    @Test
+    void unLoteGeneradoNacePendienteYQuedaDisponibleAlCompletarMedidasYPrecio() {
+        Lote lote = Lote.pendiente(1L, 2L, 3L, 4L, "E01-M01-L01", "1");
+
+        assertThat(lote.getEstado()).isEqualTo(EstadoLote.PENDIENTE);
+        assertThat(lote.isDisponible()).isFalse();
+        assertThat(lote.habilitarSiEstaCompleto()).isNull();
+
+        lote.actualizarDatos("E01-M01-L01", "1", null, new BigDecimal("8"), new BigDecimal("15"), null, null);
+        assertThat(lote.habilitarSiEstaCompleto()).as("sin precio sigue pendiente").isNull();
+
+        lote.fijarPrecioInicial(new BigDecimal("54000000"));
+        assertThat(lote.habilitarSiEstaCompleto()).isEqualTo(EstadoLote.PENDIENTE);
+        assertThat(lote.getEstado()).isEqualTo(EstadoLote.DISPONIBLE);
+        assertThat(lote.isDisponible()).isTrue();
+        assertThat(lote.getAreaM2()).isEqualByComparingTo("120.00");
+    }
+
+    @Test
+    void unLotePendienteNoSeReservaNiCambiaDeEstadoAMano() {
+        Lote lote = Lote.pendiente(1L, 2L, 3L, 4L, "E01-M01-L02", "2");
+
+        assertThatThrownBy(lote::reservar).isInstanceOf(ReglaNegocioException.class);
+        assertThatThrownBy(() -> lote.cambiarEstadoManual(EstadoLote.DISPONIBLE))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessageContaining("Complete las medidas y el precio");
+    }
+
+    @Test
+    void unLoteDisponibleNoPuedeQuedarSinArea() {
+        Lote lote = lote();
+
+        assertThatThrownBy(() -> lote.actualizarDatos("A-01", "01", null, null, null, null, null))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessageContaining("área");
+    }
+
+    @Test
+    void elPrimerPrecioDeUnLotePendienteNoExigeQueSeaDistinto() {
+        Lote lote = Lote.pendiente(1L, 2L, 3L, 4L, "E01-M01-L03", "3");
+
+        assertThat(lote.cambiarPrecio(new BigDecimal("0"))).isNull();
+        assertThat(lote.getValorLista()).isEqualByComparingTo("0");
+    }
 }

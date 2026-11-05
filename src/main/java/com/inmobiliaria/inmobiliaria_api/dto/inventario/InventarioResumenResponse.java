@@ -8,6 +8,7 @@ public record InventarioResumenResponse(
         long reservados,
         long vendidos,
         long bloqueados,
+        long pendientes,
         BigDecimal valorDisponible
 ) {
 }
