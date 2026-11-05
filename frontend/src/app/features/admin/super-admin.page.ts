@@ -32,6 +32,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 import { InsightChartComponent, InsightChartPoint } from '../../shared/components/insight-chart.component';
 import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
+import { apiErrorMessage, FieldErrorDirective } from '../../shared/ui';
 
 type AdminTab = 'resumen' | 'empresas' | 'proyectos' | 'usuarios' | 'roles';
 type ModalType = 'empresa' | 'usuario' | 'rol' | 'proyecto' | 'selector_empresa' | null;
@@ -47,7 +48,7 @@ interface IssuedCredentials {
 
 @Component({
   selector: 'app-super-admin-page',
-  imports: [ReactiveFormsModule, AppIconComponent, InsightChartComponent, PhoneInputComponent],
+  imports: [ReactiveFormsModule, AppIconComponent, InsightChartComponent, PhoneInputComponent, FieldErrorDirective],
   templateUrl: './super-admin.page.html',
   styleUrls: ['./super-admin.page.scss', './company-wizard.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1110,7 +1111,7 @@ export class SuperAdminPage {
   }
 
   private showApiError(error: { error?: ApiProblem }): void {
-    this.showError(error?.error?.detail ?? 'No fue posible completar la operación.');
+    this.showError(apiErrorMessage(error));
   }
 
   private optional(value: string): string | null {

@@ -72,7 +72,7 @@
         <div class="nx-grid nx-grid--2">
           <label class="nx-field">
             <span>Valor de ventas</span>
-            <input class="nx-input" nexoraMoney formControlName="valorMeta" placeholder="$ 0" />
+            <input class="nx-input" nexoraMoney formControlName="valorMeta" nxSinMensaje placeholder="$ 0" />
             @if (form.controls.valorMeta.touched && form.controls.valorMeta.invalid) {
               <span class="nx-field__error">Indique un valor mayor que cero.</span>
             }

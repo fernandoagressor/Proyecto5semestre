@@ -760,7 +760,7 @@ export class PortfolioPage implements OnInit {
 
   private errorDetail(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
-      return error.error?.detail ?? error.error?.title ?? 'No fue posible completar la operación.';
+      return apiErrorMessage(error);
     }
     return error instanceof Error ? error.message : 'No fue posible completar la operación.';
   }

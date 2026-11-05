@@ -103,7 +103,7 @@
       </div>
       @if (canEdit) {
         <div class="gallery-add">
-          <input class="nx-input nx-input--sm" [formControl]="imageUrl" placeholder="Enlace https de la foto" aria-label="Enlace de la foto" />
+          <input class="nx-input nx-input--sm" [formControl]="imageUrl" nxSinMensaje placeholder="Enlace https de la foto" aria-label="Enlace de la foto" />
           <input class="nx-input nx-input--sm" [formControl]="imageTitle" placeholder="Título (opcional)" aria-label="Título de la foto" />
           <button type="button" class="nx-btn nx-btn--sm" [disabled]="busy()" (click)="addImage(p)"><app-icon name="image" /> Agregar</button>
         </div>

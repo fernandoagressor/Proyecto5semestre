@@ -2,6 +2,7 @@
 //   import { NX_UI } from '../../shared/ui';
 //   @Component({ imports: [...NX_UI] })
 import { AppIconComponent } from '../components/app-icon.component';
+import { FieldErrorDirective } from '../forms/field-error.directive';
 import { BadgeComponent } from './badge.component';
 import { DrawerComponent } from './drawer.component';
 import { EmptyStateComponent } from './empty-state.component';
@@ -20,6 +21,8 @@ export * from './kpi-card.component';
 export * from './page-header.component';
 export * from './tabs.component';
 export * from './toast';
+export * from '../forms/field-error.directive';
+export * from '../forms/server-errors';
 
 export const NX_UI = [
   AppIconComponent,
@@ -30,6 +33,7 @@ export const NX_UI = [
   KpiCardComponent,
   PageHeaderComponent,
   TabsComponent,
+  FieldErrorDirective,
   CopPipe,
   FechaPipe,
   PorcentajePipe,

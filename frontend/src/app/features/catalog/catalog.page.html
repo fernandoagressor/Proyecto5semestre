@@ -150,7 +150,7 @@
         <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" autocomplete="email" /></label>
         <label class="nx-field"><span>Mensaje</span><textarea class="nx-textarea" rows="3" formControlName="mensaje"></textarea></label>
         <label class="hp" aria-hidden="true">No llenar <input tabindex="-1" autocomplete="off" formControlName="sitioWeb" /></label>
-        <label class="nx-check consent"><input type="checkbox" formControlName="aceptaTratamiento" /> Autorizo el tratamiento de mis datos personales para que me contacten (Ley 1581 de 2012).</label>
+        <label class="nx-check consent"><input type="checkbox" formControlName="aceptaTratamiento" nxSinMensaje /> Autorizo el tratamiento de mis datos personales para que me contacten (Ley 1581 de 2012).</label>
         @if (form.controls.aceptaTratamiento.touched && form.controls.aceptaTratamiento.invalid) { <span class="err">Necesitamos su autorización para contactarle.</span> }
         @if (contactError()) { <div class="nx-alert nx-alert--danger">{{ contactError() }}</div> }
         <button type="submit" class="nx-btn nx-btn--primary nx-btn--block" [disabled]="sending()">{{ sending() ? 'Enviando…' : 'Enviar' }}</button>

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, Injectable, signal } from '@angular/core';
 
 import { AppIconComponent } from '../components/app-icon.component';
+import { etiquetaDeCampo } from '../forms/server-errors';
 
 export type ToastTone = 'success' | 'danger' | 'info';
 
@@ -66,10 +67,20 @@ export class ToasterComponent {
   readonly toast = inject(ToastService);
 }
 
-/** Mensaje legible de un error HTTP de la API (ProblemDetail) o el texto por defecto. */
+/**
+ * Mensaje legible de un error HTTP de la API (ProblemDetail) o el texto por defecto.
+ * Con errores de validación dice qué campo falló ("Valor lista: debe ser mayor que 0"); con reglas
+ * de negocio o conflictos, el `detail` que escribió el backend ("Ya existe una etapa con ese código").
+ */
 export function apiErrorMessage(error: unknown, fallback = 'No fue posible completar la operación.'): string {
   const e = error as { status?: number; error?: { detail?: string; title?: string; errores?: Record<string, string> } } | null;
   if (e?.status === 0) return 'No hay conexión con el servidor. Revisa tu red e inténtalo de nuevo.';
-  const fields = e?.error?.errores ? Object.values(e.error.errores) : [];
-  return fields[0] ?? e?.error?.detail ?? e?.error?.title ?? fallback;
+  if (e?.status === 403 && !e.error?.detail) return 'No tienes permiso para hacer esta acción.';
+  const fields = e?.error?.errores ? Object.entries(e.error.errores) : [];
+  if (fields.length) {
+    const [campo, mensaje] = fields[0];
+    return `${etiquetaDeCampo(campo)}: ${mensaje}`;
+  }
+  if (e?.status && e.status >= 500) return `${fallback} Si se repite, avisa al administrador.`;
+  return e?.error?.detail ?? e?.error?.title ?? fallback;
 }
