@@ -19,7 +19,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
-import { NX_UI } from '../../shared/ui';
+import { apiErrorMessage, NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { LotConsecutive, nextLotConsecutive } from './lot-consecutive';
 
@@ -625,7 +625,7 @@ export class InventoryPage {
           this.closePanel();
           this.loadProject();
         },
-        error: () => this.feedback.set('No fue posible completar la operación. Revisa los datos e inténtalo de nuevo.'),
+        error: (e) => this.feedback.set(apiErrorMessage(e)),
       });
   }
 }

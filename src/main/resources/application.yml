@@ -48,6 +48,11 @@ spring:
   jackson:
     time-zone: America/Bogota
     default-property-inclusion: non_null
+  # Mensajes de validación siempre en español ("no debe estar vacío"), sin importar el idioma del
+  # navegador que llame a la API.
+  web:
+    locale: es
+    locale-resolver: fixed
   servlet:
     multipart:
       max-file-size: 15MB

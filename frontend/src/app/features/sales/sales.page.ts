@@ -30,7 +30,7 @@ import { CrmService } from '../../core/services/crm.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProjectService } from '../../core/services/project.service';
 import { SalesService } from '../../core/services/sales.service';
-import { NX_UI } from '../../shared/ui';
+import { apiErrorMessage, NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { WithdrawalsTabComponent } from './withdrawals-tab.component';
 import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
@@ -958,7 +958,7 @@ export class SalesPage implements OnInit {
           this.portalAccess.set(access);
           this.customers.update((list) => list.map((c) => (c.id === customerId ? { ...c, usuarioId: access.usuarioId } : c)));
         },
-        error: (e) => this.error.set(e?.error?.detail ?? 'No se pudo habilitar el portal del cliente.'),
+        error: (e) => this.error.set(apiErrorMessage(e, 'No se pudo habilitar el portal del cliente.')),
       });
   }
 
@@ -992,13 +992,7 @@ export class SalesPage implements OnInit {
   }
 
   private showError(error: unknown): void {
-    const response = error as { error?: { detail?: string; title?: string }; message?: string };
-    this.error.set(
-      response?.error?.detail ??
-        response?.error?.title ??
-        response?.message ??
-        'No fue posible completar la operación.',
-    );
+    this.error.set(apiErrorMessage(error));
   }
 
   private clearMessages(): void {

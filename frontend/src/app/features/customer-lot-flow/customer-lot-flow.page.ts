@@ -5,7 +5,6 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 
-import { ApiProblem } from '../../core/models/api.models';
 import { CustomerLotFlowResult } from '../../core/models/customer-lot-flow.models';
 import { Project } from '../../core/models/empresa.models';
 import { Block, Lot, ProjectStage } from '../../core/models/inventory.models';
@@ -15,10 +14,11 @@ import { ProjectService } from '../../core/services/project.service';
 import { AppIconComponent } from '../../shared/components/app-icon.component';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
+import { apiErrorMessage, FieldErrorDirective } from '../../shared/ui';
 
 @Component({
   selector: 'app-customer-lot-flow-page',
-  imports: [ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective, PhoneInputComponent],
+  imports: [ReactiveFormsModule, RouterLink, AppIconComponent, MoneyInputDirective, PhoneInputComponent, FieldErrorDirective],
   templateUrl: './customer-lot-flow.page.html',
   styleUrl: './customer-lot-flow.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -442,8 +442,6 @@ export class CustomerLotFlowPage {
 
   private problemMessage(error: unknown, fallback: string): string {
     if (!(error instanceof HttpErrorResponse)) return fallback;
-    const problem = error.error as ApiProblem | undefined;
-    const fieldMessage = problem?.errores ? Object.values(problem.errores)[0] : undefined;
-    return fieldMessage ?? problem?.detail ?? fallback;
+    return apiErrorMessage(error, fallback);
   }
 }
