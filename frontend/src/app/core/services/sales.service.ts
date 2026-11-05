@@ -59,10 +59,11 @@ export class SalesService {
     return this.http.patch<Customer>(`${API_BASE_URL}/clientes/${id}/estado`, { estado });
   }
 
-  reservations(options: { status?: ReservationStatus | ''; projectId?: number | null; page?: number; size?: number } = {}): Observable<PageResponse<Reservation>> {
+  reservations(options: { status?: ReservationStatus | ''; projectId?: number | null; lotId?: number | null; page?: number; size?: number } = {}): Observable<PageResponse<Reservation>> {
     let params = this.pageParams(options.page, options.size);
     if (options.status) params = params.set('estado', options.status);
     if (options.projectId) params = params.set('proyectoId', options.projectId);
+    if (options.lotId) params = params.set('loteId', options.lotId);
     return this.http.get<PageResponse<Reservation>>(`${API_BASE_URL}/reservas`, { params });
   }
 

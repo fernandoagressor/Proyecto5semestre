@@ -199,10 +199,24 @@
         <div class="span"><dt>Ubicación</dt><dd>{{ lot.ubicacionReferencia || 'Sin referencia' }}</dd></div>
       </dl>
       @if (lot.descripcion) { <p class="nx-muted">{{ lot.descripcion }}</p> }
+      @if (lot.estado === 'RESERVADO') {
+        <div class="nx-alert nx-alert--warning">
+          <app-icon name="lock" />
+          <span>
+            @if (lotReservation(); as r) {
+              Reservado con <b class="nx-mono">{{ r.codigo }}</b> · {{ r.estado === 'ACTIVA' ? 'pago confirmado' : 'pago pendiente' }} · vence {{ r.fechaVencimiento | fecha: 'hora' }}.
+              No se puede volver a reservar hasta que la reserva se cancele o venza.
+              @if (auth.hasAuthority('RESERVAS_VER')) { <a routerLink="/ventas" [queryParams]="{ reserva: r.id }">Ver reserva</a> }
+            } @else {
+              Este lote está reservado: no se puede volver a reservar hasta que la reserva se cancele o venza.
+            }
+          </span>
+        </div>
+      }
       @if (lot.estado === 'DISPONIBLE') {
         <div class="nx-row">
-          @if (auth.hasAuthority('RESERVAS_CREAR') && auth.hasAuthority('CLIENTES_CREAR')) {
-            <a class="nx-btn nx-btn--sm nx-btn--primary" routerLink="/clientes/nuevo" [queryParams]="{ proyecto: lot.proyectoId, lote: lot.id }"><app-icon name="plus" /> Cliente y reserva</a>
+          @if (canReserve) {
+            <button class="nx-btn nx-btn--sm nx-btn--primary" type="button" (click)="openReserve(lot)"><app-icon name="key" /> Reservar este lote</button>
           }
           @if (auth.hasAuthority('SIMULACIONES_VER')) {
             <a class="nx-btn nx-btn--sm" routerLink="/simulador"><app-icon name="wallet" /> Simular plan de pago</a>
@@ -326,4 +340,13 @@
     <button class="nx-btn" type="button" (click)="closePanel()">Ahora no</button>
     <button class="nx-btn nx-btn--primary" type="submit" form="quantity-form" [disabled]="submitting()">{{ submitting() ? 'Creando…' : (quantityTarget()?.mode === 'lotes' ? 'Crear ' + quantityForm.controls.cantidad.value + ' lotes' : 'Agregar ' + quantityForm.controls.cantidad.value + ' manzanas') }}</button>
   </ng-container>
+</nx-drawer>
+
+<!-- Reservar el lote elegido -->
+<nx-drawer [open]="panel() === 'reservar'" (openChange)="$event || reserveDone(null)" width="560px"
+  [title]="selectedLot() ? 'Reservar lote ' + selectedLot()!.codigo : 'Reservar lote'" subtitle="El lote queda apartado en cuanto se reserva."
+  [dismissible]="true">
+  @if (panel() === 'reservar' && selectedLot(); as lot) {
+    <app-reserve-lot [lot]="lot" [stageName]="stageName(lot.etapaId)" [blockName]="blockName(lot.manzanaId)" (done)="reserveDone($event)" />
+  }
 </nx-drawer>

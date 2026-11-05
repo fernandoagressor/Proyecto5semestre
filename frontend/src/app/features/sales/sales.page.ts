@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
@@ -65,6 +65,7 @@ export class SalesPage implements OnInit {
   private readonly inventory = inject(InventoryService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   readonly activeTab = signal<SalesTab>('reservas');
   readonly projects = signal<Project[]>([]);
@@ -190,6 +191,11 @@ export class SalesPage implements OnInit {
       .pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadCustomers());
     this.loadInitialData();
+    const reservaId = Number(this.route.snapshot.queryParamMap.get('reserva'));
+    if (reservaId) {
+      this.activeTab.set('reservas');
+      this.viewReservation({ id: reservaId } as Reservation);
+    }
   }
 
   setTab(tab: SalesTab): void {

@@ -165,6 +165,7 @@ if [[ "$PROYECTO_ID" != null ]]; then
     || falla "Las manzanas de la etapa no son M01,M02: $(head -c 300 "$TMP/cuerpo")"
   api POST "/api/v1/proyectos/$PROYECTO_ID/etapas/$ETAPA_ID/manzanas/$MANZANA_ID/lotes/generar" '{"cantidad":3}'
   LOTE_ID="$(cuerpo '.[0].id')"
+  LOTE2_ID="$(cuerpo '.[1].id')"
   [[ "$STATUS" == 201 && "$(cuerpo '[.[].estado] | unique | join(",")')" == PENDIENTE && "$(cuerpo '.[0].codigo')" == E01-M01-L01 ]] \
     && paso "3 lotes por completar generados (E01-M01-L01…)" || falla "Generar lotes respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
   api POST "/api/v1/proyectos/$PROYECTO_ID/etapas/$ETAPA_ID/manzanas/$MANZANA_ID/lotes/generar" '{"cantidad":8}'
@@ -176,6 +177,28 @@ if [[ "$PROYECTO_ID" != null ]]; then
   api GET "/api/v1/proyectos/$PROYECTO_ID/inventario/resumen"
   [[ "$STATUS" == 200 && "$(cuerpo .pendientes)" == 2 && "$(cuerpo .disponibles)" == 1 ]] && paso "Resumen: 1 disponible y 2 por completar" \
     || falla "Resumen de inventario: $(head -c 300 "$TMP/cuerpo")"
+  echo "4c. Reservar desde el lote (un lote no se reserva dos veces)"
+  RES_VENCE="$(date -u -d '+2 days' +%Y-%m-%dT10:00:00)"
+  api POST /api/v1/ventas/cliente-lote "$(jq -n --argjson p "$PROYECTO_ID" --argjson l "$LOTE_ID" --arg v "$RES_VENCE" --arg s "$SELLO" \
+    '{cliente:{tipoPersona:"NATURAL", tipoDocumento:"CC", numeroDocumento:("7" + ($s | .[-9:])), nombres:"Comprador", apellidos:("Humo " + $s), telefono:("31" + ($s | .[-8:])), correo:null, direccion:null, origen:"VENTAS", observaciones:null},
+      proyectoId:$p, loteId:$l, fechaVencimiento:$v, valorReserva:1000000, formaPago:"TRANSFERENCIA"}')"
+  RESERVA_ID="$(cuerpo .reserva.id)"; COMPRADOR_ID="$(cuerpo .cliente.id)"
+  [[ "$STATUS" == 201 && "$(cuerpo .reserva.estado)" == PENDIENTE_PAGO ]] && paso "Lote reservado desde el inventario con un cliente nuevo" \
+    || falla "Reservar el lote respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api GET "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE_ID"
+  [[ "$(cuerpo .estado)" == RESERVADO ]] && paso "El lote queda RESERVADO de inmediato" || falla "El lote quedó en $(cuerpo .estado)"
+  api POST /api/v1/ventas/cliente-lote "$(jq -n --argjson p "$PROYECTO_ID" --argjson l "$LOTE_ID" --argjson c "${COMPRADOR_ID:-null}" --arg v "$RES_VENCE" \
+    '{cliente:null, clienteId:$c, proyectoId:$p, loteId:$l, fechaVencimiento:$v, valorReserva:1000000, formaPago:"EFECTIVO"}')"
+  [[ "$STATUS" == 422 ]] && grep -q "ya no está disponible" "$TMP/cuerpo" && paso "Un segundo intento sobre el mismo lote se rechaza" \
+    || falla "Reservar dos veces el mismo lote respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api PUT "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE2_ID" '{"codigo":"E01-M01-L02","numero":"2","areaM2":110,"valorLista":50000000}'
+  api POST /api/v1/ventas/cliente-lote "$(jq -n --argjson p "$PROYECTO_ID" --argjson l "$LOTE2_ID" --argjson c "${COMPRADOR_ID:-null}" --arg v "$RES_VENCE" \
+    '{cliente:null, clienteId:$c, proyectoId:$p, loteId:$l, fechaVencimiento:$v, valorReserva:1000000, formaPago:"EFECTIVO"}')"
+  [[ "$STATUS" == 201 && "$(cuerpo .cliente.id)" == "$COMPRADOR_ID" ]] && paso "Reserva de otro lote para el mismo cliente, sin volver a crearlo" \
+    || falla "Reservar con cliente existente respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api PATCH "/api/v1/reservas/$RESERVA_ID/pago/confirmar" '{}'
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == ACTIVA ]] && paso "Pago de la reserva confirmado: reserva activa" \
+    || falla "Confirmar el pago respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
   inventario_auditado() { api GET "/api/v1/auditoria/eventos?accion=LOTE_EDITADO&tamano=50"; [[ "$STATUS" == 200 && "$(cuerpo '.totalElementos')" -ge 1 ]]; }
   esperar 15 inventario_auditado && paso "La edición del lote quedó en auditoría" || falla "No apareció el evento LOTE_EDITADO (HTTP $STATUS)"
   avisado() { api GET "/api/v1/notificaciones?tamano=50"; [[ "$STATUS" == 200 ]] && jq -e '[.contenido[] | select(.tipo == "INVENTARIO")] | length >= 1' "$TMP/cuerpo" > /dev/null; }

@@ -16,6 +16,7 @@ import jakarta.persistence.criteria.Subquery;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -86,6 +87,25 @@ public class ClienteService {
                 cliente,
                 personas.get(cliente.getPersonaId())
         ));
+    }
+
+    /** El cliente de la empresa con ese documento, si ya existe. */
+    @Transactional(readOnly = true)
+    public Optional<ClienteResponse> buscarPorDocumento(
+            ContextoUsuario contexto,
+            String tipoDocumento,
+            String numeroDocumento
+    ) {
+        if (tipoDocumento == null || numeroDocumento == null) {
+            return Optional.empty();
+        }
+        return personaRepository
+                .findByTipoDocumentoAndNumeroDocumento(
+                        tipoDocumento.trim().toUpperCase(Locale.ROOT),
+                        numeroDocumento.trim())
+                .flatMap(persona -> clienteRepository
+                        .findByEmpresaIdAndPersonaId(contexto.empresaId(), persona.getId())
+                        .map(cliente -> ClienteResponse.from(cliente, persona)));
     }
 
     @Transactional(readOnly = true)

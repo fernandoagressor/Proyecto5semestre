@@ -1,0 +1,95 @@
+<ol class="steps" aria-label="Pasos de la reserva">
+  <li [class.on]="step() === 1" [class.done]="step() > 1"><span>{{ step() > 1 ? '✓' : 1 }}</span>Cliente</li>
+  <li [class.on]="step() === 2" [class.done]="step() > 2"><span>{{ step() > 2 ? '✓' : 2 }}</span>Reserva y pago</li>
+  <li [class.on]="step() === 3"><span>3</span>Listo</li>
+</ol>
+
+@if (error()) { <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ error() }}</span></div> }
+
+@if (step() === 1) {
+  <form class="nx-form-grid" [formGroup]="customerForm" (ngSubmit)="toConditions()" id="reserve-customer">
+    <label class="nx-field"><span>Tipo de documento</span>
+      <select class="nx-select" formControlName="tipoDocumento" (change)="lookupDocument()">
+        <option value="CC">Cédula de ciudadanía</option><option value="CE">Cédula de extranjería</option>
+        <option value="NIT">NIT (empresa)</option><option value="PASAPORTE">Pasaporte</option>
+      </select>
+    </label>
+    <label class="nx-field"><span>Número de documento</span>
+      <input class="nx-input" formControlName="numeroDocumento" inputmode="numeric" autocomplete="off" (blur)="lookupDocument()" placeholder="1020304050" />
+      @if (searching()) { <span class="nx-field__hint">Buscando si ya es cliente…</span> }
+    </label>
+    @if (existing(); as c) {
+      <div class="known nx-span-all" role="status">
+        <app-icon name="check" />
+        <div><b>{{ c.nombreCompleto }}</b> ya es cliente ({{ c.codigoCliente }}). Se usará su ficha: {{ c.telefono || c.correo || 'sin contacto' }}.</div>
+      </div>
+    }
+    <label class="nx-field"><span>{{ customerForm.controls.tipoDocumento.value === 'NIT' ? 'Razón social' : 'Nombres' }}</span><input class="nx-input" formControlName="nombres" autocomplete="off" /></label>
+    <label class="nx-field"><span>Apellidos</span><input class="nx-input" formControlName="apellidos" autocomplete="off" /></label>
+    <label class="nx-field"><span>Teléfono</span><nx-phone-input formControlName="telefono" /></label>
+    <label class="nx-field"><span>Correo</span><input class="nx-input" type="email" formControlName="correo" placeholder="cliente@correo.com" /></label>
+  </form>
+}
+
+@if (step() === 2) {
+  <section class="lot-card" aria-label="Lote a reservar">
+    <div>
+      <small>Lote</small><b class="nx-mono">{{ lot().codigo }}</b>
+      <span>{{ stageName() }} · {{ blockName() }}{{ lot().ubicacionReferencia ? ' · ' + lot().ubicacionReferencia : '' }}</span>
+    </div>
+    <dl>
+      <div><dt>Área</dt><dd>{{ lot().areaM2 }} m²</dd></div>
+      <div><dt>Precio</dt><dd>{{ money(lot().valorLista) }}</dd></div>
+      @if (pricePerM2(); as m2) { <div><dt>Por m²</dt><dd>{{ money(m2) }}</dd></div> }
+    </dl>
+    <p class="who"><app-icon name="user" /> {{ existing()?.nombreCompleto ?? (customerForm.controls.nombres.value + ' ' + customerForm.controls.apellidos.value) }} <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="step.set(1)">Cambiar</button></p>
+  </section>
+
+  <form class="nx-form-grid" [formGroup]="reservationForm" (ngSubmit)="reserve()" id="reserve-conditions">
+    <label class="nx-field"><span>Valor de la reserva</span><input class="nx-input" type="text" nexoraMoney formControlName="valorReserva" placeholder="$ 0" /><span class="nx-field__hint">Máximo {{ money(lot().valorLista) }}</span></label>
+    <label class="nx-field"><span>Forma de pago</span>
+      <select class="nx-select" formControlName="formaPago">
+        <option value="TRANSFERENCIA">Transferencia bancaria</option><option value="EFECTIVO">Efectivo</option>
+        <option value="TARJETA">Tarjeta</option><option value="CHEQUE">Cheque</option><option value="OTRO">Otro</option>
+      </select>
+    </label>
+    <label class="nx-field nx-span-all"><span>La reserva vence</span><input class="nx-input" type="datetime-local" [min]="minExpiry" formControlName="fechaVencimiento" /><span class="nx-field__hint">Si vence sin convertirse en contrato, el lote vuelve a quedar disponible solo.</span></label>
+    @if (canConfirmPayment) {
+      <label class="nx-check nx-span-all"><input type="checkbox" formControlName="pagado" /> El cliente ya pagó la reserva (confirmar el pago ahora)</label>
+      @if (reservationForm.controls.pagado.value) {
+        <label class="nx-field nx-span-all"><span>Comprobante de pago (opcional)</span><input class="nx-input" type="file" accept="application/pdf,image/*" (change)="setReceipt($event)" /></label>
+      }
+    } @else {
+      <p class="nx-muted small nx-span-all">El pago lo confirma Cartera desde Ventas.</p>
+    }
+  </form>
+}
+
+@if (step() === 3 && result(); as r) {
+  <div class="done" role="status">
+    <span class="done__icon"><app-icon name="check" /></span>
+    <h3>Lote {{ lot().codigo }} reservado</h3>
+    <p>Reserva <b class="nx-mono">{{ r.reserva.codigo }}</b> para <b>{{ r.cliente }}</b> por {{ money(r.reserva.valorReserva) }}.</p>
+    @if (r.pagoConfirmado) {
+      <p><nx-badge status="ACTIVA" text="Pago confirmado" /> La reserva está activa hasta el {{ dateTime(r.reserva.fechaVencimiento) }}.</p>
+    } @else {
+      <p><nx-badge status="PENDIENTE" text="Pago pendiente" /> El lote queda apartado hasta el {{ dateTime(r.reserva.fechaVencimiento) }}; confirma el pago en Ventas.</p>
+    }
+    <p class="nx-muted small">Nadie más puede reservar este lote mientras la reserva esté vigente.</p>
+  </div>
+}
+
+<div class="actions">
+  @if (step() === 1) {
+    <button class="nx-btn" type="button" (click)="done.emit(null)">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="reserve-customer" [disabled]="searching()">Continuar</button>
+  }
+  @if (step() === 2) {
+    <button class="nx-btn" type="button" (click)="step.set(1)" [disabled]="busy()">Atrás</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="reserve-conditions" [disabled]="busy()">{{ busy() ? 'Reservando…' : (reservationForm.controls.pagado.value && canConfirmPayment ? 'Reservar y confirmar pago' : 'Reservar lote') }}</button>
+  }
+  @if (step() === 3 && result(); as r) {
+    @if (auth.hasAuthority('RESERVAS_VER')) { <a class="nx-btn" routerLink="/ventas" [queryParams]="{ reserva: r.reserva.id }">Ver en Ventas</a> }
+    <button class="nx-btn nx-btn--primary" type="button" (click)="close()">Listo</button>
+  }
+</div>
