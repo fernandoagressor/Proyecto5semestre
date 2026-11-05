@@ -31,6 +31,7 @@ export class LoginPage {
   readonly showHelp = signal(false);
   readonly apiError = signal<string | null>(null);
   readonly sessionExpired = computed(() => this.route.snapshot.queryParamMap.get('sesion') === 'expirada');
+  readonly sessionIdle = computed(() => this.route.snapshot.queryParamMap.get('sesion') === 'inactiva');
   readonly passwordUpdated = computed(() => this.route.snapshot.queryParamMap.get('password') === 'actualizada');
 
   readonly form = this.formBuilder.nonNullable.group({

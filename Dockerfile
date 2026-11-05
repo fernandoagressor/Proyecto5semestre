@@ -1,9 +1,10 @@
 FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /build
 COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
+# Maven Central a veces no responde un momento: se reintenta hasta 4 veces antes de fallar.
+RUN for i in 1 2 3 4; do mvn -B -q dependency:go-offline && exit 0; echo "Reintento $i de las dependencias"; sleep 20; done; exit 1
 COPY src src
-RUN mvn -B -q clean package -Dmaven.test.skip=true
+RUN for i in 1 2 3; do mvn -B -q clean package -Dmaven.test.skip=true && exit 0; echo "Reintento $i del empaquetado"; sleep 20; done; exit 1
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S app && adduser -S app -G app
