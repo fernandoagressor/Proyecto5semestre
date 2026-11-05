@@ -16,6 +16,9 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 - El exportador de MongoDB lee solo `serverStatus` (`--collector.diagnosticdata`), que es lo que
   usa el tablero. Con `--collect-all` gastaba más CPU que la base en un servidor de 2 vCPU.
   Prometheus queda con 512 MB en el perfil de 4 GiB.
+- El chequeo de salud de MongoDB se hace cada `MONGO_SALUD_INTERVALO` (60 s en el perfil de
+  4 GiB, 10 s por defecto) y cada 5 s mientras arranca. Cada chequeo abre `mongosh` y en un
+  servidor de 2 vCPU daba picos de 40 a 260 % de CPU cada 10 s.
 - **Desistimientos** (Reservas y contratos → pestaña Desistimientos, vista "Ventas-Desistimiento"):
   liquidación en vivo (pagado − cláusula penal − otros descuentos), registro, aprobación o rechazo
   y **acta en PDF**. Aprobar anula el contrato (libera el lote y reabre la oportunidad), cancela el
