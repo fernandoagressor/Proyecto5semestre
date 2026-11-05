@@ -22,21 +22,25 @@ import { ProjectService } from '../../core/services/project.service';
 import { aplicarErroresDelServidor, apiErrorMessage, NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { LotConsecutive, nextLotConsecutive } from './lot-consecutive';
+import { LotReserved, ReserveLotComponent } from './reserve-lot.component';
+import { Reservation } from '../../core/models/sales.models';
+import { SalesService } from '../../core/services/sales.service';
 
 type InventoryView = 'lotes' | 'estructura';
-type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | 'cantidad' | null;
+type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | 'cantidad' | 'reservar' | null;
 /** Qué se genera con el diálogo de cantidad: manzanas de una etapa o lotes de una manzana. */
 type QuantityTarget = { mode: 'manzanas'; stage: ProjectStage } | { mode: 'lotes'; stage: ProjectStage; block: Block };
 
 @Component({
   selector: 'app-inventory-page',
-  imports: [ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective],
+  imports: [ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, ReserveLotComponent],
   templateUrl: './inventory.page.html',
   styleUrl: './inventory.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InventoryPage {
   private readonly inventory = inject(InventoryService);
+  private readonly sales = inject(SalesService);
   private readonly projectsService = inject(ProjectService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -99,6 +103,11 @@ export class InventoryPage {
   readonly quantityTarget = signal<QuantityTarget | null>(null);
   readonly canGenerateLots = this.auth.hasAuthority('LOTES_CREAR');
   readonly canEditLots = this.auth.hasAuthority('LOTES_EDITAR');
+  /** Reservar desde el lote usa el alta rápida, que pide todos estos permisos. */
+  readonly canReserve = ['CLIENTES_CREAR', 'PROSPECTOS_CREAR', 'PROSPECTOS_CALIFICAR', 'OPORTUNIDADES_CREAR', 'OPORTUNIDADES_EDITAR', 'RESERVAS_CREAR']
+    .every((permiso) => this.auth.hasAuthority(permiso));
+  /** Reserva vigente del lote abierto en el detalle (si está reservado). */
+  readonly lotReservation = signal<Reservation | null>(null);
   /** Lotes de cada manzana (todos y por completar), con todos los lotes del proyecto. */
   readonly lotCountByBlock = computed(() => {
     const counts = new Map<number, { total: number; pendientes: number }>();
@@ -451,8 +460,27 @@ export class InventoryPage {
     this.panel.set('manzana');
   }
 
+  /** Abre el panel para reservar el lote elegido (datos del cliente → condiciones y pago). */
+  openReserve(lot: Lot): void {
+    if (lot.estado !== 'DISPONIBLE' || !this.canReserve) return;
+    this.selectedLot.set(lot);
+    this.panel.set('reservar');
+  }
+
+  /** Cierra el panel de reserva; si se reservó, avisa y recarga el plano (el lote ya sale reservado). */
+  reserveDone(result: LotReserved | null): void {
+    const lot = this.selectedLot();
+    this.closePanel();
+    if (result) {
+      this.feedback.set(`Lote ${lot?.codigo ?? ''} reservado para ${result.cliente} (${result.reserva.codigo}). `
+        + (result.pagoConfirmado ? 'Pago confirmado: reserva activa.' : 'Pago pendiente: confírmalo en Ventas.'));
+    }
+    this.loadProject();
+  }
+
   closePanel(): void {
     this.panel.set(null);
+    this.lotReservation.set(null);
     this.quantityTarget.set(null);
     this.selectedLot.set(null);
     this.editingLot.set(null);
@@ -477,6 +505,7 @@ export class InventoryPage {
     }
     this.selectedLot.set(lot);
     this.panel.set('detalle');
+    this.loadLotReservation(lot);
     this.priceForm.reset({ valor: Number(lot.valorLista), motivo: '' });
     this.stateForm.reset({ estado: lot.estado === 'BLOQUEADO' ? 'DISPONIBLE' : 'BLOQUEADO', motivo: '' });
     forkJoin({
@@ -728,6 +757,17 @@ export class InventoryPage {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((lots) => this.allLots.set(lots));
+  }
+
+  private loadLotReservation(lot: Lot): void {
+    this.lotReservation.set(null);
+    if (lot.estado !== 'RESERVADO' || !this.auth.hasAuthority('RESERVAS_VER')) return;
+    this.sales
+      .reservations({ lotId: lot.id, size: 5 })
+      .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe((page) => this.lotReservation.set(
+        page?.contenido.find((r) => r.estado === 'PENDIENTE_PAGO' || r.estado === 'ACTIVA') ?? null,
+      ));
   }
 
   private loadAllBlocks(projectId: number, stages: ProjectStage[]): void {

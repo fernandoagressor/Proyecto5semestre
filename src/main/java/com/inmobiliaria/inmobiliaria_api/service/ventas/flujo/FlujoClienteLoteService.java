@@ -1,5 +1,7 @@
 package com.inmobiliaria.inmobiliaria_api.service.ventas.flujo;
 
+import com.inmobiliaria.inmobiliaria_api.entity.inventario.EstadoLote;
+import com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository;
 import com.inmobiliaria.inmobiliaria_api.dto.cliente.ClienteRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.cliente.ClienteResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.crm.OportunidadRequest;
@@ -36,17 +38,20 @@ public class FlujoClienteLoteService {
     private final ProspectoService prospectoService;
     private final OportunidadService oportunidadService;
     private final ReservaService reservaService;
+    private final LoteRepository loteRepository;
 
     public FlujoClienteLoteService(
             ClienteService clienteService,
             ProspectoService prospectoService,
             OportunidadService oportunidadService,
-            ReservaService reservaService
+            ReservaService reservaService,
+            LoteRepository loteRepository
     ) {
         this.clienteService = clienteService;
         this.prospectoService = prospectoService;
         this.oportunidadService = oportunidadService;
         this.reservaService = reservaService;
+        this.loteRepository = loteRepository;
     }
 
     /**
@@ -63,14 +68,14 @@ public class FlujoClienteLoteService {
             ContextoUsuario contexto,
             FlujoClienteLoteRequest request
     ) {
-        ClienteRequest datosCliente = request.cliente();
-        if (esVacio(datosCliente.telefono()) && esVacio(datosCliente.correo())) {
+        verificarLoteDisponible(contexto, request);
+        ClienteResponse cliente = resolverCliente(contexto, request);
+        if (esVacio(cliente.telefono()) && esVacio(cliente.correo())) {
             throw new ReglaNegocioException(
-                    "Para vincular un lote, el cliente debe tener teléfono o correo"
+                    "Para reservar, el cliente debe tener teléfono o correo"
+                            + (request.clienteId() != null ? ": agrégalo en su ficha de Clientes" : "")
             );
         }
-
-        ClienteResponse cliente = clienteService.crear(contexto, datosCliente);
         ProspectoResponse prospecto = prospectoService.crear(
                 contexto,
                 new ProspectoRequest(
@@ -135,6 +140,49 @@ public class FlujoClienteLoteService {
                 )
         );
         return new FlujoClienteLoteResponse(cliente, oportunidad, reserva);
+    }
+
+    /**
+     * Antes de crear nada, el lote debe estar disponible. La reserva vuelve a comprobarlo con el
+     * lote bloqueado (y la base no admite dos reservas vigentes del mismo lote): esto solo da un
+     * mensaje claro sin dejar registros a medias.
+     */
+    private void verificarLoteDisponible(ContextoUsuario contexto, FlujoClienteLoteRequest request) {
+        loteRepository.findByIdAndEmpresaIdAndProyectoId(request.loteId(), contexto.empresaId(), request.proyectoId())
+                .filter(lote -> lote.getEstado() != EstadoLote.DISPONIBLE)
+                .ifPresent(lote -> {
+                    throw new ReglaNegocioException(lote.getEstado() == EstadoLote.PENDIENTE
+                            ? "El lote " + lote.getCodigo() + " todavía no tiene medidas y precio: complétalo en Inventario"
+                            : "El lote " + lote.getCodigo() + " ya no está disponible: alguien lo acaba de reservar o vender."
+                                    + " Elige otro lote");
+                });
+    }
+
+    /**
+     * Cliente de la reserva: el elegido ({@code clienteId}), el que ya existe con ese documento o
+     * uno nuevo con los datos recibidos.
+     */
+    private ClienteResponse resolverCliente(ContextoUsuario contexto, FlujoClienteLoteRequest request) {
+        if (request.clienteId() != null) {
+            ClienteResponse existente = clienteService.obtener(contexto, request.clienteId());
+            if (!"ACTIVO".equals(existente.estado())) {
+                throw new ReglaNegocioException(
+                        "El cliente " + existente.nombreCompleto() + " no está activo; actívalo en Clientes para reservar"
+                );
+            }
+            return existente;
+        }
+        ClienteRequest datos = request.cliente();
+        if (datos == null) {
+            throw new ReglaNegocioException("Elige un cliente o registra uno nuevo para la reserva");
+        }
+        if (esVacio(datos.telefono()) && esVacio(datos.correo())) {
+            throw new ReglaNegocioException(
+                    "Para reservar, el cliente debe tener teléfono o correo"
+            );
+        }
+        return clienteService.buscarPorDocumento(contexto, datos.tipoDocumento(), datos.numeroDocumento())
+                .orElseGet(() -> clienteService.crear(contexto, datos));
     }
 
     private static void compensarSiFalla(Runnable compensacion) {

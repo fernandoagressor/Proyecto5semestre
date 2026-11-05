@@ -41,6 +41,8 @@ class FlujoClienteLoteServiceTest {
     private OportunidadService oportunidadService;
     @Mock
     private ReservaService reservaService;
+    @Mock
+    private com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository loteRepository;
     @InjectMocks
     private FlujoClienteLoteService flujoService;
 
@@ -100,7 +102,74 @@ class FlujoClienteLoteServiceTest {
                 70L,
                 LocalDateTime.now().plusDays(2),
                 new BigDecimal("500000.00"),
-                "TRANSFERENCIA"
+                "TRANSFERENCIA",
+                null
         );
+    }
+
+    @Test
+    void reservaConUnClienteQueYaExisteSinCrearloDeNuevo() {
+        ClienteResponse cliente = mock(ClienteResponse.class);
+        ProspectoResponse prospecto = mock(ProspectoResponse.class);
+        OportunidadResponse oportunidad = mock(OportunidadResponse.class);
+        when(cliente.id()).thenReturn(30L);
+        when(cliente.estado()).thenReturn("ACTIVO");
+        when(cliente.nombreCompleto()).thenReturn("Ana Pérez");
+        when(cliente.correo()).thenReturn("ana@ejemplo.com");
+        when(prospecto.id()).thenReturn(40L);
+        when(oportunidad.id()).thenReturn(50L);
+        when(clienteService.obtener(contexto, 30L)).thenReturn(cliente);
+        when(prospectoService.crear(eq(contexto), any())).thenReturn(prospecto);
+        when(prospectoService.calificar(eq(contexto), eq(40L), any())).thenReturn(prospecto);
+        when(oportunidadService.crear(eq(contexto), any())).thenReturn(oportunidad);
+
+        flujoService.crear(contexto, new FlujoClienteLoteRequest(null, 60L, 70L,
+                LocalDateTime.now().plusDays(2), new BigDecimal("500000.00"), "TRANSFERENCIA", 30L));
+
+        verify(clienteService, never()).crear(any(), any());
+        verify(reservaService).crear(eq(contexto), any());
+    }
+
+    @Test
+    void reutilizaElClienteSiSuDocumentoYaEstaRegistrado() {
+        ClienteResponse cliente = mock(ClienteResponse.class);
+        ProspectoResponse prospecto = mock(ProspectoResponse.class);
+        OportunidadResponse oportunidad = mock(OportunidadResponse.class);
+        when(cliente.id()).thenReturn(30L);
+        when(cliente.nombreCompleto()).thenReturn("Ana Pérez");
+        when(cliente.telefono()).thenReturn("3001234567");
+        when(prospecto.id()).thenReturn(40L);
+        when(oportunidad.id()).thenReturn(50L);
+        when(clienteService.buscarPorDocumento(contexto, "CC", "100200300")).thenReturn(java.util.Optional.of(cliente));
+        when(prospectoService.crear(eq(contexto), any())).thenReturn(prospecto);
+        when(prospectoService.calificar(eq(contexto), eq(40L), any())).thenReturn(prospecto);
+        when(oportunidadService.crear(eq(contexto), any())).thenReturn(oportunidad);
+
+        flujoService.crear(contexto, request(new ClienteRequest(
+                "NATURAL", "CC", "100200300", "Ana", "Pérez", "3001234567", null, null, "VENTAS", null)));
+
+        verify(clienteService, never()).crear(any(), any());
+    }
+
+    @Test
+    void unLoteYaReservadoSeRechazaAntesDeCrearNada() {
+        com.inmobiliaria.inmobiliaria_api.entity.inventario.Lote lote =
+                com.inmobiliaria.inmobiliaria_api.entity.inventario.Lote.pendiente(20L, 60L, 1L, 1L, "E01-M01-L01", "1");
+        when(loteRepository.findByIdAndEmpresaIdAndProyectoId(70L, 20L, 60L)).thenReturn(java.util.Optional.of(lote));
+
+        ReglaNegocioException error = assertThrows(ReglaNegocioException.class, () -> flujoService.crear(contexto,
+                new FlujoClienteLoteRequest(null, 60L, 70L, LocalDateTime.now().plusDays(2),
+                        new BigDecimal("500000.00"), "TRANSFERENCIA", 30L)));
+
+        org.assertj.core.api.Assertions.assertThat(error.getMessage()).contains("medidas y precio");
+        verify(clienteService, never()).obtener(any(), any());
+        verify(prospectoService, never()).crear(any(), any());
+    }
+
+    @Test
+    void sinClienteElegidoNiNuevoNoReserva() {
+        assertThrows(ReglaNegocioException.class, () -> flujoService.crear(contexto, new FlujoClienteLoteRequest(
+                null, 60L, 70L, LocalDateTime.now().plusDays(2), new BigDecimal("500000.00"), "TRANSFERENCIA", null)));
+        verify(reservaService, never()).crear(any(), any());
     }
 }

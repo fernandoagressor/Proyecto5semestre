@@ -170,9 +170,10 @@ public class ReservaService {
                 "El lote no pertenece al proyecto de la oportunidad"
         ));
         if (lote.getEstado() != EstadoLote.DISPONIBLE) {
-            throw new ReglaNegocioException(
-                    "El lote ya no está disponible"
-            );
+            throw new ReglaNegocioException(lote.getEstado() == EstadoLote.PENDIENTE
+                    ? "El lote " + lote.getCodigo() + " todavía no tiene medidas y precio: complétalo en Inventario"
+                    : "El lote " + lote.getCodigo() + " ya no está disponible: alguien lo acaba de reservar o vender."
+                            + " Elige otro lote");
         }
         if (!request.fechaVencimiento().isAfter(ahora)) {
             throw new ReglaNegocioException(
