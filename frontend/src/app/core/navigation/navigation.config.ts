@@ -1,6 +1,6 @@
 import { CompanyModuleCode } from '../models/company-module.models';
 
-export type NavigationGroup = 'inicio' | 'plataforma' | 'inventario' | 'ventas' | 'gestion';
+export type NavigationGroup = 'inicio' | 'plataforma' | 'inventario' | 'ventas' | 'cobro' | 'gestion';
 
 export interface NavigationItem {
   label: string;
@@ -14,19 +14,24 @@ export interface NavigationItem {
   module?: CompanyModuleCode;
 }
 
-/** Orden y títulos de los grupos del menú lateral (el de inicio no lleva título). */
+/**
+ * Orden y títulos de los grupos del menú lateral. Siguen el camino de la venta: 1) armar el
+ * proyecto y sus lotes, 2) vender (prospecto → simulación → reserva → contrato), 3) cobrar.
+ * El de inicio no lleva título.
+ */
 export const NAVIGATION_GROUPS: readonly { id: NavigationGroup; label: string }[] = [
   { id: 'inicio', label: '' },
   { id: 'plataforma', label: 'Plataforma' },
-  { id: 'inventario', label: 'Inventario' },
-  { id: 'ventas', label: 'Ventas' },
+  { id: 'inventario', label: '1 · Proyectos' },
+  { id: 'ventas', label: '2 · Vender' },
+  { id: 'cobro', label: '3 · Cobrar' },
   { id: 'gestion', label: 'Gestión' },
 ];
 
 export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
   {
-    label: 'Dashboard',
-    caption: 'Indicadores en tiempo real',
+    label: 'Panel general',
+    caption: 'Cómo va la empresa hoy',
     route: '/dashboard',
     icon: 'dashboard',
     group: 'inicio',
@@ -42,7 +47,7 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
   },
   {
     label: 'Proyectos',
-    caption: 'Portafolio inmobiliario',
+    caption: 'Crea el proyecto y sus etapas',
     route: '/proyectos',
     icon: 'projects',
     group: 'inventario',
@@ -51,7 +56,7 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
   },
   {
     label: 'Lotes',
-    caption: 'Etapas, manzanas y lotes',
+    caption: 'Manzanas, lotes, precios y reservas',
     route: '/inventario',
     icon: 'inventory',
     group: 'inventario',
@@ -59,8 +64,8 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     module: 'PROYECTOS_INVENTARIO',
   },
   {
-    label: 'Comercial',
-    caption: 'Prospectos, oportunidades y citas',
+    label: 'Prospectos',
+    caption: 'Interesados, seguimiento y citas',
     route: '/crm',
     icon: 'crm',
     group: 'ventas',
@@ -68,27 +73,8 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     module: 'CLIENTES_VENTAS',
   },
   {
-    label: 'Nuevo cliente y lote',
-    caption: 'Cliente, lote y reserva en un paso',
-    route: '/clientes/nuevo',
-    icon: 'plus',
-    group: 'ventas',
-    permissions: [
-      'CLIENTES_CREAR',
-      'PROSPECTOS_CREAR',
-      'PROSPECTOS_CALIFICAR',
-      'OPORTUNIDADES_CREAR',
-      'OPORTUNIDADES_EDITAR',
-      'RESERVAS_CREAR',
-      'PROYECTOS_VER',
-      'LOTES_VER',
-    ],
-    permissionMode: 'all',
-    module: 'CLIENTES_VENTAS',
-  },
-  {
     label: 'Simulador',
-    caption: 'Plan de pagos para el cliente',
+    caption: 'Cuotas para cualquier persona',
     route: '/simulador',
     icon: 'calculator',
     group: 'ventas',
@@ -97,7 +83,7 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
   },
   {
     label: 'Reservas y contratos',
-    caption: 'Clientes, reservas, contratos y desistimientos',
+    caption: 'Reserva pagada → contrato → firma',
     route: '/ventas',
     icon: 'sales',
     group: 'ventas',
@@ -109,7 +95,7 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     caption: 'Cuotas, pagos y mora',
     route: '/cartera',
     icon: 'wallet',
-    group: 'ventas',
+    group: 'cobro',
     permissions: ['CUOTAS_VER', 'PAGOS_VER'],
     module: 'CARTERA_PAGOS',
   },
@@ -142,7 +128,7 @@ export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
   },
   {
     label: 'Auditoría',
-    caption: 'Eventos y alertas',
+    caption: 'Quién hizo qué y cuándo',
     route: '/auditoria',
     icon: 'audit',
     group: 'gestion',

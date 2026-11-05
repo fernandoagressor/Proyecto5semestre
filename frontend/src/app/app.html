@@ -1,1 +1,11 @@
 <router-outlet />
+
+@if (inactivity.secondsLeft(); as segundos) {
+  <div class="idle" role="alertdialog" aria-modal="true" aria-labelledby="idle-title" aria-describedby="idle-text">
+    <div class="idle__box">
+      <h2 id="idle-title">¿Sigues ahí?</h2>
+      <p id="idle-text">Llevas casi {{ minutos }} minutos sin usar NEXORA. Por seguridad, tu sesión se cerrará en <b>{{ segundos }} s</b>.</p>
+      <button class="nx-btn nx-btn--primary" type="button" (click)="inactivity.stayConnected()">Seguir conectado</button>
+    </div>
+  </div>
+}

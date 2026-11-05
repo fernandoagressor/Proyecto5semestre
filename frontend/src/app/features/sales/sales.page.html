@@ -8,7 +8,7 @@
       </select>
     </label>
     @if ((activeTab() === 'reservas' || activeTab() === 'clientes') && canUseCustomerLotFlow()) {
-      <a class="nx-btn nx-btn--primary" routerLink="/clientes/nuevo"><app-icon name="plus" /> Cliente y lote</a>
+      <a class="nx-btn nx-btn--primary" routerLink="/inventario" title="Elige un lote disponible y dale a Reservar"><app-icon name="key" /> Reservar un lote</a>
     } @else if (activeTab() === 'reservas' && auth.hasAuthority('RESERVAS_CREAR')) {
       <button class="nx-btn nx-btn--primary" type="button" (click)="openReservation()"><app-icon name="plus" /> Nueva reserva</button>
     }
@@ -115,7 +115,7 @@
       <div class="nx-section-head">
         <span class="nx-search search"><app-icon name="search" /><input class="nx-input" [formControl]="customerSearch" placeholder="Nombre, documento, teléfono, correo o código" /></span>
         @if (canUseCustomerLotFlow()) {
-          <a class="nx-btn nx-btn--sm" routerLink="/clientes/nuevo"><app-icon name="plus" /> Cliente y reserva</a>
+          <a class="nx-btn nx-btn--sm" routerLink="/inventario" title="Elige un lote disponible y dale a Reservar"><app-icon name="key" /> Reservar un lote</a>
         } @else if (auth.hasAuthority('CLIENTES_CREAR')) {
           <button class="nx-btn nx-btn--sm" type="button" (click)="openCustomer()"><app-icon name="plus" /> Registrar cliente</button>
         }

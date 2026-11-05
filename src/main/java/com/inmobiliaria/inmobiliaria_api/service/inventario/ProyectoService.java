@@ -136,7 +136,9 @@ public class ProyectoService {
                     "La empresa alcanzó el límite de proyectos de su plan"
             );
         }
-        String codigo = codigo(request.codigo());
+        String codigo = vacio(request.codigo())
+                ? siguienteCodigo(contexto.empresaId())
+                : codigo(request.codigo());
         validarCodigoDisponible(contexto.empresaId(), codigo, null);
         validarGerente(contexto.empresaId(), request.gerenteId());
 
@@ -164,7 +166,7 @@ public class ProyectoService {
             ProyectoRequest request
     ) {
         Proyecto proyecto = obtenerAutorizado(contexto, proyectoId);
-        String codigo = codigo(request.codigo());
+        String codigo = vacio(request.codigo()) ? proyecto.getCodigo() : codigo(request.codigo());
         validarCodigoDisponible(contexto.empresaId(), codigo, proyectoId);
         validarGerente(contexto.empresaId(), request.gerenteId());
 
@@ -261,6 +263,26 @@ public class ProyectoService {
 
     private String codigo(String valor) {
         return requerido(valor).toUpperCase(Locale.ROOT);
+    }
+
+    private static boolean vacio(String valor) {
+        return valor == null || valor.isBlank();
+    }
+
+    /** Siguiente código automático de la empresa: PRY-001, PRY-002… (después del mayor usado). */
+    String siguienteCodigo(Long empresaId) {
+        int mayor = proyectoRepository.codigosAutomaticos(empresaId).stream()
+                .map(c -> c.substring(4))
+                .filter(n -> n.matches("\\d{1,9}"))
+                .mapToInt(Integer::parseInt)
+                .max()
+                .orElse(0);
+        String codigo;
+        do {
+            mayor++;
+            codigo = String.format(Locale.ROOT, "PRY-%03d", mayor);
+        } while (proyectoRepository.existsByEmpresaIdAndCodigoIgnoreCase(empresaId, codigo));
+        return codigo;
     }
 
     private String requerido(String valor) {

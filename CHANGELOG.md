@@ -12,6 +12,17 @@ y [Versionado Semántico](https://semver.org/lang/es/).
   "Enviar por WhatsApp", y al entrar se pide cambiarla. El usuario es el correo del cliente; si no
   tiene correo, o el correo ya lo usa otra cuenta, es su número de documento (también al habilitar
   el portal a mano). Si el cliente ya tenía acceso, no se crea otro.
+- **Menú lateral guiado**: sigue el camino de la venta (1 · Proyectos, 2 · Vender, 3 · Cobrar) y
+  cada botón tiene una línea de ayuda debajo del nombre. Se quita "Nuevo cliente y lote" (ahora se
+  reserva desde el lote); los atajos de Ventas y del panel llevan a "Reservar un lote".
+- **Código de proyecto automático** (PRY-001, PRY-002…): al crear un proyecto solo se pide el
+  nombre; el código se puede cambiar al editarlo.
+- **Cierre de sesión por inactividad**: a los 30 minutos sin usar la aplicación (también en el
+  portal del cliente) la sesión se cierra; un minuto antes aparece "¿Sigues ahí?" para seguir
+  conectado. La actividad se comparte entre pestañas y al reabrir el navegador después del límite la
+  sesión ya no se retoma.
+- La imagen de la API reintenta las descargas de Maven Central (antes un corte momentáneo dejaba
+  publicado el frontend nuevo con la API anterior).
 - **Generar contrato desde la reserva, en 3 pasos** (Inventario → lote reservado, al terminar
   "Reservar este lote" si el pago quedó confirmado, y Ventas → reserva):
   1. **Condiciones** con el cliente y el lote ya puestos y un resumen en vivo: precio, lo pagado

@@ -34,7 +34,10 @@
               [title]="item.caption"
             >
               <app-icon [name]="item.icon" />
-              <span>{{ item.label }}</span>
+              <span class="navigation__text">
+                <span>{{ item.label }}</span>
+                <small>{{ item.caption }}</small>
+              </span>
             </a>
           }
         </div>
