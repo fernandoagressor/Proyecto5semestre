@@ -113,10 +113,11 @@
       <div class="nx-list">
         @for (e of stages(); track e.id) {
           <div class="nx-list-row"><span><b>{{ e.nombre }}</b> <span class="nx-mono nx-muted">{{ e.codigo }}</span><div class="sub">{{ e.fechaInicio | fecha }} – {{ e.fechaFin | fecha }}</div></span><nx-badge [status]="e.estado" /></div>
-        } @empty { <p class="nx-muted">Sin etapas. Créalas desde el inventario.</p> }
+        } @empty { <p class="nx-muted">Sin etapas todavía. Crea la primera con su número de manzanas.</p> }
       </div>
       <div class="nx-row">
-        @if (seesLots) { <a class="nx-btn nx-btn--primary" routerLink="/inventario" [queryParams]="{ proyecto: p.id }"><app-icon name="inventory" /> Abrir inventario</a> }
+        @if (canManageStages) { <a class="nx-btn nx-btn--primary" routerLink="/inventario" [queryParams]="{ proyecto: p.id, accion: 'nueva-etapa' }"><app-icon name="plus" /> Nueva etapa</a> }
+        @if (seesLots) { <a class="nx-btn" [class.nx-btn--primary]="!canManageStages" routerLink="/inventario" [queryParams]="{ proyecto: p.id }"><app-icon name="inventory" /> Abrir inventario</a> }
         @if (canEdit) { <button type="button" class="nx-btn" (click)="openForm(p)"><app-icon name="edit" /> Editar</button> }
       </div>
     </div>

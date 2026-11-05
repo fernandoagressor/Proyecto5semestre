@@ -4,6 +4,8 @@ import com.inmobiliaria.inmobiliaria_api.entity.inventario.EtapaProyecto;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface EtapaProyectoRepository extends JpaRepository<EtapaProyecto, Long> {
 
@@ -33,4 +35,7 @@ public interface EtapaProyectoRepository extends JpaRepository<EtapaProyecto, Lo
             Integer secuencia,
             Long id
     );
+
+    @Query("select coalesce(max(e.secuencia), 0) from EtapaProyecto e where e.proyectoId = :proyectoId")
+    int maxSecuencia(@Param("proyectoId") Long proyectoId);
 }

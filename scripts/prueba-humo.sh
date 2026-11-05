@@ -153,6 +153,35 @@ else
   falla "Crear proyecto respondió $STATUS: $(cat "$TMP/cuerpo")"
 fi
 
+if [[ "$PROYECTO_ID" != null ]]; then
+  echo "4b. Inventario por pasos (etapa → manzanas → lotes por completar)"
+  api POST "/api/v1/proyectos/$PROYECTO_ID/etapas" '{"nombre":"Etapa de humo","cantidadManzanas":2}'
+  ETAPA_ID="$(cuerpo .id)"
+  [[ "$STATUS" == 201 && "$(cuerpo .codigo)" == E01 ]] && paso "Etapa creada con código automático E01" \
+    || falla "Crear etapa con manzanas respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api GET "/api/v1/proyectos/$PROYECTO_ID/etapas/$ETAPA_ID/manzanas"
+  MANZANA_ID="$(cuerpo '.[0].id')"
+  [[ "$STATUS" == 200 && "$(cuerpo '[.[].codigo] | join(",")')" == "M01,M02" ]] && paso "Se crearon sus 2 manzanas (M01, M02)" \
+    || falla "Las manzanas de la etapa no son M01,M02: $(head -c 300 "$TMP/cuerpo")"
+  api POST "/api/v1/proyectos/$PROYECTO_ID/etapas/$ETAPA_ID/manzanas/$MANZANA_ID/lotes/generar" '{"cantidad":3}'
+  LOTE_ID="$(cuerpo '.[0].id')"
+  [[ "$STATUS" == 201 && "$(cuerpo '[.[].estado] | unique | join(",")')" == PENDIENTE && "$(cuerpo '.[0].codigo')" == E01-M01-L01 ]] \
+    && paso "3 lotes por completar generados (E01-M01-L01…)" || falla "Generar lotes respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api POST "/api/v1/proyectos/$PROYECTO_ID/etapas/$ETAPA_ID/manzanas/$MANZANA_ID/lotes/generar" '{"cantidad":8}'
+  [[ "$STATUS" == 422 ]] && grep -q "puedes crear 7" "$TMP/cuerpo" && paso "Respeta el máximo de lotes del proyecto (10)" \
+    || falla "Pasar el máximo de lotes respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api PUT "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE_ID" '{"codigo":"E01-M01-L01","numero":"1","frenteM":8,"fondoM":15,"valorLista":54000000}'
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == DISPONIBLE ]] && jq -e '.areaM2 == 120' "$TMP/cuerpo" > /dev/null \
+    && paso "Al poner medidas y precio el lote queda disponible (120 m²)" || falla "Completar lote respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api GET "/api/v1/proyectos/$PROYECTO_ID/inventario/resumen"
+  [[ "$STATUS" == 200 && "$(cuerpo .pendientes)" == 2 && "$(cuerpo .disponibles)" == 1 ]] && paso "Resumen: 1 disponible y 2 por completar" \
+    || falla "Resumen de inventario: $(head -c 300 "$TMP/cuerpo")"
+  inventario_auditado() { api GET "/api/v1/auditoria/eventos?accion=LOTE_EDITADO&tamano=50"; [[ "$STATUS" == 200 && "$(cuerpo '.totalElementos')" -ge 1 ]]; }
+  esperar 15 inventario_auditado && paso "La edición del lote quedó en auditoría" || falla "No apareció el evento LOTE_EDITADO (HTTP $STATUS)"
+  avisado() { api GET "/api/v1/notificaciones?tamano=50"; [[ "$STATUS" == 200 ]] && jq -e '[.contenido[] | select(.tipo == "INVENTARIO")] | length >= 1' "$TMP/cuerpo" > /dev/null; }
+  esperar 15 avisado && paso "Los cambios del inventario llegan a las notificaciones" || falla "No llegó la notificación de inventario (HTTP $STATUS)"
+fi
+
 echo "5. Prospecto (MongoDB)"
 api POST /api/v1/prospectos "$(jq -n --argjson p "${PROYECTO_ID:-null}" --arg s "$SELLO" \
   '{proyectoId:$p, nombres:("Prospecto humo " + $s), telefono:("3" + ($s | .[-9:])), correo:("humo" + $s + "@ejemplo.com"), fuente:"WEB", temperatura:"TIBIO", presupuesto:150000000}')"
@@ -292,7 +321,7 @@ if [[ "$COMPOSE" == 1 ]]; then
   pendientes="$(mysql_q "SELECT COUNT(*) FROM crm_pendientes WHERE procesado_en IS NULL")"
   [[ "$pendientes" == 0 ]] && paso "crm_pendientes sin pendientes" || falla "crm_pendientes tiene $pendientes pendientes"
   version="$(mysql_q "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1")"
-  [[ "$version" == 31 ]] && paso "Flyway en V31" || falla "Flyway quedó en V$version"
+  [[ "$version" == 32 ]] && paso "Flyway en V32" || falla "Flyway quedó en V$version"
   errores="$(docker compose logs --no-color api 2>/dev/null | grep -c ' ERROR ' || true)"
   if [[ "$errores" == 0 ]]; then paso "Sin líneas ERROR en el log de la API"
   else

@@ -1,5 +1,6 @@
 export type StageStatus = 'ACTIVA' | 'INACTIVA' | 'CERRADA';
-export type LotStatus = 'DISPONIBLE' | 'RESERVADO' | 'VENDIDO' | 'BLOQUEADO';
+/** PENDIENTE: lote generado en bloque, aún sin medidas o precio (no se puede reservar). */
+export type LotStatus = 'PENDIENTE' | 'DISPONIBLE' | 'RESERVADO' | 'VENDIDO' | 'BLOQUEADO';
 
 export interface InventorySummary {
   total: number;
@@ -7,6 +8,7 @@ export interface InventorySummary {
   reservados: number;
   vendidos: number;
   bloqueados: number;
+  pendientes: number;
   valorDisponible: number;
 }
 
@@ -38,9 +40,11 @@ export interface Lot {
   manzanaId: number;
   codigo: string;
   numero: string;
+  /** Vacío (null) solo en lotes PENDIENTES. */
   areaM2: number;
   frenteM: number | null;
   fondoM: number | null;
+  /** Vacío (null) solo en lotes PENDIENTES. */
   valorLista: number;
   estado: LotStatus;
   disponible: boolean;
@@ -51,19 +55,22 @@ export interface Lot {
   actualizadoEn: string;
 }
 
+/** Código y secuencia vacíos = automáticos (E01…). `cantidadManzanas` solo al crear. */
 export interface StagePayload {
-  codigo: string;
+  codigo: string | null;
   nombre: string;
-  secuencia: number;
+  secuencia: number | null;
   fechaInicio: string | null;
   fechaFin: string | null;
   estado: StageStatus;
+  cantidadManzanas?: number | null;
 }
 
+/** Código y secuencia vacíos = automáticos (M01…). */
 export interface BlockPayload {
-  codigo: string;
+  codigo: string | null;
   nombre: string;
-  secuencia: number;
+  secuencia: number | null;
   estado: StageStatus;
 }
 
@@ -83,11 +90,14 @@ export interface CreateLotPayload {
 export interface UpdateLotPayload {
   codigo: string;
   numero: string;
-  areaM2: number;
+  areaM2: number | null;
   frenteM: number | null;
   fondoM: number | null;
   ubicacionReferencia: string | null;
   descripcion: string | null;
+  /** Si cambia, queda en el historial de precios; en un lote PENDIENTE es el primer precio. */
+  valorLista?: number | null;
+  motivoPrecio?: string | null;
 }
 
 export interface LotStateHistory {

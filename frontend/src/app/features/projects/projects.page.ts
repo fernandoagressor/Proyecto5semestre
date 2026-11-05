@@ -49,6 +49,7 @@ export class ProjectsPage {
   readonly canCreate = this.auth.hasAuthority('PROYECTOS_CREAR');
   readonly canEdit = this.auth.hasAuthority('PROYECTOS_EDITAR');
   readonly seesLots = this.auth.hasAuthority('LOTES_VER');
+  readonly canManageStages = this.auth.hasAuthority('ETAPAS_GESTIONAR');
   readonly canConfigure = this.auth.hasAuthority('CONFIGURACION_EMPRESA_EDITAR');
   readonly catalogStatus = signal<CatalogStatus | null>(null);
   readonly catalogUrl = computed(() => {

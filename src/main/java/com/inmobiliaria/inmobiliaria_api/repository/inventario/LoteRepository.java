@@ -52,6 +52,12 @@ public interface LoteRepository
 
     long countByProyectoIdAndEmpresaId(Long proyectoId, Long empresaId);
 
+    @Query("select l.numero from Lote l where l.manzanaId = :manzanaId")
+    List<String> numerosDeManzana(@Param("manzanaId") Long manzanaId);
+
+    @Query("select upper(l.codigo) from Lote l where l.proyectoId = :proyectoId and upper(l.codigo) like :prefijo")
+    List<String> codigosConPrefijo(@Param("proyectoId") Long proyectoId, @Param("prefijo") String prefijo);
+
     @Query("""
             select l.estado, count(l), coalesce(sum(l.valorLista), 0)
             from Lote l

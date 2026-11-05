@@ -7,8 +7,11 @@
         @for (item of projects(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }
       </select>
     </label>
-    @if (auth.hasAuthority('LOTES_CREAR') && selectedProject()) {
-      <button class="nx-btn nx-btn--primary" type="button" (click)="openCreateLot()"><app-icon name="plus" /> Nuevo lote</button>
+    @if (auth.hasAuthority('ETAPAS_GESTIONAR') && selectedProject()) {
+      <button class="nx-btn nx-btn--primary" type="button" (click)="openCreateStage()"><app-icon name="plus" /> Nueva etapa</button>
+    }
+    @if (auth.hasAuthority('LOTES_CREAR') && selectedProject() && stages().length) {
+      <button class="nx-btn" type="button" (click)="openCreateLot()"><app-icon name="plus" /> Lote suelto</button>
     }
   </nx-page-header>
 
@@ -27,6 +30,9 @@
       <button type="button" class="stat" [class.on]="stateFilter() === 'RESERVADO'" [attr.aria-pressed]="stateFilter() === 'RESERVADO'" (click)="filterByState('RESERVADO')"><span><i class="res"></i>Reservados</span><b>{{ summary()?.reservados ?? 0 }}</b><small>{{ shareOf(summary()?.reservados) }}</small></button>
       <button type="button" class="stat" [class.on]="stateFilter() === 'VENDIDO'" [attr.aria-pressed]="stateFilter() === 'VENDIDO'" (click)="filterByState('VENDIDO')"><span><i class="sold"></i>Vendidos</span><b>{{ summary()?.vendidos ?? 0 }}</b><small>{{ shareOf(summary()?.vendidos) }}</small></button>
       <button type="button" class="stat" [class.on]="stateFilter() === 'BLOQUEADO'" [attr.aria-pressed]="stateFilter() === 'BLOQUEADO'" (click)="filterByState('BLOQUEADO')"><span><i class="blocked"></i>Bloqueados</span><b>{{ summary()?.bloqueados ?? 0 }}</b><small>{{ shareOf(summary()?.bloqueados) }}</small></button>
+      @if (summary()?.pendientes) {
+        <button type="button" class="stat" [class.on]="stateFilter() === 'PENDIENTE'" [attr.aria-pressed]="stateFilter() === 'PENDIENTE'" (click)="filterByState('PENDIENTE')"><span><i class="pending"></i>Por completar</span><b>{{ summary()?.pendientes ?? 0 }}</b><small>Faltan medidas o precio</small></button>
+      }
       <div class="stat stat--value"><span>Valor disponible</span><b>{{ summary()?.valorDisponible | cop: 'compact' }}</b><small>Precio de lista de lo disponible</small></div>
     </section>
 
@@ -34,25 +40,38 @@
       @if (auth.hasAuthority('ETAPAS_VER')) {
         <aside class="nx-card nx-card--pad-sm structure" aria-label="Etapas y manzanas">
           <div class="structure__head"><b>Etapas y manzanas</b>@if (auth.hasAuthority('ETAPAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs" (click)="openCreateStage()"><app-icon name="plus" /> Etapa</button> }</div>
+          @if (!stages().length) {
+            <div class="first-step">
+              <b>Empieza por la primera etapa</b>
+              <p>Dile cuántas manzanas tiene y se crean solas con su código. Luego eliges cada manzana y dices cuántos lotes tiene.</p>
+              @if (auth.hasAuthority('ETAPAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--sm nx-btn--primary" (click)="openCreateStage()"><app-icon name="plus" /> Crear etapa</button> }
+            </div>
+          }
           <button type="button" class="stage" [class.on]="!stageFilter()" (click)="changeStageFilter('')"><b>Todo el proyecto</b></button>
           @for (item of stages(); track item.id) {
             <button type="button" class="stage" [class.on]="stageFilter() === item.id" (click)="changeStageFilter('' + item.id)">
               <b>{{ item.nombre }}</b><small>{{ statusLabel(item.estado) }}</small>
             </button>
             @if (stageFilter() === item.id) {
-              @if (auth.hasAuthority('ETAPAS_GESTIONAR') || (auth.hasAuthority('MANZANAS_GESTIONAR') && selectedBlock())) {
-                <div class="structure__edit">
-                  @if (auth.hasAuthority('ETAPAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="openEditStage(item)"><app-icon name="edit" /> Editar etapa</button> }
-                  @if (auth.hasAuthority('MANZANAS_GESTIONAR') && selectedBlock(); as b) { <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="openEditBlock(b)"><app-icon name="edit" /> Editar {{ b.nombre }}</button> }
-                </div>
+              @if (auth.hasAuthority('ETAPAS_GESTIONAR')) {
+                <div class="structure__edit"><button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="openEditStage(item)"><app-icon name="edit" /> Editar etapa</button></div>
               }
-              <div class="blocks">
+              <div class="blocks" role="group" [attr.aria-label]="'Manzanas de ' + item.nombre">
                 <button type="button" class="block" [class.on]="!blockFilter()" (click)="changeBlockFilter('')">Todas</button>
                 @for (b of blocks(); track b.id) {
-                  <button type="button" class="block" [class.on]="blockFilter() === b.id" (click)="changeBlockFilter('' + b.id)">{{ b.nombre }}</button>
+                  <button type="button" class="block" [class.on]="blockFilter() === b.id" [class.empty]="!lotsInBlock(b.id)" (click)="selectBlock(b)"
+                    [title]="lotsInBlock(b.id) ? lotsInBlock(b.id) + ' lotes' + (pendingInBlock(b.id) ? ', ' + pendingInBlock(b.id) + ' por completar' : '') : 'Sin lotes: tócala para crearlos'">
+                    {{ b.nombre }} <small>{{ lotsInBlock(b.id) || '+' }}</small>
+                  </button>
                 }
-                @if (auth.hasAuthority('MANZANAS_GESTIONAR')) { <button type="button" class="block block--add" (click)="openCreateBlock(item.id)"><app-icon name="plus" /> Manzana</button> }
+                @if (auth.hasAuthority('MANZANAS_GESTIONAR') && item.estado === 'ACTIVA') { <button type="button" class="block block--add" (click)="openCreateBlock(item.id)"><app-icon name="plus" /> Manzanas</button> }
               </div>
+              @if (selectedBlock(); as b) {
+                <div class="structure__edit">
+                  @if (canGenerateLots) { <button type="button" class="nx-btn nx-btn--xs" (click)="openGenerateLots(b)"><app-icon name="plus" /> Lotes en {{ b.nombre }}</button> }
+                  @if (auth.hasAuthority('MANZANAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="openEditBlock(b)"><app-icon name="edit" /> Editar {{ b.nombre }}</button> }
+                </div>
+              }
             }
           } @empty {
             <p class="nx-muted small">Aún no hay etapas.</p>
@@ -87,15 +106,15 @@
                   <div class="plan">
                     @for (lot of g.lots; track lot.id) {
                       <button type="button" class="lot" [attr.data-state]="lot.estado" [class.on]="selectedLot()?.id === lot.id" (click)="showLot(lot)"
-                        [attr.aria-label]="'Lote ' + lot.codigo + ', ' + statusLabel(lot.estado) + ', ' + currency(lot.valorLista)" [title]="lot.codigo + ' · ' + lot.areaM2 + ' m² · ' + currency(lot.valorLista)">
-                        <b>{{ lot.numero }}</b><small>{{ lot.areaM2 }} m²</small>
+                        [attr.aria-label]="'Lote ' + lot.codigo + ', ' + statusLabel(lot.estado) + (lot.valorLista != null ? ', ' + currency(lot.valorLista) : '')" [title]="lot.estado === 'PENDIENTE' ? lot.codigo + ' · por completar: toca para poner medidas y precio' : lot.codigo + ' · ' + lot.areaM2 + ' m² · ' + currency(lot.valorLista)">
+                        <b>{{ lot.numero }}</b><small>{{ lot.areaM2 ? lot.areaM2 + ' m²' : 'Completar' }}</small>
                       </button>
                     }
                   </div>
                 </div>
               }
             </div>
-            <div class="legend"><span><i class="free"></i>Disponible</span><span><i class="res"></i>Reservado</span><span><i class="sold"></i>Vendido</span><span><i class="blocked"></i>Bloqueado</span></div>
+            <div class="legend">@if (summary()?.pendientes) { <span><i class="pending"></i>Por completar</span> }<span><i class="free"></i>Disponible</span><span><i class="res"></i>Reservado</span><span><i class="sold"></i>Vendido</span><span><i class="blocked"></i>Bloqueado</span></div>
             @if ((lots()?.totalElementos ?? 0) > (lots()?.contenido?.length ?? 0)) {
               <p class="nx-muted small">Se muestran {{ lots()?.contenido?.length }} de {{ lots()?.totalElementos }} lotes. Elige una etapa o manzana para ver el resto.</p>
             }
@@ -109,10 +128,10 @@
                       <td><b class="nx-mono">{{ lot.codigo }}</b><div class="sub">{{ lot.ubicacionReferencia || 'Lote ' + lot.numero }}</div></td>
                       <td>{{ stageName(lot.etapaId) }}<div class="sub">{{ blockName(lot.manzanaId) }}</div></td>
                       <td>{{ lot.frenteM || '—' }} × {{ lot.fondoM || '—' }} m</td>
-                      <td class="nx-right nx-num">{{ lot.areaM2 }} m²</td>
-                      <td class="nx-right nx-num"><b>{{ currency(lot.valorLista) }}</b></td>
+                      <td class="nx-right nx-num">{{ lot.areaM2 ? lot.areaM2 + ' m²' : '—' }}</td>
+                      <td class="nx-right nx-num">@if (lot.valorLista != null) { <b>{{ currency(lot.valorLista) }}</b> } @else { <span class="nx-muted">Sin precio</span> }</td>
                       <td><nx-badge [status]="lot.estado" [text]="statusLabel(lot.estado)" /></td>
-                      <td class="nx-actions">@if (auth.hasAuthority('LOTES_EDITAR') && lot.estado !== 'RESERVADO' && lot.estado !== 'VENDIDO') { <button class="nx-btn nx-btn--xs" type="button" (click)="openEditLot(lot); $event.stopPropagation()">Editar</button> }</td>
+                      <td class="nx-actions">@if (auth.hasAuthority('LOTES_EDITAR') && lot.estado !== 'RESERVADO' && lot.estado !== 'VENDIDO') { <button class="nx-btn nx-btn--xs" [class.nx-btn--primary]="lot.estado === 'PENDIENTE'" type="button" (click)="openEditLot(lot); $event.stopPropagation()">{{ lot.estado === 'PENDIENTE' ? 'Completar' : 'Editar' }}</button> }</td>
                     </tr>
                   }
                 </tbody>
@@ -168,14 +187,14 @@
   @if (selectedLot(); as lot) {
     <div class="nx-stack detail">
       <div class="price-hero" [attr.data-state]="lot.estado">
-        <div><small>Precio de lista</small><b class="nx-num">{{ currency(lot.valorLista) }}</b></div>
+        <div><small>Precio de lista</small><b class="nx-num">{{ lot.valorLista != null ? currency(lot.valorLista) : 'Sin precio' }}</b></div>
         <nx-badge [status]="lot.estado" [text]="statusLabel(lot.estado)" />
       </div>
       <dl class="facts">
         <div><dt>Etapa</dt><dd>{{ stageName(lot.etapaId) }}</dd></div>
         <div><dt>Manzana</dt><dd>{{ blockName(lot.manzanaId) }}</dd></div>
-        <div><dt>Por m²</dt><dd>{{ lot.areaM2 ? currency(lot.valorLista / lot.areaM2) : '—' }}</dd></div>
-        <div><dt>Área</dt><dd>{{ lot.areaM2 }} m²</dd></div>
+        <div><dt>Por m²</dt><dd>{{ lot.areaM2 && lot.valorLista != null ? currency(lot.valorLista / lot.areaM2) : '—' }}</dd></div>
+        <div><dt>Área</dt><dd>{{ lot.areaM2 ? lot.areaM2 + ' m²' : '—' }}</dd></div>
         <div><dt>Medidas</dt><dd>{{ lot.frenteM || '—' }} × {{ lot.fondoM || '—' }} m</dd></div>
         <div class="span"><dt>Ubicación</dt><dd>{{ lot.ubicacionReferencia || 'Sin referencia' }}</dd></div>
       </dl>
@@ -228,7 +247,11 @@
 </nx-drawer>
 
 <!-- Crear o editar lote -->
-<nx-drawer [open]="panel() === 'lote'" (openChange)="$event || closePanel()" [title]="editingLot() ? 'Editar lote' : 'Nuevo lote'" [subtitle]="editingLot()?.codigo ?? (selectedProject()?.nombre ?? '')" [dismissible]="!submitting()">
+<nx-drawer [open]="panel() === 'lote'" (openChange)="$event || closePanel()" [title]="editingLot() ? (editingLot()!.estado === 'PENDIENTE' ? 'Completar lote ' + editingLot()!.codigo : 'Editar lote ' + editingLot()!.codigo) : 'Nuevo lote'" [subtitle]="editingLot() ? stageName(editingLot()!.etapaId) + ' · ' + blockName(editingLot()!.manzanaId) : (selectedProject()?.nombre ?? '')" [dismissible]="!submitting()">
+  @if (editingLot()?.estado === 'PENDIENTE') {
+    <p class="nx-alert nx-alert--info"><app-icon name="info" /><span>Pon las medidas (o el área) y el precio. Al guardar, el lote queda <b>disponible para la venta</b>.</span></p>
+  }
+  @if (formError()) { <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ formError() }}</span></div> }
   <form class="nx-form-grid" [formGroup]="lotForm" (ngSubmit)="submitLot()" id="lot-form">
     <label class="nx-field"><span>Etapa</span><select class="nx-select" formControlName="etapaId" (change)="lotStageChanged($any($event.target).value)" [attr.disabled]="editingLot() ? '' : null"><option [value]="0">Selecciona…</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
     <label class="nx-field"><span>Manzana</span><select class="nx-select" formControlName="manzanaId" [attr.disabled]="editingLot() ? '' : null"><option [value]="0">Selecciona…</option>@for (item of blocks(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
@@ -237,43 +260,70 @@
     <label class="nx-field"><span>Frente (m)</span><input class="nx-input" type="number" min="0" step="0.01" formControlName="frenteM" /></label>
     <label class="nx-field"><span>Fondo (m)</span><input class="nx-input" type="number" min="0" step="0.01" formControlName="fondoM" /></label>
     <label class="nx-field"><span>Área (m²)</span><input class="nx-input" type="number" min="0.01" step="0.01" formControlName="areaM2" /><span class="nx-field__hint">Se calcula con frente × fondo.</span></label>
-    <label class="nx-field"><span>Valor de lista</span><input class="nx-input" type="text" nexoraMoney formControlName="valorLista" [readOnly]="!!editingLot()" />@if (editingLot()) { <span class="nx-field__hint">El precio se cambia desde el detalle del lote.</span> }</label>
+    <label class="nx-field"><span>Precio de lista</span><input class="nx-input" type="text" nexoraMoney formControlName="valorLista" placeholder="$ 0" />@if (editingLot() && editingLot()!.estado !== 'PENDIENTE') { <span class="nx-field__hint">Si lo cambias, queda en el historial de precios.</span> }</label>
     <label class="nx-field nx-span-all"><span>Ubicación de referencia</span><input class="nx-input" formControlName="ubicacionReferencia" placeholder="Esquinero, frente a zona verde" /></label>
     <label class="nx-field nx-span-all"><span>Descripción</span><textarea class="nx-textarea" formControlName="descripcion"></textarea></label>
   </form>
   <ng-container drawer-footer>
     <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
-    <button class="nx-btn nx-btn--primary" type="submit" form="lot-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingLot() ? 'Guardar cambios' : 'Crear lote') }}</button>
+    @if (editingLot() && nextPendingLot(); as next) {
+      <button class="nx-btn" type="button" [disabled]="submitting()" (click)="submitLot(true)">Guardar y seguir con {{ next.codigo }}</button>
+    }
+    <button class="nx-btn nx-btn--primary" type="submit" form="lot-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingLot() ? 'Guardar' : 'Crear lote') }}</button>
   </ng-container>
 </nx-drawer>
 
 <!-- Etapa -->
-<nx-drawer [open]="panel() === 'etapa'" (openChange)="$event || closePanel()" variant="dialog" [title]="editingStage() ? 'Editar etapa' : 'Nueva etapa'" [dismissible]="!submitting()">
+<nx-drawer [open]="panel() === 'etapa'" (openChange)="$event || closePanel()" variant="dialog" [title]="editingStage() ? 'Editar etapa' : 'Nueva etapa'" [subtitle]="editingStage() ? '' : 'Las manzanas se crean solas, con su código.'" [dismissible]="!submitting()">
+  @if (formError()) { <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ formError() }}</span></div> }
   <form class="nx-form-grid" [formGroup]="stageForm" (ngSubmit)="submitStage()" id="stage-form">
-    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
-    <label class="nx-field"><span>Secuencia</span><input class="nx-input" type="number" min="1" formControlName="secuencia" /></label>
-    <label class="nx-field nx-span-all"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
-    <label class="nx-field"><span>Inicio</span><input class="nx-input" type="date" formControlName="fechaInicio" /></label>
-    <label class="nx-field"><span>Cierre</span><input class="nx-input" type="date" formControlName="fechaFin" /></label>
-    <label class="nx-field nx-span-all"><span>Estado</span><select class="nx-select" formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
+    <label class="nx-field nx-span-all"><span>Nombre</span><input class="nx-input" formControlName="nombre" placeholder="Etapa 1" /></label>
+    @if (!editingStage()) {
+      <label class="nx-field nx-span-all"><span>¿Cuántas manzanas tiene?</span><input class="nx-input" type="number" min="0" max="100" formControlName="cantidadManzanas" /><span class="nx-field__hint">Se crean como Manzana 1, 2, 3… (M01, M02…). Puedes cambiar sus nombres después.</span></label>
+    }
+    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" [placeholder]="editingStage() ? '' : nextStageCode()" />@if (!editingStage()) { <span class="nx-field__hint">Vacío = {{ nextStageCode() }} (automático).</span> }</label>
+    @if (editingStage()) {
+      <label class="nx-field"><span>Estado</span><select class="nx-select" formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
+    } @else { <span></span> }
+    <label class="nx-field"><span>Inicio (opcional)</span><input class="nx-input" type="date" formControlName="fechaInicio" /></label>
+    <label class="nx-field"><span>Cierre (opcional)</span><input class="nx-input" type="date" formControlName="fechaFin" /></label>
   </form>
   <ng-container drawer-footer>
     <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
-    <button class="nx-btn nx-btn--primary" type="submit" form="stage-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingStage() ? 'Guardar cambios' : 'Crear etapa') }}</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="stage-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingStage() ? 'Guardar cambios' : (stageForm.controls.cantidadManzanas.value ? 'Crear etapa y ' + stageForm.controls.cantidadManzanas.value + ' manzanas' : 'Crear etapa')) }}</button>
   </ng-container>
 </nx-drawer>
 
 <!-- Manzana -->
-<nx-drawer [open]="panel() === 'manzana'" (openChange)="$event || closePanel()" variant="dialog" [title]="editingBlock() ? 'Editar manzana' : 'Nueva manzana'" [dismissible]="!submitting()">
+<nx-drawer [open]="panel() === 'manzana'" (openChange)="$event || closePanel()" variant="dialog" [title]="editingBlock() ? 'Editar ' + editingBlock()!.nombre : 'Nueva manzana'" [subtitle]="editingBlock() ? stageName(editingBlock()!.etapaId) : ''" [dismissible]="!submitting()">
+  @if (formError()) { <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ formError() }}</span></div> }
   <form class="nx-form-grid" [formGroup]="blockForm" (ngSubmit)="submitBlock()" id="block-form">
-    <label class="nx-field nx-span-all"><span>Etapa</span><select class="nx-select" formControlName="etapaId" [attr.disabled]="editingBlock() ? '' : null"><option [value]="0">Selecciona…</option>@for (item of stages(); track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></label>
-    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
-    <label class="nx-field"><span>Secuencia</span><input class="nx-input" type="number" min="1" formControlName="secuencia" /></label>
     <label class="nx-field nx-span-all"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
-    <label class="nx-field nx-span-all"><span>Estado</span><select class="nx-select" formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
+    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /><span class="nx-field__hint">Cambiarlo no cambia el código de los lotes ya creados.</span></label>
+    <label class="nx-field"><span>Estado</span><select class="nx-select" formControlName="estado"><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="CERRADA">Cerrada</option></select></label>
   </form>
   <ng-container drawer-footer>
     <button class="nx-btn" type="button" (click)="closePanel()">Cancelar</button>
     <button class="nx-btn nx-btn--primary" type="submit" form="block-form" [disabled]="submitting()">{{ submitting() ? 'Guardando…' : (editingBlock() ? 'Guardar cambios' : 'Crear manzana') }}</button>
+  </ng-container>
+</nx-drawer>
+
+<!-- ¿Cuántas manzanas / cuántos lotes? -->
+<nx-drawer [open]="panel() === 'cantidad'" (openChange)="$event || closePanel()" variant="dialog"
+  [title]="quantityTarget()?.mode === 'lotes' ? '¿Cuántos lotes tiene ' + $any(quantityTarget()).block.nombre + '?' : '¿Cuántas manzanas agregas a ' + (quantityTarget()?.stage?.nombre ?? '') + '?'"
+  [subtitle]="quantityTarget()?.mode === 'lotes' ? 'Se crean numerados y con su código; luego completas medidas y precio de cada uno.' : 'Se crean con código automático, siguiendo la numeración de la etapa.'"
+  [dismissible]="!submitting()">
+  @if (formError()) { <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ formError() }}</span></div> }
+  <form class="nx-form-grid" [formGroup]="quantityForm" (ngSubmit)="submitQuantity()" id="quantity-form">
+    <label class="nx-field nx-span-all"><span>{{ quantityTarget()?.mode === 'lotes' ? 'Número de lotes' : 'Número de manzanas' }}</span>
+      <input class="nx-input" type="number" min="1" [attr.max]="quantityTarget()?.mode === 'lotes' ? 500 : 100" formControlName="cantidad" />
+      @if (quantityTarget()?.mode === 'lotes' && $any(quantityTarget()).block; as b) {
+        <span class="nx-field__hint">{{ lotsInBlock(b.id) ? 'Ya tiene ' + lotsInBlock(b.id) + ' lotes: los nuevos siguen la numeración.' : 'Quedarán como ' + stageCodeOf(b) + '-' + b.codigo + '-L01, L02…' }}</span>
+      }
+    </label>
+  </form>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closePanel()">Ahora no</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="quantity-form" [disabled]="submitting()">{{ submitting() ? 'Creando…' : (quantityTarget()?.mode === 'lotes' ? 'Crear ' + quantityForm.controls.cantidad.value + ' lotes' : 'Agregar ' + quantityForm.controls.cantidad.value + ' manzanas') }}</button>
   </ng-container>
 </nx-drawer>

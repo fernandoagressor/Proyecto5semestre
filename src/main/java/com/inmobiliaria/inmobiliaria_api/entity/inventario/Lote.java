@@ -40,7 +40,7 @@ public class Lote extends EntidadAuditable {
     @Column(nullable = false, length = 30)
     private String numero;
 
-    @Column(name = "area_m2", nullable = false, precision = 12, scale = 2)
+    @Column(name = "area_m2", precision = 12, scale = 2)
     private BigDecimal areaM2;
 
     @Column(name = "frente_m", precision = 10, scale = 2)
@@ -49,7 +49,7 @@ public class Lote extends EntidadAuditable {
     @Column(name = "fondo_m", precision = 10, scale = 2)
     private BigDecimal fondoM;
 
-    @Column(name = "valor_lista", nullable = false, precision = 19, scale = 2)
+    @Column(name = "valor_lista", precision = 19, scale = 2)
     private BigDecimal valorLista;
 
     @Enumerated(EnumType.STRING)
@@ -105,6 +105,59 @@ public class Lote extends EntidadAuditable {
         );
     }
 
+    /**
+     * Lote generado en bloque: solo código y número. Queda PENDIENTE (no se puede reservar ni
+     * vender) hasta que se le registren medidas y precio.
+     */
+    public static Lote pendiente(
+            Long empresaId,
+            Long proyectoId,
+            Long etapaId,
+            Long manzanaId,
+            String codigo,
+            String numero
+    ) {
+        Lote lote = new Lote();
+        lote.empresaId = empresaId;
+        lote.proyectoId = proyectoId;
+        lote.etapaId = etapaId;
+        lote.manzanaId = manzanaId;
+        lote.codigo = codigo;
+        lote.numero = numero;
+        lote.estado = EstadoLote.PENDIENTE;
+        lote.disponible = false;
+        return lote;
+    }
+
+    /** Tiene lo mínimo para venderse: área y precio de lista. */
+    public boolean tieneDatosCompletos() {
+        return areaM2 != null && valorLista != null;
+    }
+
+    /**
+     * Un lote PENDIENTE pasa a DISPONIBLE en cuanto tiene área y precio. Devuelve el estado
+     * anterior si cambió, o {@code null} si no hubo cambio.
+     */
+    public EstadoLote habilitarSiEstaCompleto() {
+        if (estado != EstadoLote.PENDIENTE || !tieneDatosCompletos()) {
+            return null;
+        }
+        estado = EstadoLote.DISPONIBLE;
+        disponible = true;
+        return EstadoLote.PENDIENTE;
+    }
+
+    /** Primer precio de un lote que nació sin precio. */
+    public void fijarPrecioInicial(BigDecimal valor) {
+        if (valorLista != null) {
+            throw new ReglaNegocioException("El lote ya tiene precio; use el cambio de precio");
+        }
+        if (valor == null || valor.signum() < 0) {
+            throw new ReglaNegocioException("El precio no puede ser negativo");
+        }
+        valorLista = valor;
+    }
+
     public void actualizarDatos(
             String codigo,
             String numero,
@@ -119,11 +172,18 @@ public class Lote extends EntidadAuditable {
                     "No se pueden editar los datos físicos de un lote vendido"
             );
         }
-        this.codigo = codigo;
-        this.numero = numero;
-        this.areaM2 = frenteM != null && fondoM != null
+        BigDecimal area = frenteM != null && fondoM != null
                 ? frenteM.multiply(fondoM).setScale(2, RoundingMode.HALF_UP)
                 : areaM2;
+        if (area == null && estado != EstadoLote.PENDIENTE) {
+            throw new ReglaNegocioException("El área del lote es obligatoria");
+        }
+        if (area != null && area.signum() <= 0) {
+            throw new ReglaNegocioException("El área del lote debe ser mayor que cero");
+        }
+        this.codigo = codigo;
+        this.numero = numero;
+        this.areaM2 = area;
         this.frenteM = frenteM;
         this.fondoM = fondoM;
         this.ubicacionReferencia = ubicacionReferencia;
@@ -131,6 +191,11 @@ public class Lote extends EntidadAuditable {
     }
 
     public EstadoLote cambiarEstadoManual(EstadoLote nuevoEstado) {
+        if (estado == EstadoLote.PENDIENTE) {
+            throw new ReglaNegocioException(
+                    "Complete las medidas y el precio del lote; al guardarlos queda disponible"
+            );
+        }
         if (nuevoEstado != EstadoLote.DISPONIBLE
                 && nuevoEstado != EstadoLote.BLOQUEADO) {
             throw new ReglaNegocioException(
@@ -204,6 +269,10 @@ public class Lote extends EntidadAuditable {
         }
         if (nuevoValor == null || nuevoValor.signum() < 0) {
             throw new ReglaNegocioException("El nuevo precio no puede ser negativo");
+        }
+        if (valorLista == null) {
+            valorLista = nuevoValor;
+            return null;
         }
         if (nuevoValor.compareTo(valorLista) == 0) {
             throw new ReglaNegocioException("El nuevo precio debe ser diferente al actual");
