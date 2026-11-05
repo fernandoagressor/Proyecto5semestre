@@ -248,6 +248,7 @@ class FlujoClienteLoteServiceTest {
         var acceso = new com.inmobiliaria.inmobiliaria_api.dto.portal.PortalDtos.Acceso(
                 30L, 90L, "100200300", null, "Temporal-123!");
         when(portalAccesoService.habilitarSiFalta(contexto, 30L)).thenReturn(acceso);
+        when(cliente.usuarioId()).thenReturn(null); // cliente nuevo: todavía sin cuenta del portal
 
         FlujoClienteLoteResponse result = flujoService.crear(contexto, request(new ClienteRequest(
                 "NATURAL", "CC", "100200300", "Ana", "Pérez", "3001234567", null, null, "VENTAS", null)), true);
