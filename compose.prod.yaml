@@ -6,8 +6,9 @@
 # - Ninguna contraseña por defecto: si falta una variable, compose se niega a arrancar.
 # - Las bases, la API y el frontend no publican puertos; solo Caddy expone 80 y 443 y saca el
 #   certificado HTTPS para DOMINIO.
-# - Límites de memoria por servicio (pensados para una m7i.xlarge de 16 GiB), rotación de logs y
-#   perfil "prod" en la API.
+# - Límites de memoria por servicio, rotación de logs y perfil "prod" en la API. Los valores por
+#   defecto son para una máquina de 16 GiB (m7i.xlarge); para una de 4 GiB (Lightsail de USD 24)
+#   se agrega deploy/capacidad-4gb.env al .env (docs/DESPLIEGUE_LIGHTSAIL.md).
 # - Las imágenes se toman de GHCR (NEXORA_VERSION); `--build` las construye desde el código si
 #   todavía no se publicaron.
 #
@@ -28,6 +29,8 @@ services:
       - --log-bin-trust-function-creators=1
       - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-2G}
       - --max-connections=${MYSQL_MAX_CONNECTIONS:-200}
+      # performance_schema reserva unos 400 MB; en máquinas pequeñas se apaga (MYSQL_PERFORMANCE_SCHEMA=OFF).
+      - --performance-schema=${MYSQL_PERFORMANCE_SCHEMA:-ON}
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${DB_NAME:-inmobiliaria_db}
@@ -105,11 +108,12 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Defina REDIS_PASSWORD}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-512mb}
       TZ: America/Bogota
     command:
       - sh
       - -c
-      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD" --maxmemory 512mb --maxmemory-policy allkeys-lru
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD" --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -121,7 +125,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768m
+          memory: ${REDIS_MEMORIA:-768m}
     logging: *logging
 
   api:
@@ -139,12 +143,15 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker,prod
+      # Memoria de Java dentro del límite del contenedor (API_MEMORIA).
+      JAVA_TOOL_OPTIONS: ${API_JAVA_OPTS:--XX:MaxRAMPercentage=75.0}
+      TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
       DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-inmobiliaria_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota
       DB_USER: ${DB_USER:-inmobiliaria}
       DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-30}
       DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-10}
-      MONGODB_URI: mongodb://${MONGO_APP_USER:-nexora_app}:${MONGO_APP_PASSWORD}@mongodb:27017/${MONGO_DATABASE:-nexora}?authSource=${MONGO_DATABASE:-nexora}&replicaSet=rs0&maxPoolSize=${MONGO_POOL_MAX:-100}&minPoolSize=10
+      MONGODB_URI: mongodb://${MONGO_APP_USER:-nexora_app}:${MONGO_APP_PASSWORD}@mongodb:27017/${MONGO_DATABASE:-nexora}?authSource=${MONGO_DATABASE:-nexora}&replicaSet=rs0&maxPoolSize=${MONGO_POOL_MAX:-100}&minPoolSize=${MONGO_POOL_MIN:-10}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -191,7 +198,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: ${FRONTEND_MEMORIA:-256m}
     logging: *logging
 
   caddy:
@@ -214,7 +221,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: ${CADDY_MEMORIA:-256m}
     logging: *logging
 
 volumes:

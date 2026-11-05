@@ -6,6 +6,13 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Servidor económico (~USD 27 al mes)**: `deploy/capacidad-4gb.env` deja todo el stack de
+  producción (bases, API, frontend, Caddy, monitoreo y respaldos) en un servidor de 4 GiB.
+  Incluye `deploy/crear-swap.sh` y la guía `docs/DESPLIEGUE_LIGHTSAIL.md`, que cubre costos,
+  migración desde la EC2 por respaldo de S3 y qué apagar en EC2. Los límites de memoria de Redis,
+  frontend, Caddy y Prometheus, la memoria de Java (`API_JAVA_OPTS`), los hilos de Tomcat y
+  `performance_schema` de MySQL ahora se ajustan desde el `.env`. El humo de producción del CI
+  corre con este perfil y falla si el stack pasa de 3000 MiB.
 - **Desistimientos** (Reservas y contratos → pestaña Desistimientos, vista "Ventas-Desistimiento"):
   liquidación en vivo (pagado − cláusula penal − otros descuentos), registro, aprobación o rechazo
   y **acta en PDF**. Aprobar anula el contrato (libera el lote y reabre la oportunidad), cancela el
