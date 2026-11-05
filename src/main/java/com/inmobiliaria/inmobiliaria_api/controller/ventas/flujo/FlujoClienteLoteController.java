@@ -7,6 +7,7 @@ import com.inmobiliaria.inmobiliaria_api.service.ventas.flujo.FlujoClienteLoteSe
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,8 +38,11 @@ public class FlujoClienteLoteController {
             """)
     public FlujoClienteLoteResponse crear(
             @AuthenticationPrincipal Jwt jwt,
+            Authentication autenticacion,
             @Valid @RequestBody FlujoClienteLoteRequest request
     ) {
-        return flujoService.crear(ContextoUsuario.empresa(jwt), request);
+        boolean habilitarPortal = autenticacion.getAuthorities().stream()
+                .anyMatch(permiso -> "PORTAL_CLIENTE_HABILITAR".equals(permiso.getAuthority()));
+        return flujoService.crear(ContextoUsuario.empresa(jwt), request, habilitarPortal);
     }
 }

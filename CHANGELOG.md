@@ -6,6 +6,12 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Acceso al portal automático al reservar**: si quien reserva puede habilitar portales
+  (`PORTAL_CLIENTE_HABILITAR`), el cliente nuevo queda con su usuario y una contraseña temporal para
+  ver su compra. Se muestran una sola vez al final de "Reservar este lote", con "Copiar mensaje" y
+  "Enviar por WhatsApp", y al entrar se pide cambiarla. El usuario es el correo del cliente; si no
+  tiene correo, o el correo ya lo usa otra cuenta, es su número de documento (también al habilitar
+  el portal a mano). Si el cliente ya tenía acceso, no se crea otro.
 - **Generar contrato desde la reserva, en 3 pasos** (Inventario → lote reservado, al terminar
   "Reservar este lote" si el pago quedó confirmado, y Ventas → reserva):
   1. **Condiciones** con el cliente y el lote ya puestos y un resumen en vivo: precio, lo pagado

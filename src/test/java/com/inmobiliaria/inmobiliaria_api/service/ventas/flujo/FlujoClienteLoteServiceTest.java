@@ -43,6 +43,8 @@ class FlujoClienteLoteServiceTest {
     private ReservaService reservaService;
     @Mock
     private com.inmobiliaria.inmobiliaria_api.repository.inventario.LoteRepository loteRepository;
+    @Mock
+    private com.inmobiliaria.inmobiliaria_api.service.portal.PortalAccesoService portalAccesoService;
     @InjectMocks
     private FlujoClienteLoteService flujoService;
 
@@ -228,5 +230,50 @@ class FlujoClienteLoteServiceTest {
         when(cliente.telefono()).thenReturn("3001234567");
         when(clienteService.obtener(contexto, 30L)).thenReturn(cliente);
         return cliente;
+    }
+
+    @Test
+    void alReservarConUnClienteNuevoSeLeCreaElAccesoAlPortal() {
+        ClienteResponse cliente = mock(ClienteResponse.class);
+        ProspectoResponse prospecto = mock(ProspectoResponse.class);
+        OportunidadResponse oportunidad = mock(OportunidadResponse.class);
+        when(cliente.id()).thenReturn(30L);
+        when(cliente.telefono()).thenReturn("3001234567");
+        when(prospecto.id()).thenReturn(40L);
+        when(oportunidad.id()).thenReturn(50L);
+        when(clienteService.crear(eq(contexto), any())).thenReturn(cliente);
+        when(prospectoService.crearRegistroTecnico(eq(contexto), any())).thenReturn(prospecto);
+        when(prospectoService.calificar(eq(contexto), eq(40L), any())).thenReturn(prospecto);
+        when(oportunidadService.crear(eq(contexto), any())).thenReturn(oportunidad);
+        var acceso = new com.inmobiliaria.inmobiliaria_api.dto.portal.PortalDtos.Acceso(
+                30L, 90L, "100200300", null, "Temporal-123!");
+        when(portalAccesoService.habilitarSiFalta(contexto, 30L)).thenReturn(acceso);
+
+        FlujoClienteLoteResponse result = flujoService.crear(contexto, request(new ClienteRequest(
+                "NATURAL", "CC", "100200300", "Ana", "Pérez", "3001234567", null, null, "VENTAS", null)), true);
+
+        assertEquals(acceso, result.accesoPortal());
+        assertEquals(false, result.portalExistente());
+    }
+
+    @Test
+    void sinPermisoDePortalNoSeCreaElAcceso() {
+        ClienteResponse cliente = mock(ClienteResponse.class);
+        ProspectoResponse prospecto = mock(ProspectoResponse.class);
+        OportunidadResponse oportunidad = mock(OportunidadResponse.class);
+        when(cliente.id()).thenReturn(30L);
+        when(cliente.telefono()).thenReturn("3001234567");
+        when(prospecto.id()).thenReturn(40L);
+        when(oportunidad.id()).thenReturn(50L);
+        when(clienteService.crear(eq(contexto), any())).thenReturn(cliente);
+        when(prospectoService.crearRegistroTecnico(eq(contexto), any())).thenReturn(prospecto);
+        when(prospectoService.calificar(eq(contexto), eq(40L), any())).thenReturn(prospecto);
+        when(oportunidadService.crear(eq(contexto), any())).thenReturn(oportunidad);
+
+        FlujoClienteLoteResponse result = flujoService.crear(contexto, request(new ClienteRequest(
+                "NATURAL", "CC", "100200300", "Ana", "Pérez", "3001234567", null, null, "VENTAS", null)), false);
+
+        assertEquals(null, result.accesoPortal());
+        verify(portalAccesoService, never()).habilitarSiFalta(any(), any());
     }
 }
