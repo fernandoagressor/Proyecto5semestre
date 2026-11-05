@@ -188,6 +188,35 @@ export class PortalPage {
     this.service.dataChanges(0, 30).pipe(catchError(() => of(null))).subscribe((page) => this.changes.set(page?.contenido ?? []));
   }
 
+  readonly signing = signal(false);
+
+  /** Descarga el contrato (para firmar o ya firmado). */
+  downloadContract(c: PortalContract): void {
+    if (!c.archivoContratoId) return;
+    this.download({ archivoId: c.archivoContratoId, nombreArchivo: `Contrato-${c.codigo}.pdf`, codigo: c.codigo } as ClientPortalDocument);
+  }
+
+  /** Sube el contrato firmado desde casa. */
+  uploadSigned(c: PortalContract, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.signing.set(true);
+    this.service.uploadSignedContract(c.id, file).subscribe({
+      next: () => {
+        this.signing.set(false);
+        input.value = '';
+        this.toast.success('Recibimos tu contrato firmado. Te avisaremos cuando lo revisemos.');
+        this.contracts.update((list) => list.map((k) => (k.id === c.id ? { ...k, estadoFirma: 'EN_REVISION', motivoRechazoFirma: null } : k)));
+      },
+      error: (e) => {
+        this.signing.set(false);
+        input.value = '';
+        this.toast.error(apiErrorMessage(e, 'No se pudo enviar el contrato firmado.'));
+      },
+    });
+  }
+
   download(doc: ClientPortalDocument): void {
     if (!doc.archivoId) return;
     this.service.downloadPortalDocument(doc.archivoId).subscribe({

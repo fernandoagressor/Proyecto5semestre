@@ -502,7 +502,9 @@ export class InventoryPage {
     if (result) {
       this.feedback.set(result.firmado
         ? `Venta activa: lote ${lot?.codigo ?? ''} vendido con el contrato ${result.contrato.codigo}. El plan de pagos ya está en Cartera.`
-        : `Contrato ${result.contrato.codigo} creado en borrador: el lote sigue reservado hasta que se firme en Ventas.`);
+        : result.enviadoAlCliente
+          ? `Contrato ${result.contrato.codigo} enviado al portal del cliente para que lo firme; te llegará una notificación cuando lo suba.`
+          : `Contrato ${result.contrato.codigo} creado en borrador: el lote sigue reservado hasta que se firme en Ventas.`);
     }
     this.loadProject();
   }

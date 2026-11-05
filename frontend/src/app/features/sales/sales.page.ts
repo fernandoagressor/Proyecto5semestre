@@ -19,6 +19,7 @@ import { Lot } from '../../core/models/inventory.models';
 import {
   Contract,
   ContractSigner,
+  SignatureEvent,
   Customer,
   PortalAccess,
   CustomerPayload,
@@ -48,6 +49,7 @@ type SalesModal =
   | 'firmante'
   | 'firma'
   | 'anular-contrato'
+  | 'rechazar-firma'
   | null;
 
 @Component({
@@ -677,6 +679,47 @@ export class SalesPage implements OnInit {
   openCancelContract(): void {
     this.reasonForm.reset({ reason: '' });
     this.modal.set('anular-contrato');
+  }
+
+  /** Firma que el cliente subió desde su portal y está esperando revisión. */
+  portalSignature(signer: ContractSigner): SignatureEvent | null {
+    return signer.eventos.find((e) => e.origen === 'PORTAL' && e.estadoValidacion === 'PENDIENTE') ?? null;
+  }
+
+  readonly reviewingSignature = signal<SignatureEvent | null>(null);
+
+  confirmPortalSignature(signature: SignatureEvent): void {
+    const contract = this.selectedContract();
+    if (!contract) return;
+    this.runSave(
+      this.sales.confirmClientSignature(contract.id, signature.id),
+      'Firma del cliente confirmada',
+      (updated) => {
+        this.selectedContract.set(updated);
+        this.loadContracts();
+        this.loadReservations();
+      },
+    );
+  }
+
+  openRejectSignature(signature: SignatureEvent): void {
+    this.reviewingSignature.set(signature);
+    this.reasonForm.reset({ reason: '' });
+    this.modal.set('rechazar-firma');
+  }
+
+  rejectPortalSignature(): void {
+    const contract = this.selectedContract();
+    const signature = this.reviewingSignature();
+    if (!contract || !signature || this.reasonForm.invalid) return;
+    this.runSave(
+      this.sales.rejectClientSignature(contract.id, signature.id, this.reasonForm.controls.reason.value.trim()),
+      'Firma rechazada: el cliente verá el motivo en su portal',
+      (updated) => {
+        this.closeModal();
+        this.selectedContract.set(updated);
+      },
+    );
   }
 
   cancelContract(): void {

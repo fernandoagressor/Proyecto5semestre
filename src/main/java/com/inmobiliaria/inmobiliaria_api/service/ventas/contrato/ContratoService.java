@@ -57,6 +57,10 @@ import com.inmobiliaria.inmobiliaria_api.service.crm.OportunidadService;
 import com.inmobiliaria.inmobiliaria_api.service.crm.PendientesCrmService;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectos;
 import com.inmobiliaria.inmobiliaria_api.service.ventas.reserva.ReservaService;
+import com.inmobiliaria.inmobiliaria_api.service.ventas.documento.DocumentoVentaService;
+import com.inmobiliaria.inmobiliaria_api.service.notificacion.NotificacionService;
+import com.inmobiliaria.inmobiliaria_api.dto.ventas.documento.DocumentoVentaResponse;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -96,6 +100,8 @@ public class ContratoService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final PlanPagoService planPagoService;
+    private final DocumentoVentaService documentoVentaService;
+    private final NotificacionService notificaciones;
 
     public ContratoService(
             ContratoRepository contratoRepository,
@@ -114,7 +120,9 @@ public class ContratoService {
             CrmAlcanceService crmAlcanceService,
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
-            PlanPagoService planPagoService
+            PlanPagoService planPagoService,
+            DocumentoVentaService documentoVentaService,
+            NotificacionService notificaciones
     ) {
         this.contratoRepository = contratoRepository;
         this.contratoClienteRepository = contratoClienteRepository;
@@ -133,6 +141,8 @@ public class ContratoService {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.planPagoService = planPagoService;
+        this.documentoVentaService = documentoVentaService;
+        this.notificaciones = notificaciones;
     }
 
     @Transactional(readOnly = true)
@@ -543,11 +553,132 @@ public class ContratoService {
                     null,
                     fecha,
                     EstadoValidacionFirma.VALIDA
-            ));
+            ).conArchivo(request.archivoId(), "OFICINA"));
             firmante.registrarFirma(fecha, request.archivoId(), EstadoValidacionFirma.VALIDA);
         }
         activarVenta(contexto, contrato, fecha);
         return respuestaCompleta(contrato);
+    }
+
+    /**
+     * El cliente sube desde su portal el contrato firmado. Queda como firma PENDIENTE de revisión
+     * y se avisa a quienes gestionan firmas; la venta se activa cuando alguien la confirma.
+     */
+    @Transactional
+    public void recibirFirmaDelCliente(
+            ContextoUsuario contexto,
+            Cliente cliente,
+            Long contratoId,
+            MultipartFile archivo
+    ) {
+        Contrato contrato = contratoRepository.findForUpdate(contratoId, contexto.empresaId())
+                .filter(c -> esDelCliente(c, cliente.getId()))
+                .orElseThrow(() -> new RecursoNoEncontradoException("El contrato no existe"));
+        if (contrato.getEstado() != EstadoContrato.PENDIENTE_FIRMA) {
+            throw new ReglaNegocioException("Este contrato no está esperando tu firma");
+        }
+        ContratoFirmante firmante = firmanteRepository.findByContratoIdOrderByOrdenFirmaAsc(contratoId).stream()
+                .filter(f -> f.getPersonaId().equals(cliente.getPersonaId()))
+                .findFirst()
+                .orElseThrow(() -> new ReglaNegocioException(
+                        "No figuras como firmante de este contrato; comunícate con tu asesor"));
+        if (firmante.getEstado() == EstadoFirmante.FIRMADA) {
+            throw new ReglaNegocioException("Tu firma de este contrato ya está registrada");
+        }
+        if (firmante.getEstado() == EstadoFirmante.RECHAZADA) {
+            throw new ReglaNegocioException("Tu firma fue rechazada; comunícate con tu asesor");
+        }
+        boolean enRevision = firmaRepository.findByContratoFirmanteIdOrderByFirmadaEnAsc(firmante.getId()).stream()
+                .anyMatch(f -> f.getEstadoValidacion() == EstadoValidacionFirma.PENDIENTE);
+        if (enRevision) {
+            throw new ReglaNegocioException("Ya enviaste el contrato firmado: lo estamos revisando");
+        }
+        DocumentoVentaResponse documento = documentoVentaService.guardarAdjuntoSolicitudAutorizada(
+                contexto, contrato.getProyectoId(), archivo);
+        firmaRepository.save(new FirmaContrato(
+                firmante.getId(),
+                MetodoFirma.MANUSCRITA,
+                "Portal del cliente",
+                null,
+                documento.sha256().toLowerCase(Locale.ROOT),
+                null,
+                ahora(),
+                EstadoValidacionFirma.PENDIENTE
+        ).conArchivo(documento.id(), "PORTAL"));
+        for (Long usuarioId : usuariosQueGestionanFirmas(contexto.empresaId())) {
+            notificaciones.crear(contexto.empresaId(), usuarioId, "CONTRATO",
+                    "Contrato " + contrato.getCodigo() + " firmado por el cliente",
+                    "El cliente subió desde su portal el contrato firmado. Revísalo y confírmalo en Ventas.",
+                    "CONTRATO", contrato.getId(), "ALTA");
+        }
+    }
+
+    /**
+     * Revisión de la firma que el cliente subió por el portal. Al confirmarla, el archivo firmado
+     * queda como versión vigente del contrato y, si ya firmaron todos, se activa la venta. Al
+     * rechazarla, el cliente ve el motivo en su portal y puede volver a subirlo.
+     */
+    @Transactional
+    public ContratoResponse revisarFirmaDelCliente(
+            ContextoUsuario contexto,
+            Long contratoId,
+            Long firmaId,
+            boolean confirmar,
+            String motivo
+    ) {
+        Contrato contrato = obtenerParaActualizar(contexto, contratoId);
+        if (contrato.getEstado() != EstadoContrato.PENDIENTE_FIRMA) {
+            throw new ReglaNegocioException("El contrato no está pendiente de firma");
+        }
+        FirmaContrato firma = firmaRepository.findById(firmaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La firma no existe"));
+        ContratoFirmante firmante = firmanteRepository.findForUpdate(firma.getContratoFirmanteId(), contratoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La firma no pertenece a este contrato"));
+        if (!confirmar && (motivo == null || motivo.isBlank())) {
+            throw new ReglaNegocioException("Escribe el motivo del rechazo para que el cliente lo corrija");
+        }
+        LocalDateTime fecha = ahora();
+        firma.revisar(confirmar, normalizar(motivo), contexto.usuarioId(), fecha);
+        Long usuarioCliente = clienteRepository.findByIdAndEmpresaId(contrato.getClientePrincipalId(), contexto.empresaId())
+                .map(Cliente::getUsuarioId)
+                .orElse(null);
+        if (confirmar) {
+            firmante.registrarFirma(firma.getFirmadaEn(), firma.getArchivoId(), EstadoValidacionFirma.VALIDA);
+            registrarVersion(contrato, firma.getArchivoId(), "Contrato firmado por el cliente desde su portal",
+                    contexto.usuarioId());
+            if (todosFirmados(contratoId)) {
+                activarVenta(contexto, contrato, firma.getFirmadaEn());
+            }
+            notificaciones.crear(contexto.empresaId(), usuarioCliente, "CONTRATO",
+                    "Tu contrato " + contrato.getCodigo() + " quedó firmado",
+                    "Revisamos tu firma y quedó registrada. Puedes descargar el contrato firmado en tu portal.",
+                    "PORTAL", contrato.getId(), "MEDIA");
+        } else {
+            notificaciones.crear(contexto.empresaId(), usuarioCliente, "CONTRATO",
+                    "Revisa la firma de tu contrato " + contrato.getCodigo(),
+                    "No pudimos aceptar el contrato firmado: " + motivo.trim() + ". Vuelve a subirlo desde tu portal.",
+                    "PORTAL", contrato.getId(), "ALTA");
+        }
+        return respuestaCompleta(contrato);
+    }
+
+    private boolean esDelCliente(Contrato contrato, Long clienteId) {
+        return clienteId.equals(contrato.getClientePrincipalId())
+                || contratoClienteRepository.findByContratoIdOrderByIdAsc(contrato.getId()).stream()
+                .anyMatch(cc -> clienteId.equals(cc.getClienteId()));
+    }
+
+    private List<Long> usuariosQueGestionanFirmas(Long empresaId) {
+        return jdbcTemplate.queryForList("""
+                SELECT DISTINCT u.id
+                FROM usuarios u
+                JOIN usuario_roles ur ON ur.usuario_id = u.id
+                JOIN roles r ON r.id = ur.rol_id AND r.activo = 1
+                JOIN rol_permisos rp ON rp.rol_id = r.id AND rp.concedido = 1
+                JOIN permisos p ON p.id = rp.permiso_id AND p.activo = 1
+                WHERE u.empresa_id = ? AND u.estado = 'ACTIVO' AND u.tipo_usuario = 'INTERNO'
+                  AND p.codigo = 'CONTRATOS_FIRMAS_GESTIONAR'
+                """, Long.class, empresaId);
     }
 
     @Transactional
@@ -594,6 +725,13 @@ public class ContratoService {
                 .filter(firmante ->
                         firmante.getEstado() == EstadoFirmante.PENDIENTE)
                 .forEach(firmante -> firmante.marcarEnviada(fecha));
+        // El contrato le llega al cliente en su portal: lo descarga, lo firma y lo sube.
+        clienteRepository.findByIdAndEmpresaId(contrato.getClientePrincipalId(), contexto.empresaId())
+                .map(Cliente::getUsuarioId)
+                .ifPresent(usuarioCliente -> notificaciones.crear(contexto.empresaId(), usuarioCliente, "CONTRATO",
+                        "Tu contrato " + contrato.getCodigo() + " está listo para firmar",
+                        "Descárgalo en tu portal, fírmalo y súbelo firmado. También puedes firmarlo en nuestra oficina.",
+                        "PORTAL", contrato.getId(), "ALTA"));
         return respuestaCompleta(contrato);
     }
 

@@ -13,7 +13,11 @@ public record FirmaContratoResponse(
         String hashDocumento,
         String ipOrigen,
         LocalDateTime firmadaEn,
-        EstadoValidacionFirma estadoValidacion
+        EstadoValidacionFirma estadoValidacion,
+        Long archivoId,
+        String origen,
+        String motivoRechazo,
+        LocalDateTime revisadaEn
 ) {
     public static FirmaContratoResponse from(FirmaContrato firma) {
         return new FirmaContratoResponse(
@@ -24,7 +28,11 @@ public record FirmaContratoResponse(
                 firma.getHashDocumento(),
                 firma.getIpOrigen(),
                 firma.getFirmadaEn(),
-                firma.getEstadoValidacion()
+                firma.getEstadoValidacion(),
+                firma.getArchivoId(),
+                firma.getOrigen(),
+                firma.getMotivoRechazo(),
+                firma.getRevisadaEn()
         );
     }
 }

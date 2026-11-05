@@ -244,9 +244,22 @@
             <span class="who"><span class="order">{{ signer.ordenFirma }}</span><span><b>{{ customerByPerson(signer.personaId)?.nombreCompleto || 'Persona #' + signer.personaId }}</b><div class="sub">{{ signer.tipoFirmante.charAt(0) + signer.tipoFirmante.slice(1).toLowerCase() }}</div></span></span>
             <span class="nx-row">
               @if (signer.fechaFirma) { <span class="signed">Firmó {{ signer.fechaFirma | fecha }}</span> } @else { <nx-badge [status]="signer.estado" /> }
-              @if (contract.estado === 'PENDIENTE_FIRMA' && signer.estado !== 'FIRMADA' && auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="openSignature(signer)">Registrar firma</button> }
+              @if (contract.estado === 'PENDIENTE_FIRMA' && signer.estado !== 'FIRMADA' && !portalSignature(signer) && auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) { <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="openSignature(signer)">Registrar firma</button> }
             </span>
           </div>
+          @if (portalSignature(signer); as f) {
+            <div class="nx-alert nx-alert--info portal-signature">
+              <app-icon name="info" />
+              <span><b>Firma recibida desde el portal</b> el {{ f.firmadaEn | fecha: 'hora' }}. Revisa el archivo y confírmala para activar la venta.</span>
+              <span class="nx-row">
+                @if (f.archivoId) { <button type="button" class="nx-btn nx-btn--xs" (click)="downloadDocument(f.archivoId, contract.codigo + '-firmado')"><app-icon name="download" /> Ver archivo</button> }
+                @if (auth.hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')) {
+                  <button type="button" class="nx-btn nx-btn--xs" (click)="openRejectSignature(f)" [disabled]="saving()">Rechazar</button>
+                  <button type="button" class="nx-btn nx-btn--xs nx-btn--primary" (click)="confirmPortalSignature(f)" [disabled]="saving()">Confirmar firma</button>
+                }
+              </span>
+            </div>
+          }
         } @empty { <p class="nx-muted">Sin firmantes. Agrégalos antes de enviar a firma.</p> }
       </div>
 
@@ -329,6 +342,18 @@
 </nx-drawer>
 
 <!-- Motivo: cancelar reserva, rechazar pago, anular contrato -->
+<!-- Rechazar la firma que el cliente subió desde su portal -->
+<nx-drawer [open]="modal() === 'rechazar-firma'" (openChange)="$event || closeModal()" variant="dialog" title="Rechazar la firma del cliente" [dismissible]="!saving()">
+  <form class="nx-stack" [formGroup]="reasonForm" (ngSubmit)="rejectPortalSignature()" id="reject-signature-form">
+    <p class="nx-muted small">El cliente verá este motivo en su portal y podrá volver a subir el contrato firmado.</p>
+    <label class="nx-field"><span>Motivo</span><textarea class="nx-textarea" formControlName="reason" placeholder="Falta la firma en la página 3"></textarea></label>
+  </form>
+  <ng-container drawer-footer>
+    <button class="nx-btn" type="button" (click)="closeModal()">Volver</button>
+    <button class="nx-btn nx-btn--danger" type="submit" form="reject-signature-form" [disabled]="saving()">Rechazar firma</button>
+  </ng-container>
+</nx-drawer>
+
 <nx-drawer [open]="modal() === 'motivo-reserva' || modal() === 'anular-contrato'" (openChange)="$event || closeModal()" variant="dialog"
   [title]="modal() === 'anular-contrato' ? 'Anular contrato' : (reservationReasonAction() === 'rechazar' ? 'Rechazar pago' : 'Cancelar reserva')" [dismissible]="!saving()">
   <form class="nx-stack" [formGroup]="reasonForm" (ngSubmit)="modal() === 'anular-contrato' ? cancelContract() : applyReservationReason()" id="reason-form">

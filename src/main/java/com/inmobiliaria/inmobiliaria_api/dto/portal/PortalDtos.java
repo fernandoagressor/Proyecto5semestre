@@ -26,7 +26,12 @@ public final class PortalDtos {
                            String lote, BigDecimal areaM2, BigDecimal valorTotal, BigDecimal pagado,
                            BigDecimal saldoPendiente, BigDecimal saldoVencido, long cuotasPagadas,
                            long cuotasTotales, LocalDate proximaCuotaFecha, BigDecimal proximaCuotaValor,
-                           LocalDate fechaFirma) { }
+                           LocalDate fechaFirma,
+                           /** Contrato vigente para descargar: el que hay que firmar o el ya firmado. */
+                           Long archivoContratoId,
+                           /** EN_PREPARACION, POR_FIRMAR, EN_REVISION, RECHAZADA o FIRMADO. */
+                           String estadoFirma,
+                           String motivoRechazoFirma) { }
 
     public record Cuota(Long id, int numero, LocalDate fechaVencimiento, BigDecimal valorProgramado,
                         BigDecimal valorPagado, BigDecimal saldo, BigDecimal interesMora, int diasMora,

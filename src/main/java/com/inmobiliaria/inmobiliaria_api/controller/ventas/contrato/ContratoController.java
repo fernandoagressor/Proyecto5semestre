@@ -12,6 +12,7 @@ import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoVersionResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaContratoRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaPresencialRequest;
+import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaRechazoRequest;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.EstadoContrato;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.ventas.contrato.ContratoService;
@@ -203,5 +204,29 @@ public class ContratoController {
                 contratoId,
                 request
         );
+    }
+
+    /** Confirma el contrato firmado que subió el cliente desde su portal. */
+    @PatchMapping("/{contratoId}/firmas/{firmaId}/confirmar")
+    @PreAuthorize("hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')")
+    public ContratoResponse confirmarFirmaDelCliente(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long contratoId,
+            @PathVariable Long firmaId
+    ) {
+        return contratoService.revisarFirmaDelCliente(ContextoUsuario.empresa(jwt), contratoId, firmaId, true, null);
+    }
+
+    /** Rechaza el contrato firmado que subió el cliente; el cliente ve el motivo y puede volver a subirlo. */
+    @PatchMapping("/{contratoId}/firmas/{firmaId}/rechazar")
+    @PreAuthorize("hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')")
+    public ContratoResponse rechazarFirmaDelCliente(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long contratoId,
+            @PathVariable Long firmaId,
+            @Valid @RequestBody FirmaRechazoRequest request
+    ) {
+        return contratoService.revisarFirmaDelCliente(
+                ContextoUsuario.empresa(jwt), contratoId, firmaId, false, request.motivo());
     }
 }

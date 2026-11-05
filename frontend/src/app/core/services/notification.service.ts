@@ -49,6 +49,10 @@ export function notificationLink(notification: Pick<AppNotification, 'entidadTip
       return { path: '/servicio', queryParams: { pestana: 'citas' } };
     case 'TICKET_SOPORTE':
       return { path: '/servicio', queryParams: id ? { pestana: 'tickets', ticket: id } : { pestana: 'tickets' } };
+    case 'CONTRATO':
+      return { path: '/ventas', queryParams: id ? { contrato: id } : {} };
+    case 'PORTAL':
+      return { path: '/portal', queryParams: {} };
     case 'PROYECTO':
       return { path: '/inventario', queryParams: id ? { proyecto: id } : {} };
     case 'ALERTA_ANOMALIA':

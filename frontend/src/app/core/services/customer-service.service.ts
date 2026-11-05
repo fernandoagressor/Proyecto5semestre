@@ -195,6 +195,13 @@ export class CustomerServiceService {
     );
   }
 
+  /** El cliente sube su contrato firmado (queda en revisión en Ventas). */
+  uploadSignedContract(contractId: number, file: File): Observable<void> {
+    const body = new FormData();
+    body.append('archivo', file, file.name);
+    return this.http.post<void>(`${API_BASE_URL}/portal/contratos/${contractId}/firma`, body);
+  }
+
   downloadPortalDocument(fileId: number): Observable<Blob> {
     return this.http.get(`${API_BASE_URL}/portal/documentos/${fileId}/descargar`, {
       responseType: 'blob',

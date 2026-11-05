@@ -45,6 +45,41 @@
                 </select>
               </label>
             }
+            @switch (c.estadoFirma) {
+              @case ('POR_FIRMAR') {
+                <section class="sign-card" aria-label="Firma del contrato">
+                  <div><b>Tu contrato está listo para firmar</b>
+                    <p>Descárgalo, fírmalo y súbelo aquí (PDF o una foto clara de cada página). También puedes firmarlo en nuestra oficina.</p></div>
+                  <div class="sign-card__actions">
+                    @if (c.archivoContratoId) { <button type="button" class="nx-btn" (click)="downloadContract(c)"><app-icon name="download" /> Descargar contrato</button> }
+                    <label class="nx-btn nx-btn--primary" [class.disabled]="signing()"><app-icon name="upload" /> {{ signing() ? 'Enviando…' : 'Subir contrato firmado' }}
+                      <input type="file" accept="application/pdf,image/png,image/jpeg" hidden [disabled]="signing()" (change)="uploadSigned(c, $event)" /></label>
+                  </div>
+                </section>
+              }
+              @case ('RECHAZADA') {
+                <section class="sign-card sign-card--warn" aria-label="Firma del contrato">
+                  <div><b>Debes volver a subir tu contrato firmado</b>
+                    <p>{{ c.motivoRechazoFirma || 'Revisamos el archivo y no pudimos aceptarlo.' }}</p></div>
+                  <div class="sign-card__actions">
+                    @if (c.archivoContratoId) { <button type="button" class="nx-btn" (click)="downloadContract(c)"><app-icon name="download" /> Descargar contrato</button> }
+                    <label class="nx-btn nx-btn--primary" [class.disabled]="signing()"><app-icon name="upload" /> {{ signing() ? 'Enviando…' : 'Subir de nuevo' }}
+                      <input type="file" accept="application/pdf,image/png,image/jpeg" hidden [disabled]="signing()" (change)="uploadSigned(c, $event)" /></label>
+                  </div>
+                </section>
+              }
+              @case ('EN_REVISION') {
+                <section class="sign-card" aria-label="Firma del contrato"><div><b>Recibimos tu contrato firmado</b><p>Lo estamos revisando; te avisaremos cuando quede registrado.</p></div></section>
+              }
+              @case ('FIRMADO') {
+                @if (c.archivoContratoId) {
+                  <section class="sign-card sign-card--ok" aria-label="Contrato firmado">
+                    <div><b>Contrato firmado</b><p>Guarda una copia de tu contrato.</p></div>
+                    <div class="sign-card__actions"><button type="button" class="nx-btn" (click)="downloadContract(c)"><app-icon name="download" /> Descargar contrato firmado</button></div>
+                  </section>
+                }
+              }
+            }
             <div class="hero">
               <article class="lot">
                 <span class="lot__tag">{{ c.proyecto }} · {{ c.ciudad }}</span>
