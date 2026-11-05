@@ -79,7 +79,10 @@ public class PortalAccesoService {
         if (!correo.isBlank() && !ocupado(correo)) {
             nombreUsuario = correo;
             correoCuenta = correo;
-        } else if (!documento.isBlank() && !ocupado(documento)) {
+        } else if (!documento.isBlank() && !ocupado(documento)
+                && !ocupado(correoTecnico(documento))) {
+            // La cuenta exige un correo único: sin correo real se guarda uno técnico que no recibe
+            // mensajes (dominio .invalid, reservado); el cliente entra con su documento.
             nombreUsuario = documento;
             correoCuenta = null;
         } else {
@@ -91,7 +94,8 @@ public class PortalAccesoService {
 
         String password = passwordTemporal();
         Usuario usuario = usuarioRepository.saveAndFlush(new Usuario(
-                ctx.empresaId(), persona.getId(), nombreUsuario, correoCuenta, passwordEncoder.encode(password)));
+                ctx.empresaId(), persona.getId(), nombreUsuario,
+                correoCuenta == null ? correoTecnico(documento) : correoCuenta, passwordEncoder.encode(password)));
         jdbc.update("UPDATE usuarios SET tipo_usuario = 'CLIENTE' WHERE id = ?", usuario.getId());
         jdbc.update("""
                 INSERT INTO usuario_roles (usuario_id, rol_id, principal, asignado_por, creado_en, actualizado_en)
@@ -131,8 +135,12 @@ public class PortalAccesoService {
         String correo = persona.getCorreo() == null ? "" : persona.getCorreo().trim().toLowerCase(Locale.ROOT);
         String documento = persona.getNumeroDocumento() == null ? "" : persona.getNumeroDocumento().trim();
         boolean hayUsuarioLibre = (!correo.isBlank() && !ocupado(correo))
-                || (!documento.isBlank() && !ocupado(documento));
+                || (!documento.isBlank() && !ocupado(documento) && !ocupado(correoTecnico(documento)));
         return hayUsuarioLibre ? habilitar(ctx, clienteId) : null;
+    }
+
+    static String correoTecnico(String documento) {
+        return documento.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "") + "@cliente-sin-correo.invalid";
     }
 
     private boolean ocupado(String identificador) {
@@ -154,8 +162,9 @@ public class PortalAccesoService {
         usuarios.reiniciarCredenciales(ctx.usuarioId(), ctx.empresaId(), cliente.getUsuarioId(),
                 new AdministracionDtos.ReinicioCredencialesRequest(password, "Reenvío de acceso al portal del cliente"));
         var cuenta = jdbc.queryForMap("SELECT nombre_usuario, correo FROM usuarios WHERE id = ?", cliente.getUsuarioId());
+        String correoCuenta = (String) cuenta.get("correo");
         return new PortalDtos.Acceso(clienteId, cliente.getUsuarioId(), (String) cuenta.get("nombre_usuario"),
-                (String) cuenta.get("correo"), password);
+                correoCuenta != null && correoCuenta.endsWith(".invalid") ? null : correoCuenta, password);
     }
 
     static String passwordTemporal() {
