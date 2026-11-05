@@ -199,6 +199,39 @@ if [[ "$PROYECTO_ID" != null ]]; then
   api PATCH "/api/v1/reservas/$RESERVA_ID/pago/confirmar" '{}'
   [[ "$STATUS" == 200 && "$(cuerpo .estado)" == ACTIVA ]] && paso "Pago de la reserva confirmado: reserva activa" \
     || falla "Confirmar el pago respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  echo "4d. De la reserva al contrato (plan de pagos con la cuota inicial pendiente, firma en la oficina)"
+  condiciones() { jq -n --argjson ci "$1" --arg f "$(date -u +%Y-%m-%d)" \
+    '{tipoContrato:"PROMESA_COMPRAVENTA", otrosConceptos:0, descuento:0, cuotaInicial:$ci, numeroCuotas:12, fechaInicio:$f, fechaFinalizacion:null}'; }
+  api POST "/api/v1/reservas/$RESERVA_ID/contrato/vista-previa" "$(condiciones 500000)"
+  [[ "$STATUS" == 422 ]] && grep -q "menor que lo ya pagado en la reserva" "$TMP/cuerpo" \
+    && paso "La cuota inicial no puede ser menor que lo pagado en la reserva" \
+    || falla "Cuota inicial menor que la reserva respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api POST "/api/v1/reservas/$RESERVA_ID/contrato/vista-previa" "$(condiciones 10000000)"
+  [[ "$STATUS" == 200 ]] && jq -e '.valorTotal == 54000000 and .abonadoEnReserva == 1000000 and .inicialPendiente == 9000000
+      and .saldoFinanciado == 44000000 and (.cuotas | length) == 13 and .cuotas[0].numero == 0 and .cuotas[0].valor == 9000000' "$TMP/cuerpo" > /dev/null \
+    && paso "Vista previa: cuota 0 de \$9.000.000 y 12 cuotas para \$44.000.000" \
+    || falla "Vista previa respondió $STATUS: $(head -c 400 "$TMP/cuerpo")"
+  api POST "/api/v1/reservas/$RESERVA_ID/contrato" "$(condiciones 10000000)"
+  CONTRATO_ID="$(cuerpo .id)"
+  [[ "$STATUS" == 201 && "$(cuerpo .estado)" == BORRADOR ]] && paso "Contrato creado desde la reserva ($(cuerpo .codigo))" \
+    || falla "Crear el contrato respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  printf '%%PDF-1.4\n%% Contrato firmado de humo %s\n%%%%EOF\n' "$SELLO" > "$TMP/firmado.pdf"
+  ARCHIVO_ID="$(curl -s "${CURL_EXTRA[@]}" -H "Authorization: Bearer $TOKEN" \
+    -F "archivo=@$TMP/firmado.pdf;type=application/pdf" \
+    "$BASE_URL/api/v1/ventas/documentos?proyectoId=$PROYECTO_ID&clasificacion=CONFIDENCIAL" | jq -r '.id // empty')"
+  [[ -n "$ARCHIVO_ID" ]] && paso "Contrato firmado subido ($ARCHIVO_ID)" || falla "No se pudo subir el contrato firmado"
+  api POST "/api/v1/contratos/$CONTRATO_ID/firma-presencial" "$(jq -n --argjson a "${ARCHIVO_ID:-0}" '{archivoId:$a, firmadaEn:null}')"
+  [[ "$STATUS" == 200 && "$(cuerpo .estado)" == VIGENTE ]] && paso "Firma en la oficina: contrato vigente en un solo paso" \
+    || falla "Firma en la oficina respondió $STATUS: $(head -c 300 "$TMP/cuerpo")"
+  api GET "/api/v1/proyectos/$PROYECTO_ID/lotes/$LOTE_ID"
+  [[ "$(cuerpo .estado)" == VENDIDO ]] && paso "El lote quedó VENDIDO" || falla "El lote quedó en $(cuerpo .estado)"
+  api GET "/api/v1/cartera/planes-pago?contratoId=$CONTRATO_ID"
+  [[ "$STATUS" == 200 ]] && jq -e '.[0].estado == "ACTIVO" and (.[0].cuotas | length) == 13
+      and ([.[0].cuotas[] | select(.numero == 0)][0].valorProgramado == 9000000)' "$TMP/cuerpo" > /dev/null \
+    && paso "Cartera: plan activo con la cuota inicial pendiente como cuota 0" \
+    || falla "Plan de pagos respondió $STATUS: $(head -c 400 "$TMP/cuerpo")"
+  api POST "/api/v1/contratos/$CONTRATO_ID/firma-presencial" "$(jq -n --argjson a "${ARCHIVO_ID:-0}" '{archivoId:$a, firmadaEn:null}')"
+  [[ "$STATUS" == 422 ]] && paso "Un contrato vigente no se vuelve a firmar" || falla "Firmar dos veces respondió $STATUS"
   inventario_auditado() { api GET "/api/v1/auditoria/eventos?accion=LOTE_EDITADO&tamano=50"; [[ "$STATUS" == 200 && "$(cuerpo '.totalElementos')" -ge 1 ]]; }
   esperar 15 inventario_auditado && paso "La edición del lote quedó en auditoría" || falla "No apareció el evento LOTE_EDITADO (HTTP $STATUS)"
   avisado() { api GET "/api/v1/notificaciones?tamano=50"; [[ "$STATUS" == 200 ]] && jq -e '[.contenido[] | select(.tipo == "INVENTARIO")] | length >= 1' "$TMP/cuerpo" > /dev/null; }
@@ -344,7 +377,7 @@ if [[ "$COMPOSE" == 1 ]]; then
   pendientes="$(mysql_q "SELECT COUNT(*) FROM crm_pendientes WHERE procesado_en IS NULL")"
   [[ "$pendientes" == 0 ]] && paso "crm_pendientes sin pendientes" || falla "crm_pendientes tiene $pendientes pendientes"
   version="$(mysql_q "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank DESC LIMIT 1")"
-  [[ "$version" == 32 ]] && paso "Flyway en V32" || falla "Flyway quedó en V$version"
+  [[ "$version" == 33 ]] && paso "Flyway en V33" || falla "Flyway quedó en V$version"
   errores="$(docker compose logs --no-color api 2>/dev/null | grep -c ' ERROR ' || true)"
   if [[ "$errores" == 0 ]]; then paso "Sin líneas ERROR en el log de la API"
   else

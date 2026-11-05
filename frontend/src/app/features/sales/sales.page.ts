@@ -18,7 +18,6 @@ import { Project } from '../../core/models/empresa.models';
 import { Lot } from '../../core/models/inventory.models';
 import {
   Contract,
-  ContractConditionsPayload,
   ContractSigner,
   Customer,
   PortalAccess,
@@ -32,6 +31,7 @@ import { ProjectService } from '../../core/services/project.service';
 import { SalesService } from '../../core/services/sales.service';
 import { apiErrorMessage, NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
+import { ContractCreated, CreateContractComponent } from './create-contract.component';
 import { WithdrawalsTabComponent } from './withdrawals-tab.component';
 import { PhoneInputComponent, phoneValidator } from '../../shared/components/phone-input.component';
 
@@ -52,7 +52,7 @@ type SalesModal =
 
 @Component({
   selector: 'app-sales-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, WithdrawalsTabComponent, PhoneInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, WithdrawalsTabComponent, PhoneInputComponent, CreateContractComponent],
   templateUrl: './sales.page.html',
   styleUrl: './sales.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -126,16 +126,6 @@ export class SalesPage implements OnInit {
     reason: ['', [Validators.required, Validators.maxLength(400)]],
   });
 
-  readonly contractForm = this.fb.nonNullable.group({
-    type: ['PROMESA_COMPRAVENTA' as ContractConditionsPayload['tipoContrato'], Validators.required],
-    otherConcepts: [0, [Validators.required, Validators.min(0)]],
-    discount: [0, [Validators.required, Validators.min(0)]],
-    downPayment: [0, [Validators.required, Validators.min(0)]],
-    installments: [1, [Validators.required, Validators.min(1)]],
-    startDate: [this.localDate(new Date()), Validators.required],
-    endDate: [''],
-  });
-
   readonly documentForm = this.fb.nonNullable.group({
     reason: ['Versión contractual para firma', [Validators.required, Validators.maxLength(400)]],
   });
@@ -195,6 +185,11 @@ export class SalesPage implements OnInit {
     if (reservaId) {
       this.activeTab.set('reservas');
       this.viewReservation({ id: reservaId } as Reservation);
+    }
+    const contratoId = Number(this.route.snapshot.queryParamMap.get('contrato'));
+    if (contratoId) {
+      this.activeTab.set('contratos');
+      this.viewContract({ id: contratoId } as Contract);
     }
   }
 
@@ -484,34 +479,20 @@ export class SalesPage implements OnInit {
     );
   }
 
+  /** Abre "Generar contrato" (condiciones con resumen del plan, firma en la oficina o después). */
   openConvert(reservation: Reservation): void {
     this.selectedReservation.set(reservation);
-    this.contractForm.reset({
-      type: 'PROMESA_COMPRAVENTA',
-      otherConcepts: 0,
-      discount: 0,
-      downPayment: Number(reservation.valorReserva),
-      installments: 12,
-      startDate: this.localDate(new Date()),
-      endDate: '',
-    });
     this.modal.set('convertir');
   }
 
-  convertReservation(): void {
-    const reservation = this.selectedReservation();
-    if (!reservation || this.contractForm.invalid) return;
-    this.runSave(
-      this.sales.convertReservation(reservation.id, this.contractPayload()),
-      'Contrato creado desde la reserva',
-      (contract) => {
-        this.closeModal();
-        this.selectedReservation.set(null);
-        this.loadReservations();
-        this.loadContracts();
-        this.viewContract(contract);
-      },
-    );
+  contractCreated(result: ContractCreated | null): void {
+    this.closeModal();
+    if (!result) return;
+    this.selectedReservation.set(null);
+    this.loadReservations();
+    this.loadContracts();
+    this.activeTab.set('contratos');
+    this.viewContract(result.contrato);
   }
 
   viewContract(contract: Contract): void {
@@ -933,19 +914,6 @@ export class SalesPage implements OnInit {
         },
         error: (error) => this.showError(error),
       });
-  }
-
-  private contractPayload(): ContractConditionsPayload {
-    const value = this.contractForm.getRawValue();
-    return {
-      tipoContrato: value.type,
-      otrosConceptos: value.otherConcepts,
-      descuento: value.discount,
-      cuotaInicial: value.downPayment,
-      numeroCuotas: value.installments,
-      fechaInicio: value.startDate,
-      fechaFinalizacion: this.nullIfBlank(value.endDate),
-    };
   }
 
   customerHasPortal(id: number): boolean {

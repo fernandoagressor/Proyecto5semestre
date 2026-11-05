@@ -175,6 +175,27 @@ export interface ContractConditionsPayload {
   fechaFinalizacion: string | null;
 }
 
+/** Cómo quedaría el contrato y su plan de pagos (POST /reservas/{id}/contrato/vista-previa). */
+export interface ContractPreview {
+  valorLote: number;
+  otrosConceptos: number;
+  descuento: number;
+  valorTotal: number;
+  cuotaInicial: number;
+  abonadoEnReserva: number;
+  /** Cuota 0 que cobrará Cartera: cuota inicial − lo pagado en la reserva. */
+  inicialPendiente: number;
+  saldoFinanciado: number;
+  tasaEfectivaAnual: number;
+  periodicidad: string;
+  planAutomatico: boolean;
+  admiteDescuento: boolean;
+  valorCuota: number;
+  primeraCuota: string | null;
+  ultimaCuota: string | null;
+  cuotas: { numero: number; fechaVencimiento: string; valor: number }[];
+}
+
 export interface SalesDocument {
   id: number;
   empresaId: number;

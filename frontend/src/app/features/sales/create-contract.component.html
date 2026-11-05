@@ -1,0 +1,140 @@
+<ol class="steps" aria-label="Pasos del contrato">
+  <li [class.on]="step() === 1" [class.done]="step() > 1"><span>{{ step() > 1 ? '✓' : 1 }}</span>Condiciones</li>
+  <li [class.on]="step() === 2" [class.done]="step() > 2"><span>{{ step() > 2 ? '✓' : 2 }}</span>Firma</li>
+  <li [class.on]="step() === 3"><span>3</span>Listo</li>
+</ol>
+
+@if (error()) { <div class="nx-alert nx-alert--danger" role="alert"><app-icon name="warning" /><span>{{ error() }}</span></div> }
+
+<section class="who-card" aria-label="Venta">
+  <div><small>Cliente</small><b>{{ customerName() || 'Cliente #' + reservation().clienteId }}</b></div>
+  <div><small>Lote</small><b class="nx-mono">{{ lotCode() || '#' + reservation().loteId }}</b></div>
+  <div><small>Reserva pagada</small><b>{{ money(reservation().valorReserva) }}</b></div>
+</section>
+
+@if (step() === 1) {
+  <form class="nx-form-grid" [formGroup]="form" (ngSubmit)="createContract()" id="contract-conditions">
+    <label class="nx-field"><span>Cuota inicial</span>
+      <input class="nx-input" type="text" nexoraMoney formControlName="cuotaInicial" placeholder="$ 0" />
+      <span class="nx-field__hint">Incluye los {{ money(reservation().valorReserva) }} de la reserva.</span>
+    </label>
+    <label class="nx-field"><span>Número de cuotas</span>
+      <input class="nx-input" type="number" min="1" max="360" formControlName="numeroCuotas" />
+      <span class="nx-field__hint">{{ preview()?.periodicidad === 'MENSUAL' || !preview() ? 'Mensuales' : 'Periodicidad ' + preview()!.periodicidad.toLowerCase() }}</span>
+    </label>
+    <label class="nx-field"><span>Tipo de contrato</span>
+      <select class="nx-select" formControlName="tipoContrato">
+        <option value="PROMESA_COMPRAVENTA">Promesa de compraventa</option>
+        <option value="COMPRAVENTA">Compraventa</option>
+        <option value="CESION">Cesión</option>
+      </select>
+    </label>
+    <label class="nx-field"><span>Fecha de inicio</span><input class="nx-input" type="date" formControlName="fechaInicio" /></label>
+
+    @if (showExtras()) {
+      @if (preview()?.admiteDescuento) {
+        <label class="nx-field"><span>Descuento</span><input class="nx-input" type="text" nexoraMoney formControlName="descuento" placeholder="$ 0" />
+          <span class="nx-field__hint">Según la simulación aceptada en Comercial.</span></label>
+      }
+      <label class="nx-field"><span>Otros conceptos</span><input class="nx-input" type="text" nexoraMoney formControlName="otrosConceptos" placeholder="$ 0" />
+        <span class="nx-field__hint">Escrituración, servicios u otros cobros que suman al total.</span></label>
+    } @else {
+      <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost nx-span-all extras" (click)="showExtras.set(true)">+ Otros conceptos{{ preview()?.admiteDescuento ? ' o descuento' : '' }}</button>
+    }
+  </form>
+
+  <section class="summary" aria-live="polite" aria-label="Resumen del plan de pagos">
+    @if (previewError()) {
+      <p class="summary__error"><app-icon name="warning" /> {{ previewError() }}</p>
+    }
+    @if (!previewError() && preview(); as p) {
+      <dl class="summary__money">
+        <div><dt>Precio del lote</dt><dd>{{ money(p.valorLote) }}</dd></div>
+        @if (p.otrosConceptos > 0) { <div><dt>Otros conceptos</dt><dd>+ {{ money(p.otrosConceptos) }}</dd></div> }
+        @if (p.descuento > 0) { <div><dt>Descuento</dt><dd>− {{ money(p.descuento) }}</dd></div> }
+        <div class="total"><dt>Valor total</dt><dd>{{ money(p.valorTotal) }}</dd></div>
+        <div><dt>Ya pagado en la reserva</dt><dd>− {{ money(p.abonadoEnReserva) }}</dd></div>
+        @if (p.inicialPendiente > 0) {
+          <div class="due"><dt>Resto de la cuota inicial <small>(cuota 0, vence al firmar)</small></dt><dd>{{ money(p.inicialPendiente) }}</dd></div>
+        }
+        <div><dt>Saldo a financiar</dt><dd>{{ money(p.saldoFinanciado) }}</dd></div>
+      </dl>
+      @if (regularInstallments() > 0) {
+        <div class="summary__fee">
+          <span>{{ regularInstallments() }} cuotas de</span>
+          <b>{{ money(p.valorCuota) }}</b>
+          <small>@if (p.tasaEfectivaAnual > 0) { Con {{ p.tasaEfectivaAnual * 100 | porcentaje: 2 }} efectivo anual } @else { Sin intereses } · de {{ date(p.primeraCuota) }} a {{ date(p.ultimaCuota) }}</small>
+        </div>
+        <button type="button" class="nx-btn nx-btn--xs nx-btn--ghost" (click)="showSchedule.set(!showSchedule())">{{ showSchedule() ? 'Ocultar' : 'Ver' }} el cronograma</button>
+        @if (showSchedule()) {
+          <div class="schedule">
+            <table class="nx-table nx-table--compact">
+              <thead><tr><th>Cuota</th><th>Vence</th><th class="nx-right">Valor</th></tr></thead>
+              <tbody>
+                @for (c of p.cuotas; track c.numero) {
+                  <tr><td>{{ c.numero === 0 ? 'Inicial' : c.numero }}</td><td>{{ date(c.fechaVencimiento) }}</td><td class="nx-right nx-num">{{ money(c.valor) }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      } @else {
+        <p class="nx-muted small">Venta de contado: no hay saldo para financiar.</p>
+      }
+      @if (!p.planAutomatico) {
+        <p class="nx-muted small">La empresa genera los planes de pago a mano en Cartera: el cronograma es una referencia.</p>
+      }
+    }
+    @if (!previewError() && !preview() && calculating()) {
+      <p class="nx-muted small">Calculando el plan de pagos…</p>
+    }
+  </section>
+}
+
+@if (step() === 2 && contract(); as c) {
+  <div class="known" role="status"><app-icon name="check" /><div>Contrato <b class="nx-mono">{{ c.codigo }}</b> creado por {{ money(c.valorTotal) }}. Falta la firma para activar la venta.</div></div>
+  @if (canSign) {
+    <section class="sign-option">
+      <h3>Firmado en la oficina</h3>
+      <p class="nx-muted small">Sube el contrato firmado por el cliente (PDF o foto). La venta queda activa: el lote pasa a <b>vendido</b> y Cartera genera el plan de pagos.</p>
+      <label class="file-picker"><input type="file" accept="application/pdf,image/png,image/jpeg" (change)="setSignedFile($event)" />
+        <app-icon name="upload" /><span>{{ signedFile()?.name || 'Adjuntar el contrato firmado' }}</span><small>PDF, PNG o JPG</small></label>
+    </section>
+    <p class="nx-muted small">¿Firma electrónica o con varios firmantes? Elige <b>Firmar después</b> y continúa desde Ventas → Contratos.</p>
+  } @else {
+    <p class="nx-muted small">Tu usuario no registra firmas: el contrato queda en borrador y la firma se hace desde Ventas → Contratos.</p>
+  }
+}
+
+@if (step() === 3 && contract(); as c) {
+  <div class="done" role="status">
+    <span class="done__icon"><app-icon name="check" /></span>
+    @if (signed()) {
+      <h3>Venta activa</h3>
+      <p>Contrato <b class="nx-mono">{{ c.codigo }}</b> firmado: el lote <b>{{ lotCode() }}</b> quedó vendido a <b>{{ customerName() }}</b>.</p>
+      <p class="nx-muted small">Cartera ya tiene el plan de pagos{{ preview()?.inicialPendiente ? ', con la cuota inicial pendiente de ' + money(preview()!.inicialPendiente) + ' que vence hoy' : '' }}.</p>
+    } @else {
+      <h3>Contrato en borrador</h3>
+      <p>Contrato <b class="nx-mono">{{ c.codigo }}</b> creado. El lote sigue reservado hasta que se firme.</p>
+      <p class="nx-muted small">Para firmarlo ve a Ventas → Contratos.</p>
+    }
+  </div>
+}
+
+<div class="actions">
+  @if (step() === 1) {
+    <button class="nx-btn" type="button" (click)="done.emit(null)" [disabled]="busy()">Cancelar</button>
+    <button class="nx-btn nx-btn--primary" type="submit" form="contract-conditions" [disabled]="busy() || calculating() || !!previewError()">{{ busy() ? 'Creando…' : 'Crear contrato' }}</button>
+  }
+  @if (step() === 2) {
+    <button class="nx-btn" type="button" (click)="signLater()" [disabled]="busy()">Firmar después</button>
+    @if (canSign) {
+      <button class="nx-btn nx-btn--primary" type="button" (click)="signNow()" [disabled]="busy() || !signedFile()">{{ busy() ? 'Activando…' : 'Firmado: activar venta' }}</button>
+    }
+  }
+  @if (step() === 3 && contract(); as c) {
+    @if (signed() && auth.hasAuthority('CUOTAS_VER')) { <a class="nx-btn" routerLink="/cartera" [queryParams]="{ contrato: c.id }"><app-icon name="wallet" /> Ver plan de pagos</a> }
+    @if (!signed() && auth.hasAuthority('CONTRATOS_VER')) { <a class="nx-btn" routerLink="/ventas" [queryParams]="{ contrato: c.id }">Ir al contrato</a> }
+    <button class="nx-btn nx-btn--primary" type="button" (click)="close()">Listo</button>
+  }
+</div>

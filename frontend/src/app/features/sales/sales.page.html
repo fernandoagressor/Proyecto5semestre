@@ -341,21 +341,11 @@
   </ng-container>
 </nx-drawer>
 
-<!-- Convertir reserva en contrato -->
-<nx-drawer [open]="modal() === 'convertir'" (openChange)="$event || closeModal()" title="Nuevo contrato" subtitle="Condiciones de la venta." [dismissible]="!saving()">
-  <form class="nx-form-grid" [formGroup]="contractForm" (ngSubmit)="convertReservation()" id="contract-form">
-    <label class="nx-field"><span>Tipo de contrato</span><select class="nx-select" formControlName="type"><option value="PROMESA_COMPRAVENTA">Promesa de compraventa</option><option value="COMPRAVENTA">Compraventa</option><option value="CESION">Cesión</option></select></label>
-    <label class="nx-field"><span>Fecha de inicio</span><input class="nx-input" type="date" formControlName="startDate" /></label>
-    <label class="nx-field"><span>Otros conceptos</span><input class="nx-input" type="text" nexoraMoney formControlName="otherConcepts" /></label>
-    <label class="nx-field"><span>Descuento</span><input class="nx-input" type="text" nexoraMoney formControlName="discount" /></label>
-    <label class="nx-field"><span>Cuota inicial</span><input class="nx-input" type="text" nexoraMoney formControlName="downPayment" /></label>
-    <label class="nx-field"><span>Número de cuotas</span><input class="nx-input" type="number" min="1" formControlName="installments" /></label>
-    <label class="nx-field"><span>Fecha de finalización</span><input class="nx-input" type="date" formControlName="endDate" /></label>
-  </form>
-  <ng-container drawer-footer>
-    <button class="nx-btn" type="button" (click)="closeModal()">Cancelar</button>
-    <button class="nx-btn nx-btn--primary" type="submit" form="contract-form" [disabled]="saving()">Crear contrato</button>
-  </ng-container>
+<!-- Generar contrato desde la reserva -->
+<nx-drawer [open]="modal() === 'convertir'" (openChange)="$event || closeModal()" width="600px" title="Generar contrato" subtitle="Condiciones, plan de pagos y firma." [dismissible]="!saving()">
+  @if (modal() === 'convertir' && selectedReservation(); as r) {
+    <app-create-contract [reservation]="r" [customerName]="customerName(r.clienteId)" (done)="contractCreated($event)" />
+  }
 </nx-drawer>
 
 <!-- Versión documental -->

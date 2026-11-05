@@ -10,6 +10,7 @@ import {
   ContractConditionsPayload,
   ContractCustomer,
   ContractCustomerRole,
+  ContractPreview,
   ContractSigner,
   ContractStatus,
   Customer,
@@ -93,6 +94,15 @@ export class SalesService {
 
   convertReservation(id: number, payload: ContractConditionsPayload): Observable<Contract> {
     return this.http.post<Contract>(`${API_BASE_URL}/reservas/${id}/contrato`, payload);
+  }
+
+  contractPreview(reservationId: number, payload: ContractConditionsPayload): Observable<ContractPreview> {
+    return this.http.post<ContractPreview>(`${API_BASE_URL}/reservas/${reservationId}/contrato/vista-previa`, payload);
+  }
+
+  /** Firma en la oficina: con el contrato firmado ya subido, la venta queda activa. */
+  signInPerson(id: number, archivoId: number): Observable<Contract> {
+    return this.http.post<Contract>(`${API_BASE_URL}/contratos/${id}/firma-presencial`, { archivoId, firmadaEn: null });
   }
 
   contracts(options: { status?: ContractStatus | ''; projectId?: number | null; page?: number; size?: number } = {}): Observable<PageResponse<Contract>> {

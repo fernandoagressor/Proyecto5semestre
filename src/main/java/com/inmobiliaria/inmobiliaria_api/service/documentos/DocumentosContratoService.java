@@ -134,7 +134,7 @@ public class DocumentosContratoService {
             PdfPTable t = tabla(new float[] {0.6f, 1.2f, 1.4f, 1.4f, 1.4f, 1.2f, 1.2f},
                     "Cuota", "Vence", "Valor", "Pagado", "Saldo", "Mora", "Estado");
             for (Cuota q : cuotas) {
-                celdas(t, String.valueOf(q.numero()), q.vence().format(FECHA), pesos(q.valor()), pesos(q.pagado()),
+                celdas(t, q.numero() == 0 ? "Inicial" : String.valueOf(q.numero()), q.vence().format(FECHA), pesos(q.valor()), pesos(q.pagado()),
                         pesos(q.saldo()), pesos(q.mora()), estadoCuota(q.estado()));
             }
             doc.add(t);
@@ -179,7 +179,7 @@ public class DocumentosContratoService {
             PdfPTable t = tabla(new float[] {0.7f, 1.2f, 1f, 1.5f, 1.5f, 1.5f},
                     "Cuota", "Venció", "Días", "Capital", "Interés de mora", "Total");
             for (Cuota q : vencidas) {
-                celdas(t, String.valueOf(q.numero()), q.vence().format(FECHA), String.valueOf(q.diasMora()),
+                celdas(t, q.numero() == 0 ? "Inicial" : String.valueOf(q.numero()), q.vence().format(FECHA), String.valueOf(q.diasMora()),
                         pesos(q.saldo()), pesos(q.mora()), pesos(q.saldo().add(q.mora())));
             }
             doc.add(t);

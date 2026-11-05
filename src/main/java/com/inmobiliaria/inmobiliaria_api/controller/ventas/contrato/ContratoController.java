@@ -11,6 +11,7 @@ import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoFirmanteRes
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoVersionResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaContratoRequest;
+import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaPresencialRequest;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.EstadoContrato;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
 import com.inmobiliaria.inmobiliaria_api.service.ventas.contrato.ContratoService;
@@ -186,6 +187,21 @@ public class ContratoController {
                 ContextoUsuario.empresa(jwt),
                 contratoId,
                 request.motivo()
+        );
+    }
+
+    /** Firma en la oficina: con el contrato firmado por todos, la venta queda activa. */
+    @PostMapping("/{contratoId}/firma-presencial")
+    @PreAuthorize("hasAuthority('CONTRATOS_FIRMAS_GESTIONAR')")
+    public ContratoResponse firmarEnPresencia(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long contratoId,
+            @Valid @RequestBody FirmaPresencialRequest request
+    ) {
+        return contratoService.firmarEnPresencia(
+                ContextoUsuario.empresa(jwt),
+                contratoId,
+                request
         );
     }
 }

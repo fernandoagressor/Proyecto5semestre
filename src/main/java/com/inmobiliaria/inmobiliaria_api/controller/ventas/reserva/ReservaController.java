@@ -3,6 +3,7 @@ package com.inmobiliaria.inmobiliaria_api.controller.ventas.reserva;
 import com.inmobiliaria.inmobiliaria_api.dto.compartido.PaginaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoCondicionesRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoResponse;
+import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoVistaPreviaResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.reserva.ReservaCrearRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.reserva.ReservaMotivoRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.reserva.ReservaPagoRequest;
@@ -154,6 +155,21 @@ public class ReservaController {
             @Valid @RequestBody ContratoCondicionesRequest request
     ) {
         return contratoService.convertirReserva(
+                ContextoUsuario.empresa(jwt),
+                reservaId,
+                request
+        );
+    }
+
+    /** Cómo quedaría el contrato y su plan de pagos con estas condiciones; no guarda nada. */
+    @PostMapping("/{reservaId}/contrato/vista-previa")
+    @PreAuthorize("hasAuthority('RESERVAS_CONVERTIR_CONTRATO')")
+    public ContratoVistaPreviaResponse vistaPreviaContrato(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long reservaId,
+            @Valid @RequestBody ContratoCondicionesRequest request
+    ) {
+        return contratoService.vistaPrevia(
                 ContextoUsuario.empresa(jwt),
                 reservaId,
                 request

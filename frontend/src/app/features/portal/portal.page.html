@@ -95,7 +95,7 @@
               <div class="nx-section-head"><h3 class="nx-section-title">Próximas cuotas</h3><button type="button" class="nx-btn nx-btn--link" (click)="go('pagos')">Ver todas</button></div>
               <div class="nx-list">
                 @for (q of upcoming(); track q.id) {
-                  <div class="nx-list-row"><span><b>Cuota {{ q.numero }}</b><div class="sub">Vence {{ q.fechaVencimiento | fecha }}</div></span><span class="right"><b>{{ q.saldo + q.interesMora | cop }}</b><nx-badge [status]="q.estado" /></span></div>
+                  <div class="nx-list-row"><span><b>{{ q.numero === 0 ? 'Cuota inicial' : 'Cuota ' + q.numero }}</b><div class="sub">Vence {{ q.fechaVencimiento | fecha }}</div></span><span class="right"><b>{{ q.saldo + q.interesMora | cop }}</b><nx-badge [status]="q.estado" /></span></div>
                 }
               </div>
             </section>

@@ -122,7 +122,7 @@
               @for (item of followUpItems(); track item.cuotaId) {
                 <tr>
                   <td><b class="nx-mono">{{ contractCode(item.contratoId) }}</b><div class="sub">{{ contractClient(item.contratoId) }}</div></td>
-                  <td><span class="num-pill">{{ item.numeroCuota }}</span></td>
+                  <td><span class="num-pill">{{ item.numeroCuota === 0 ? 'Inicial' : item.numeroCuota }}</span></td>
                   <td><nx-badge [status]="item.estado" [text]="installmentLabel(item.estado)" /></td>
                   <td class="nx-nowrap">{{ item.fechaVencimiento | fecha }}</td>
                   <td>
@@ -190,7 +190,7 @@
             <tbody>
               @for (installment of plan.cuotas; track installment.id) {
                 <tr>
-                  <td><b>{{ installment.numero }}</b></td>
+                  <td><b>{{ installment.numero === 0 ? 'Inicial' : installment.numero }}</b></td>
                   <td class="nx-nowrap">{{ installment.fechaVencimiento | fecha }}@if (installment.diasMora > 0) { <div class="sub danger">{{ installment.diasMora }} días de mora</div> }</td>
                   <td class="nx-right nx-num">{{ installment.valorProgramado | cop }}</td>
                   <td class="nx-right nx-num">{{ installment.valorPagado | cop }}</td>
@@ -237,7 +237,7 @@
 
 <!-- Gestión de cobro -->
 <nx-drawer [open]="modal() === 'cobro'" (openChange)="$event || closeModal()"
-  [title]="selectedFollowUp() ? 'Cuota ' + selectedFollowUp()!.numeroCuota + ' · ' + installmentLabel(selectedFollowUp()!.estado) : ''"
+  [title]="selectedFollowUp() ? (selectedFollowUp()!.numeroCuota === 0 ? 'Cuota inicial' : 'Cuota ' + selectedFollowUp()!.numeroCuota) + ' · ' + installmentLabel(selectedFollowUp()!.estado) : ''"
   [subtitle]="selectedFollowUp() ? contractCode(selectedFollowUp()!.contratoId) + ' · ' + collectionTitle() : ''" [dismissible]="!saving()">
   @if (selectedFollowUp(); as item) {
     @if (collectionView() === 'formulario') {

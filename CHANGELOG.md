@@ -6,6 +6,22 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Generar contrato desde la reserva, en 3 pasos** (Inventario → lote reservado, al terminar
+  "Reservar este lote" si el pago quedó confirmado, y Ventas → reserva):
+  1. **Condiciones** con el cliente y el lote ya puestos y un resumen en vivo: precio, lo pagado
+     en la reserva, la cuota inicial pendiente, el saldo, el valor de cada cuota y el cronograma.
+     Lo calcula `POST /reservas/{id}/contrato/vista-previa` con la misma tasa y periodicidad que
+     usará Cartera. El descuento solo aparece si hubo simulación aceptada.
+  2. **Firma en la oficina con un clic** (`POST /contratos/{id}/firma-presencial`): se sube el
+     contrato firmado y la venta queda activa (contrato VIGENTE, lote VENDIDO y plan de pagos).
+     O "Firmar después" para seguir en Ventas con firma electrónica o varios firmantes.
+  3. Listo, con enlace al plan de pagos (`/cartera?contrato=ID`).
+- **Cuota inicial en Cartera (cuota 0)**: lo que falta de la cuota inicial después de la reserva
+  se agrega al plan de pagos como cuota 0, sin intereses, que vence el día de la firma. Se cobra y
+  entra en mora como cualquier cuota y aparece como "Inicial" en Cartera, el portal y los PDF.
+  Migración V33 (`ck_cuotas_1` admite el número 0).
+- Validaciones del contrato con mensajes claros: la cuota inicial no puede ser menor que lo pagado
+  en la reserva ni superar el valor total, y el máximo es de 360 cuotas.
 - **Servidor económico (~USD 27 al mes)**: `deploy/capacidad-4gb.env` deja todo el stack de
   producción (bases, API, frontend, Caddy, monitoreo y respaldos) en un servidor de 4 GiB.
   Incluye `deploy/crear-swap.sh` y la guía `docs/DESPLIEGUE_LIGHTSAIL.md`, que cubre costos,
