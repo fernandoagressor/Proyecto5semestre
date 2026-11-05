@@ -141,10 +141,10 @@ for tablero in gerencial comercial cartera servicio; do
 done
 
 echo "4. Proyecto (MySQL)"
-api POST /api/v1/proyectos "$(jq -n --arg c "HUMO-$SELLO" '{codigo:$c, nombre:"Proyecto de humo", ciudad:"Cartagena", departamento:"Bolívar", maxLotes:10}')"
+api POST /api/v1/proyectos "$(jq -n --arg s "$SELLO" '{nombre:("Proyecto de humo " + $s), ciudad:"Cartagena", departamento:"Bolívar", maxLotes:10}')"
 PROYECTO_ID="$(cuerpo .id)"
-if [[ "$STATUS" == 201 && "$PROYECTO_ID" != null ]]; then
-  paso "Proyecto creado ($PROYECTO_ID)"
+if [[ "$STATUS" == 201 && "$PROYECTO_ID" != null && "$(cuerpo .codigo)" =~ ^PRY-[0-9]{3,}$ ]]; then
+  paso "Proyecto creado con código automático $(cuerpo .codigo)"
 elif [[ "$STATUS" == 422 ]] && grep -q "límite de proyectos" "$TMP/cuerpo"; then
   # En staging la semilla de carga llena el cupo del plan: no es un error de la aplicación.
   PROYECTO_ID=null
