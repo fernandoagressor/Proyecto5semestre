@@ -427,7 +427,8 @@ public class ContratoService {
      * Cómo quedaría el contrato de esta reserva con estas condiciones y el plan de pagos que
      * generaría Cartera (incluida la cuota 0 de la cuota inicial pendiente). No guarda nada.
      */
-    @Transactional(readOnly = true)
+    // No es de solo lectura: la primera vez, Cartera crea la configuración de la empresa.
+    @Transactional
     public ContratoVistaPreviaResponse vistaPrevia(
             ContextoUsuario contexto,
             Long reservaId,

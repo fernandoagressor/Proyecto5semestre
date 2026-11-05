@@ -198,7 +198,7 @@ public class PlanPagoService {
      * Cronograma que generaría Cartera para estas condiciones, sin guardar nada: cuota 0 (si queda
      * cuota inicial por pagar) y las cuotas del saldo con la tasa y la periodicidad de la empresa.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Proyeccion proyectar(Long empresaId, BigDecimal saldo, int numeroCuotas, BigDecimal inicialPendiente,
                                 LocalDate fechaFirma, LocalDate fechaInicio) {
         ConfiguracionCartera configuracion = configuracionService.obtenerEntidad(empresaId);
