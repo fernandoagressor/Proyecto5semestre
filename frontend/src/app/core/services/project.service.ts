@@ -8,7 +8,7 @@ import { Project } from '../models/empresa.models';
 
 /** Espejo de dto/inventario/ProyectoRequest. */
 export interface ProjectPayload {
-  codigo: string;
+  codigo: string | null;
   nombre: string;
   descripcion: string | null;
   ciudad: string;

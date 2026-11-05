@@ -371,7 +371,7 @@ export class DashboardPage {
   readonly quickActions: QuickAction[] = [
     { label: 'Ver proyectos', caption: 'Consulta el portafolio activo', route: '/proyectos', icon: 'projects', permissions: ['PROYECTOS_VER'] },
     { label: 'Gestionar inventario', caption: 'Revisa lotes y disponibilidad', route: '/inventario', icon: 'inventory', permissions: ['LOTES_VER'] },
-    { label: 'Crear cliente', caption: 'Registra y vincula un lote', route: '/clientes/nuevo', icon: 'crm', permissions: ['CLIENTES_CREAR', 'PROSPECTOS_CREAR', 'PROSPECTOS_CALIFICAR', 'OPORTUNIDADES_CREAR', 'OPORTUNIDADES_EDITAR', 'RESERVAS_CREAR', 'PROYECTOS_VER', 'LOTES_VER'], permissionMode: 'all' },
+    { label: 'Reservar un lote', caption: 'Elige el lote y registra al cliente', route: '/inventario', icon: 'key', permissions: ['CLIENTES_CREAR', 'PROSPECTOS_CREAR', 'PROSPECTOS_CALIFICAR', 'OPORTUNIDADES_CREAR', 'OPORTUNIDADES_EDITAR', 'RESERVAS_CREAR', 'PROYECTOS_VER', 'LOTES_VER'], permissionMode: 'all' },
     { label: 'Revisar cartera', caption: 'Pagos, cuotas y mora', route: '/cartera', icon: 'wallet', permissions: ['PAGOS_VER', 'CUOTAS_VER'] },
   ];
 

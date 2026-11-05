@@ -59,6 +59,9 @@
         <p>Accede a tu plataforma de venta de lotes.</p>
       </div>
 
+      @if (sessionIdle()) {
+        <div class="nx-alert nx-alert--info" role="status"><app-icon name="info" /><span>Tu sesión se cerró porque no hubo actividad durante 30 minutos. Ingresa de nuevo para continuar.</span></div>
+      }
       @if (sessionExpired()) {
         <div class="nx-alert nx-alert--info" role="status"><app-icon name="info" /><span>Tu sesión terminó por seguridad. Ingresa de nuevo para continuar.</span></div>
       }

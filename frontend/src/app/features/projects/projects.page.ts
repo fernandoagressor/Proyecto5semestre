@@ -88,7 +88,8 @@ export class ProjectsPage {
   });
 
   readonly form = this.fb.group({
-    codigo: this.fb.control('', [Validators.required, Validators.maxLength(40)]),
+    // Opcional: al crear se asigna solo (PRY-001…); al editar se puede cambiar.
+    codigo: this.fb.control('', [Validators.maxLength(40)]),
     nombre: this.fb.control('', [Validators.required, Validators.maxLength(180)]),
     departamento: this.fb.control('', [Validators.required, Validators.maxLength(100)]),
     ciudad: this.fb.control('', [Validators.required, Validators.maxLength(100)]),
@@ -268,7 +269,7 @@ export class ProjectsPage {
     const v = this.form.getRawValue();
     const current = this.editing();
     const payload: ProjectPayload = {
-      codigo: v.codigo.trim(),
+      codigo: v.codigo.trim() || null,
       nombre: v.nombre.trim(),
       departamento: v.departamento.trim(),
       ciudad: v.ciudad.trim(),

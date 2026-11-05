@@ -126,8 +126,13 @@
 
 <nx-drawer [open]="formOpen()" (openChange)="formOpen.set($event)" width="620px" [title]="editing() ? 'Editar proyecto' : 'Nuevo proyecto'" [subtitle]="editing() ? editing()!.nombre : 'Queda en planeación hasta que lo actives.'" [dismissible]="!busy()">
   <form class="nx-form-grid" [formGroup]="form" (ngSubmit)="save()" id="project-form">
-    <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" placeholder="PRY-004" /></label>
-    <label class="nx-field"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
+    @if (editing()) {
+      <label class="nx-field"><span>Código</span><input class="nx-input" formControlName="codigo" /></label>
+      <label class="nx-field"><span>Nombre</span><input class="nx-input" formControlName="nombre" /></label>
+    } @else {
+      <label class="nx-field nx-span-all"><span>Nombre del proyecto</span><input class="nx-input" formControlName="nombre" placeholder="Altos del Río" />
+        <span class="nx-field__hint">El código (PRY-001, PRY-002…) se asigna solo al crearlo.</span></label>
+    }
     <label class="nx-field"><span>Departamento</span><input class="nx-input" formControlName="departamento" placeholder="Sucre" /></label>
     <label class="nx-field"><span>Ciudad</span><input class="nx-input" formControlName="ciudad" placeholder="Coveñas" /></label>
     <label class="nx-field nx-span-all"><span>Dirección</span><input class="nx-input" formControlName="direccion" /></label>

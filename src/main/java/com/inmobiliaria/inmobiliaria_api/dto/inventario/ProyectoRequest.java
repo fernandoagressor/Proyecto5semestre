@@ -6,7 +6,8 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record ProyectoRequest(
-        @NotBlank @Size(max = 40) String codigo,
+        /** Opcional: si viene vacío al crear, se asigna PRY-001, PRY-002…; al editar se conserva. */
+        @Size(max = 40) String codigo,
         @NotBlank @Size(max = 180) String nombre,
         @Size(max = 10000) String descripcion,
         @NotBlank @Size(max = 100) String ciudad,
