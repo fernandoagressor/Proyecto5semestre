@@ -154,6 +154,9 @@ jobs:
           GRAFANA_ADMIN_PASSWORD=HumoGrafana2026x
           VARS
 
+      - name: Capacidad del servidor de producción (4 GiB, deploy/capacidad-4gb.env)
+        run: cat deploy/capacidad-4gb.env >> .env
+
       - name: Sin contraseñas por defecto (compose se niega a arrancar)
         run: |
           if env -i PATH="$PATH" docker compose -f compose.prod.yaml --env-file /dev/null config > /dev/null 2>&1; then
@@ -200,6 +203,20 @@ jobs:
           curl -sf -u admin:HumoGrafana2026x 'http://127.0.0.1:3000/api/search?query=NEXORA' | jq -e 'length >= 1' > /dev/null \
             || { echo "::error::Grafana no tiene el tablero de NEXORA"; exit 1; }
           echo "Grafana arriba con el tablero de NEXORA"
+
+      - name: Memoria dentro de un servidor de 4 GiB
+        run: |
+          set -euo pipefail
+          docker stats --no-stream --format '{{.Name}}\t{{.MemUsage}}' | sort
+          total="$(docker stats --no-stream --format '{{.MemUsage}}' | awk '
+            { v = $1; n = v + 0; u = v; gsub(/[0-9.]/, "", u)
+              if (u == "GiB") n *= 1024; else if (u == "KiB" || u == "kB") n /= 1024; else if (u == "B") n /= 1048576
+              s += n }
+            END { printf "%d", s }')"
+          echo "Total de los contenedores: ${total} MiB (máximo aceptado 3000 MiB de 4096)"
+          [ "$total" -le 3000 ] || { echo "::error::El stack usa ${total} MiB: no cabe holgado en 4 GiB"; exit 1; }
+          oom="$(docker compose ps -aq | xargs docker inspect -f '{{.Name}} {{.State.OOMKilled}}' | awk '$2 == "true"')"
+          [ -z "$oom" ] || { echo "::error::Contenedores cerrados por memoria: $oom"; exit 1; }
 
       - name: Ningún contenedor se reinició
         run: |

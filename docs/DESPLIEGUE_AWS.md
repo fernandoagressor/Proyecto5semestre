@@ -7,6 +7,10 @@ saca el certificado HTTPS solo. El plan completo y el cronograma están en el do
 
 Tiempo estimado la primera vez: 1 a 2 horas.
 
+> **Servidor económico:** para dejar todo en un solo servidor de ~USD 27 al mes (Lightsail de
+> 4 GiB), siga [DESPLIEGUE_LIGHTSAIL.md](DESPLIEGUE_LIGHTSAIL.md). Esta guía describe la EC2
+> m7i.xlarge usada en staging para las pruebas de carga.
+
 ## 1. Cuenta, proyecto y límite de gasto (una sola vez por entorno)
 
 Las cuentas nuevas de AWS (desde septiembre de 2026) usan la **nueva experiencia** en

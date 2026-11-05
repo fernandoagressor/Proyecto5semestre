@@ -2,7 +2,7 @@
 #
 #   docker compose -f compose.prod.yaml -f compose.monitoring.yaml up -d
 #
-# Prometheus guarda 15 días de métricas de la API, la máquina, los contenedores, MySQL, MongoDB
+# Prometheus guarda 15 días (PROMETHEUS_RETENCION) de métricas de la API, la máquina, los contenedores, MySQL, MongoDB
 # y Redis; Grafana trae listo el tablero "NEXORA – Producción y pruebas de carga". Ninguno es
 # público: escuchan solo en 127.0.0.1 del servidor y se abren con un túnel SSH
 # (docs/DESPLIEGUE_AWS.md, sección Monitoreo).
@@ -25,7 +25,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENCION:-15d}
     volumes:
       - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -34,7 +34,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768m
+          memory: ${PROMETHEUS_MEMORIA:-768m}
     logging: *logging
 
   grafana:
@@ -86,7 +86,7 @@ services:
       - /dev/kmsg
     command:
       - --docker_only=true
-      - --housekeeping_interval=10s
+      - --housekeeping_interval=${CADVISOR_INTERVALO:-10s}
       - --disable_metrics=disk,diskIO,tcp,udp,percpu,sched,process,hugetlb,referenced_memory,cpu_topology,resctrl
     volumes:
       - /:/rootfs:ro
