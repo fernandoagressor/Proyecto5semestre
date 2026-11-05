@@ -10,6 +10,8 @@ import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoFirmanteReq
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoFirmanteResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoResponse;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoVersionResponse;
+import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.ContratoVistaPreviaResponse;
+import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaPresencialRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaContratoRequest;
 import com.inmobiliaria.inmobiliaria_api.dto.ventas.contrato.FirmaContratoResponse;
 import com.inmobiliaria.inmobiliaria_api.entity.cliente.Cliente;
@@ -32,6 +34,8 @@ import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.FirmaContrato;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.MetodoFirma;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.RolContratoCliente;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.contrato.TipoFirmante;
+import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.EstadoPagoReserva;
+import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.EstadoReserva;
 import com.inmobiliaria.inmobiliaria_api.entity.ventas.reserva.Reserva;
 import com.inmobiliaria.inmobiliaria_api.repository.cliente.ClienteRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.identidad.PersonaRepository;
@@ -44,6 +48,7 @@ import com.inmobiliaria.inmobiliaria_api.repository.ventas.contrato.ContratoRepo
 import com.inmobiliaria.inmobiliaria_api.repository.ventas.contrato.ContratoVersionRepository;
 import com.inmobiliaria.inmobiliaria_api.repository.ventas.contrato.FirmaContratoRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.cartera.CuotaCalculadora;
 import com.inmobiliaria.inmobiliaria_api.service.cartera.PlanPagoService;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.ConflictoException;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
@@ -227,6 +232,7 @@ public class ContratoService {
 
         BigDecimal valorBase = valorBaseContrato(reserva, lote);
         validarDescuentoSimulado(reserva, request.descuento());
+        validarCondiciones(valorBase, request, dinero(reserva.getValorReserva()));
         Contrato contrato = contratoRepository.save(new Contrato(
                 contexto.empresaId(),
                 reserva.getProyectoId(),
@@ -279,6 +285,7 @@ public class ContratoService {
                 contrato,
                 request.descuento()
         );
+        validarCondiciones(contrato.getValorLote(), request, planPagoService.abonoDeReserva(contrato));
         contrato.actualizarCondiciones(
                 request.tipoContrato(),
                 contrato.getValorLote(),
@@ -414,6 +421,132 @@ public class ContratoService {
                 motivo,
                 contexto.usuarioId()
         ));
+    }
+
+    /**
+     * Cómo quedaría el contrato de esta reserva con estas condiciones y el plan de pagos que
+     * generaría Cartera (incluida la cuota 0 de la cuota inicial pendiente). No guarda nada.
+     */
+    @Transactional(readOnly = true)
+    public ContratoVistaPreviaResponse vistaPrevia(
+            ContextoUsuario contexto,
+            Long reservaId,
+            ContratoCondicionesRequest request
+    ) {
+        Reserva reserva = reservaService.obtenerAutorizada(contexto, reservaId);
+        if (reserva.getEstado() != EstadoReserva.ACTIVA
+                || reserva.getEstadoPago() != EstadoPagoReserva.CONFIRMADO) {
+            throw new ReglaNegocioException(
+                    "Para generar el contrato, el pago de la reserva debe estar confirmado"
+            );
+        }
+        Lote lote = loteRepository.findByIdAndEmpresaIdAndProyectoId(
+                reserva.getLoteId(),
+                contexto.empresaId(),
+                reserva.getProyectoId()
+        ).orElseThrow(() -> new ReglaNegocioException("El lote de la reserva no existe"));
+        BigDecimal valorBase = valorBaseContrato(reserva, lote);
+        validarDescuentoSimulado(reserva, request.descuento());
+        BigDecimal abonado = dinero(reserva.getValorReserva());
+        validarCondiciones(valorBase, request, abonado);
+
+        BigDecimal total = valorBase.add(dinero(request.otrosConceptos())).subtract(dinero(request.descuento()));
+        BigDecimal cuotaInicial = dinero(request.cuotaInicial());
+        BigDecimal saldo = total.subtract(cuotaInicial);
+        BigDecimal pendiente = PlanPagoService.inicialPendiente(cuotaInicial, abonado);
+        PlanPagoService.Proyeccion proyeccion = planPagoService.proyectar(
+                contexto.empresaId(),
+                saldo,
+                request.numeroCuotas(),
+                pendiente,
+                ahora().toLocalDate(),
+                request.fechaInicio()
+        );
+        List<ContratoVistaPreviaResponse.CuotaProyectada> cuotas = proyeccion.cuotas().stream()
+                .map(c -> new ContratoVistaPreviaResponse.CuotaProyectada(
+                        c.numero(), c.fechaVencimiento(), c.capital().add(c.interes())))
+                .toList();
+        List<CuotaCalculadora.CuotaCalculada> regulares = proyeccion.cuotas().stream()
+                .filter(c -> c.numero() > 0)
+                .toList();
+        CuotaCalculadora.CuotaCalculada primera = regulares.isEmpty() ? null : regulares.get(0);
+        return new ContratoVistaPreviaResponse(
+                valorBase,
+                dinero(request.otrosConceptos()),
+                dinero(request.descuento()),
+                total,
+                cuotaInicial,
+                abonado,
+                pendiente,
+                saldo,
+                proyeccion.tasaEfectivaAnual(),
+                proyeccion.periodicidad().name(),
+                proyeccion.automatico(),
+                reserva.getSimulacionId() != null,
+                primera == null ? BigDecimal.ZERO.setScale(2) : primera.capital().add(primera.interes()),
+                primera == null ? null : primera.fechaVencimiento(),
+                regulares.isEmpty() ? null : regulares.get(regulares.size() - 1).fechaVencimiento(),
+                cuotas
+        );
+    }
+
+    /**
+     * Firma en la oficina, en un solo paso: el contrato firmado queda como versión vigente, se
+     * registra la firma manuscrita de todos los firmantes con la huella del archivo y se activa
+     * la venta (contrato VIGENTE, lote VENDIDO y plan de pagos con la cuota 0).
+     */
+    @Transactional
+    public ContratoResponse firmarEnPresencia(
+            ContextoUsuario contexto,
+            Long contratoId,
+            FirmaPresencialRequest request
+    ) {
+        Contrato contrato = obtenerParaActualizar(contexto, contratoId);
+        EstadoContrato estado = contrato.getEstado();
+        if (estado != EstadoContrato.BORRADOR
+                && estado != EstadoContrato.NEGOCIACION
+                && estado != EstadoContrato.PENDIENTE_FIRMA) {
+            throw new ReglaNegocioException(
+                    "El contrato " + contrato.getCodigo() + " ya no se puede firmar (está "
+                            + estado.name().toLowerCase(Locale.ROOT).replace('_', ' ') + ")"
+            );
+        }
+        LocalDateTime fecha = request.firmadaEn() == null ? ahora() : request.firmadaEn();
+        if (fecha.isAfter(ahora())) {
+            throw new ReglaNegocioException("La firma no puede tener una fecha futura");
+        }
+        String hash = huellaArchivo(request.archivoId(), contexto.empresaId(), contrato.getProyectoId());
+        List<ContratoFirmante> firmantes = firmanteRepository.findByContratoIdOrderByOrdenFirmaAsc(contratoId);
+        if (firmantes.isEmpty()) {
+            throw new ReglaNegocioException("El contrato debe tener al menos un firmante");
+        }
+        if (firmantes.stream().anyMatch(f -> f.getEstado() == EstadoFirmante.RECHAZADA)) {
+            throw new ReglaNegocioException(
+                    "Un firmante tiene la firma rechazada: revísalo en Ventas antes de firmar en la oficina"
+            );
+        }
+        if (estado != EstadoContrato.PENDIENTE_FIRMA) {
+            registrarVersion(contrato, request.archivoId(), "Contrato firmado en la oficina", contexto.usuarioId());
+            contrato.enviarAFirma();
+        }
+        for (ContratoFirmante firmante : firmantes) {
+            if (firmante.getEstado() == EstadoFirmante.FIRMADA) {
+                continue;
+            }
+            firmaRepository.save(new FirmaContrato(
+                    firmante.getId(),
+                    MetodoFirma.MANUSCRITA,
+                    "Firma en la oficina",
+                    null,
+                    hash,
+                    null,
+                    fecha,
+                    EstadoValidacionFirma.VALIDA
+            ));
+            firmante.registrarFirma(fecha, request.archivoId(), EstadoValidacionFirma.VALIDA);
+        }
+        activarVenta(contexto, contrato, fecha);
+        return respuestaCompleta(contrato);
     }
 
     @Transactional
@@ -783,6 +916,64 @@ public class ContratoService {
                     "La persona no pertenece al alcance de la empresa"
             );
         }
+    }
+
+    /**
+     * Reglas de las condiciones con mensajes claros, antes de crear o cambiar el contrato: la
+     * cuota inicial cubre al menos lo pagado en la reserva y no supera el valor total.
+     */
+    private void validarCondiciones(
+            BigDecimal valorBase,
+            ContratoCondicionesRequest request,
+            BigDecimal abonadoEnReserva
+    ) {
+        BigDecimal total = dinero(valorBase)
+                .add(dinero(request.otrosConceptos()))
+                .subtract(dinero(request.descuento()));
+        if (total.signum() <= 0) {
+            throw new ReglaNegocioException(
+                    "El descuento no puede dejar el contrato en " + pesosTexto(total)
+            );
+        }
+        BigDecimal cuotaInicial = dinero(request.cuotaInicial());
+        if (cuotaInicial.compareTo(total) > 0) {
+            throw new ReglaNegocioException(
+                    "La cuota inicial no puede superar el valor total del contrato ("
+                            + pesosTexto(total) + ")"
+            );
+        }
+        if (cuotaInicial.compareTo(abonadoEnReserva) < 0) {
+            throw new ReglaNegocioException(
+                    "La cuota inicial no puede ser menor que lo ya pagado en la reserva ("
+                            + pesosTexto(abonadoEnReserva) + ")"
+            );
+        }
+        if (request.fechaFinalizacion() != null
+                && request.fechaFinalizacion().isBefore(request.fechaInicio())) {
+            throw new ReglaNegocioException(
+                    "La fecha de finalización no puede ser anterior a la de inicio"
+            );
+        }
+    }
+
+    private static String pesosTexto(BigDecimal valor) {
+        java.text.NumberFormat formato =
+                java.text.NumberFormat.getIntegerInstance(Locale.forLanguageTag("es-CO"));
+        return "$ " + formato.format(valor.setScale(0, RoundingMode.HALF_UP));
+    }
+
+    /** Huella SHA-256 de un archivo activo de la empresa (y del proyecto del contrato). */
+    private String huellaArchivo(Long archivoId, Long empresaId, Long proyectoId) {
+        List<String> huellas = jdbcTemplate.queryForList(
+                "SELECT sha256 FROM archivos WHERE id = ? AND empresa_id = ?"
+                        + " AND (proyecto_id IS NULL OR proyecto_id = ?) AND estado = 'ACTIVO'",
+                String.class, archivoId, empresaId, proyectoId);
+        if (huellas.isEmpty()) {
+            throw new ReglaNegocioException(
+                    "El contrato firmado no pertenece a la empresa o al proyecto"
+            );
+        }
+        return huellas.get(0).toLowerCase(Locale.ROOT);
     }
 
     private void validarArchivo(

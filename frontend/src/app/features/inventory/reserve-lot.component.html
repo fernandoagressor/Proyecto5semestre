@@ -90,6 +90,11 @@
   }
   @if (step() === 3 && result(); as r) {
     @if (auth.hasAuthority('RESERVAS_VER')) { <a class="nx-btn" routerLink="/ventas" [queryParams]="{ reserva: r.reserva.id }">Ver en Ventas</a> }
-    <button class="nx-btn nx-btn--primary" type="button" (click)="close()">Listo</button>
+    @if (r.pagoConfirmado && canConvert) {
+      <button class="nx-btn" type="button" (click)="close()">Listo</button>
+      <button class="nx-btn nx-btn--primary" type="button" (click)="continueToContract()"><app-icon name="file" /> Generar contrato ahora</button>
+    } @else {
+      <button class="nx-btn nx-btn--primary" type="button" (click)="close()">Listo</button>
+    }
   }
 </div>

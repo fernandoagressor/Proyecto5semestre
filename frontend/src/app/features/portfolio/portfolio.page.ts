@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
@@ -56,6 +57,7 @@ export class PortfolioPage implements OnInit {
   private readonly sales = inject(SalesService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   readonly activeTab = signal<PortfolioTab>('contratos');
   private readonly toast = inject(ToastService);
@@ -577,7 +579,7 @@ export class PortfolioPage implements OnInit {
       [],
       ['Cuota', 'Vencimiento', 'Programado', 'Pagado', 'Saldo', 'Mora', 'Dias mora', 'Estado'],
       ...plan.cuotas.map((item) => [
-        item.numero,
+        item.numero === 0 ? 'Inicial' : item.numero,
         item.fechaVencimiento,
         item.valorProgramado,
         item.valorPagado,
@@ -638,6 +640,10 @@ export class PortfolioPage implements OnInit {
           this.followUpItems.set(data.followUp);
           this.methods.set(data.methods);
           this.configuration.set(data.configuration);
+          // Enlace directo desde Ventas: /cartera?contrato=ID abre el plan de ese contrato.
+          const contratoId = Number(this.route.snapshot.queryParamMap.get('contrato'));
+          const elegido = contratoId ? data.contracts.find((item) => item.contratoId === contratoId) : undefined;
+          if (elegido) this.viewContract(elegido);
         },
         error: (error) => this.error.set(this.errorDetail(error)),
       });

@@ -18,6 +18,8 @@ export interface LotReserved {
   reserva: Reservation;
   cliente: string;
   pagoConfirmado: boolean;
+  /** Al terminar, seguir de inmediato con el contrato (solo si el pago quedó confirmado). */
+  generarContrato?: boolean;
 }
 
 /**
@@ -55,6 +57,7 @@ export class ReserveLotComponent {
   readonly result = signal<LotReserved | null>(null);
   readonly receipt = signal<File | null>(null);
   readonly canConfirmPayment = this.auth.hasAuthority('PAGOS_CONFIRMAR');
+  readonly canConvert = this.auth.hasAuthority('RESERVAS_CONVERTIR_CONTRATO');
 
   readonly customerForm = this.fb.nonNullable.group({
     tipoDocumento: ['CC', Validators.required],
@@ -195,6 +198,12 @@ export class ReserveLotComponent {
 
   close(): void {
     this.done.emit(this.result());
+  }
+
+  /** Cierra la reserva y abre "Generar contrato" con esta misma reserva. */
+  continueToContract(): void {
+    const result = this.result();
+    if (result) this.done.emit({ ...result, generarContrato: true });
   }
 
   money(value: number | null | undefined): string {

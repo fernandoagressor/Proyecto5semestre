@@ -22,18 +22,19 @@ import { ProjectService } from '../../core/services/project.service';
 import { aplicarErroresDelServidor, apiErrorMessage, NX_UI } from '../../shared/ui';
 import { MoneyInputDirective } from '../../shared/directives/money-input.directive';
 import { LotConsecutive, nextLotConsecutive } from './lot-consecutive';
+import { ContractCreated, CreateContractComponent } from '../sales/create-contract.component';
 import { LotReserved, ReserveLotComponent } from './reserve-lot.component';
 import { Reservation } from '../../core/models/sales.models';
 import { SalesService } from '../../core/services/sales.service';
 
 type InventoryView = 'lotes' | 'estructura';
-type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | 'cantidad' | 'reservar' | null;
+type InventoryPanel = 'lote' | 'etapa' | 'manzana' | 'detalle' | 'cantidad' | 'reservar' | 'contrato' | null;
 /** Qué se genera con el diálogo de cantidad: manzanas de una etapa o lotes de una manzana. */
 type QuantityTarget = { mode: 'manzanas'; stage: ProjectStage } | { mode: 'lotes'; stage: ProjectStage; block: Block };
 
 @Component({
   selector: 'app-inventory-page',
-  imports: [ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, ReserveLotComponent],
+  imports: [ReactiveFormsModule, RouterLink, ...NX_UI, MoneyInputDirective, ReserveLotComponent, CreateContractComponent],
   templateUrl: './inventory.page.html',
   styleUrl: './inventory.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -108,6 +109,11 @@ export class InventoryPage {
     .every((permiso) => this.auth.hasAuthority(permiso));
   /** Reserva vigente del lote abierto en el detalle (si está reservado). */
   readonly lotReservation = signal<Reservation | null>(null);
+  /** Nombre del cliente de la reserva del lote (para el contrato). */
+  readonly lotReservationCustomer = signal('');
+  readonly canConvert = this.auth.hasAuthority('RESERVAS_CONVERTIR_CONTRATO');
+  /** Reserva con la que se genera el contrato en el panel 'contrato'. */
+  readonly contractSource = signal<{ reserva: Reservation; cliente: string } | null>(null);
   /** Lotes de cada manzana (todos y por completar), con todos los lotes del proyecto. */
   readonly lotCountByBlock = computed(() => {
     const counts = new Map<number, { total: number; pendientes: number }>();
@@ -475,12 +481,37 @@ export class InventoryPage {
       this.feedback.set(`Lote ${lot?.codigo ?? ''} reservado para ${result.cliente} (${result.reserva.codigo}). `
         + (result.pagoConfirmado ? 'Pago confirmado: reserva activa.' : 'Pago pendiente: confírmalo en Ventas.'));
     }
+    if (result?.generarContrato && lot) {
+      this.openContract(lot, result.reserva, result.cliente);
+    }
+    this.loadProject();
+  }
+
+  /** Abre "Generar contrato" para la reserva pagada del lote. */
+  openContract(lot: Lot, reserva: Reservation, cliente: string): void {
+    if (!this.canConvert) return;
+    this.panel.set(null);
+    this.selectedLot.set(lot);
+    this.contractSource.set({ reserva, cliente });
+    this.panel.set('contrato');
+  }
+
+  contractDone(result: ContractCreated | null): void {
+    const lot = this.selectedLot();
+    this.closePanel();
+    if (result) {
+      this.feedback.set(result.firmado
+        ? `Venta activa: lote ${lot?.codigo ?? ''} vendido con el contrato ${result.contrato.codigo}. El plan de pagos ya está en Cartera.`
+        : `Contrato ${result.contrato.codigo} creado en borrador: el lote sigue reservado hasta que se firme en Ventas.`);
+    }
     this.loadProject();
   }
 
   closePanel(): void {
     this.panel.set(null);
     this.lotReservation.set(null);
+    this.lotReservationCustomer.set('');
+    this.contractSource.set(null);
     this.quantityTarget.set(null);
     this.selectedLot.set(null);
     this.editingLot.set(null);
@@ -765,9 +796,17 @@ export class InventoryPage {
     this.sales
       .reservations({ lotId: lot.id, size: 5 })
       .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
-      .subscribe((page) => this.lotReservation.set(
-        page?.contenido.find((r) => r.estado === 'PENDIENTE_PAGO' || r.estado === 'ACTIVA') ?? null,
-      ));
+      .subscribe((page) => {
+        const reserva = page?.contenido.find((r) => r.estado === 'PENDIENTE_PAGO' || r.estado === 'ACTIVA') ?? null;
+        this.lotReservation.set(reserva);
+        this.lotReservationCustomer.set('');
+        if (reserva?.estado === 'ACTIVA' && this.canConvert && this.auth.hasAuthority('CLIENTES_VER')) {
+          this.sales
+            .customer(reserva.clienteId)
+            .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+            .subscribe((customer) => this.lotReservationCustomer.set(customer?.nombreCompleto ?? ''));
+        }
+      });
   }
 
   private loadAllBlocks(projectId: number, stages: ProjectStage[]): void {

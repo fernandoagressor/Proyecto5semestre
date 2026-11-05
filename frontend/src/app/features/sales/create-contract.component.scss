@@ -1,0 +1,53 @@
+:host { display: flex; flex-direction: column; gap: 16px; }
+
+.steps { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: flex; flex: 1; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: 10px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+.steps li span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--text-muted); background: var(--surface-muted); font-size: 12px; }
+.steps li.on { border-color: var(--color-primary); color: var(--text-strong); }
+.steps li.on span { color: #fff; background: var(--color-primary); }
+.steps li.done span { color: var(--tone-success-fg); background: var(--tone-success-bg); }
+
+.who-card { display: flex; flex-wrap: wrap; gap: 18px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-muted); }
+.who-card > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.who-card small { color: var(--text-subtle); font-size: 12px; font-weight: 600; }
+.who-card b { overflow-wrap: anywhere; }
+
+.extras { justify-self: start; }
+
+.summary { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--border-soft); border-radius: 12px; }
+.summary__error { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--tone-danger-fg); font-size: 14px; line-height: 1.45; }
+.summary__error app-icon { width: 18px; height: 18px; flex: none; }
+.summary__money { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.summary__money > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.summary__money dt { color: var(--text-muted); }
+.summary__money dt small { display: block; color: var(--text-subtle); font-size: 12px; }
+.summary__money dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.summary__money .total { padding-top: 6px; border-top: 1px solid var(--border-soft); }
+.summary__money .total dd { font-size: 16px; font-weight: 700; }
+.summary__money .due dd { color: var(--tone-warning-fg); }
+.summary__fee { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-muted); }
+.summary__fee b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.summary__fee small { flex-basis: 100%; color: var(--text-muted); font-size: 12px; }
+.summary > .nx-btn { align-self: flex-start; }
+.schedule { max-height: 260px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 10px; }
+
+.known { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--tone-success-fg); background: var(--tone-success-bg); font-size: 13px; line-height: 1.45; }
+.known app-icon { width: 18px; height: 18px; flex: none; }
+
+.sign-option { display: flex; flex-direction: column; gap: 8px; }
+.sign-option h3 { margin: 0; font-size: 15px; }
+.sign-option p { margin: 0; }
+.file-picker { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 16px; border: 1px dashed var(--border-medium); border-radius: 12px; color: var(--text-muted); background: var(--surface-muted); text-align: center; cursor: pointer; }
+.file-picker:hover { border-color: var(--color-primary); }
+.file-picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-picker app-icon { width: 22px; height: 22px; color: var(--color-primary); }
+.file-picker span { color: var(--text-strong); font-weight: 600; }
+.file-picker small { font-size: 12px; }
+
+.done { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; text-align: center; }
+.done h3 { margin: 0; font-size: 20px; }
+.done p { margin: 0; line-height: 1.5; }
+.done__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; color: var(--tone-success-fg); background: var(--tone-success-bg); }
+.done__icon app-icon { width: 26px; height: 26px; }
+
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft); }

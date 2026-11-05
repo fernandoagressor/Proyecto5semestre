@@ -212,6 +212,13 @@
             }
           </span>
         </div>
+        @if (lotReservation(); as r) {
+          @if (r.estado === 'ACTIVA' && r.estadoPago === 'CONFIRMADO' && canConvert) {
+            <div class="nx-row">
+              <button class="nx-btn nx-btn--sm nx-btn--primary" type="button" (click)="openContract(lot, r, lotReservationCustomer())"><app-icon name="file" /> Generar contrato</button>
+            </div>
+          }
+        }
       }
       @if (lot.estado === 'DISPONIBLE') {
         <div class="nx-row">
@@ -340,6 +347,15 @@
     <button class="nx-btn" type="button" (click)="closePanel()">Ahora no</button>
     <button class="nx-btn nx-btn--primary" type="submit" form="quantity-form" [disabled]="submitting()">{{ submitting() ? 'Creando…' : (quantityTarget()?.mode === 'lotes' ? 'Crear ' + quantityForm.controls.cantidad.value + ' lotes' : 'Agregar ' + quantityForm.controls.cantidad.value + ' manzanas') }}</button>
   </ng-container>
+</nx-drawer>
+
+<!-- Generar el contrato de la reserva pagada del lote -->
+<nx-drawer [open]="panel() === 'contrato'" (openChange)="$event || contractDone(null)" width="600px"
+  [title]="selectedLot() ? 'Contrato del lote ' + selectedLot()!.codigo : 'Generar contrato'" subtitle="Condiciones, plan de pagos y firma."
+  [dismissible]="true">
+  @if (panel() === 'contrato' && selectedLot() && contractSource(); as source) {
+    <app-create-contract [reservation]="source.reserva" [lotCode]="selectedLot()!.codigo" [customerName]="source.cliente" (done)="contractDone($event)" />
+  }
 </nx-drawer>
 
 <!-- Reservar el lote elegido -->
