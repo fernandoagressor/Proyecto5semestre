@@ -157,12 +157,12 @@ public class PortalClienteService {
                   AND dv.vigente = 1 AND dv.archivo_id = ?
                 """, Integer.class, contexto.empresaId(), cliente.getId(), archivoId);
         if (disponibles == null || disponibles == 0) {
-            // También el contrato del cliente (para firmar o ya firmado): la versión vigente.
+            // También los archivos de los contratos del cliente (para firmar o ya firmado).
             disponibles = jdbcTemplate.queryForObject("""
                     SELECT COUNT(*)
                     FROM contrato_versiones v
                     JOIN contratos c ON c.id = v.contrato_id
-                    WHERE c.empresa_id = ? AND v.vigente = 1 AND v.archivo_id = ?
+                    WHERE c.empresa_id = ? AND v.archivo_id = ?
                       AND c.estado NOT IN ('BORRADOR','ANULADO')
                       AND (c.cliente_principal_id = ? OR EXISTS (
                         SELECT 1 FROM contrato_clientes cc WHERE cc.contrato_id = c.id AND cc.cliente_id = ?))
@@ -294,7 +294,8 @@ public class PortalClienteService {
                     java.sql.Date firma = rs.getDate("fecha_firma");
                     String[] firmaCliente = estadoFirmaDelCliente(contratoId, rs.getString("estado"), cliente.getPersonaId());
                     Long archivoContrato = jdbcTemplate.query(
-                            "SELECT archivo_id FROM contrato_versiones WHERE contrato_id = ? AND vigente = 1 AND archivo_id IS NOT NULL",
+                            "SELECT archivo_id FROM contrato_versiones WHERE contrato_id = ? AND archivo_id IS NOT NULL"
+                                    + " ORDER BY numero_version DESC LIMIT 1",
                             (r, i) -> r.getLong("archivo_id"), contratoId).stream().findFirst().orElse(null);
                     return new PortalDtos.Contrato(contratoId, rs.getString("codigo"), rs.getString("estado"),
                             rs.getString("proyecto"), rs.getString("ciudad"), rs.getString("lote"),
