@@ -5,12 +5,11 @@ import com.inmobiliaria.inmobiliaria_api.entity.compartido.excepcion.ReglaNegoci
 import com.inmobiliaria.inmobiliaria_api.entity.inventario.Proyecto;
 import com.inmobiliaria.inmobiliaria_api.repository.inventario.ProyectoRepository;
 import com.inmobiliaria.inmobiliaria_api.security.ContextoUsuario;
+import com.inmobiliaria.inmobiliaria_api.service.compartido.almacenamiento.AlmacenamientoArchivos;
 import com.inmobiliaria.inmobiliaria_api.service.compartido.excepcion.RecursoNoEncontradoException;
 import com.inmobiliaria.inmobiliaria_api.service.inventario.AlcanceProyectoService;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
@@ -20,8 +19,6 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -43,18 +40,18 @@ public class DocumentoVentaService {
     private final JdbcTemplate jdbcTemplate;
     private final ProyectoRepository proyectoRepository;
     private final AlcanceProyectoService alcanceProyectoService;
-    private final Path raiz;
+    private final AlmacenamientoArchivos almacenamiento;
 
     public DocumentoVentaService(
             JdbcTemplate jdbcTemplate,
             ProyectoRepository proyectoRepository,
             AlcanceProyectoService alcanceProyectoService,
-            @Value("${app.storage.path:./storage}") String ruta
+            AlmacenamientoArchivos almacenamiento
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.proyectoRepository = proyectoRepository;
         this.alcanceProyectoService = alcanceProyectoService;
-        this.raiz = Path.of(ruta).toAbsolutePath().normalize();
+        this.almacenamiento = almacenamiento;
     }
 
     @Transactional
@@ -103,20 +100,7 @@ public class DocumentoVentaService {
         String rutaRelativa = contexto.empresaId() + "/"
                 + (proyectoId == null ? "general" : proyectoId) + "/"
                 + nombreAlmacenado;
-        Path destino = raiz.resolve(rutaRelativa).normalize();
-        if (!destino.startsWith(raiz)) {
-            throw new ReglaNegocioException("La ubicación del documento no es válida");
-        }
-        try {
-            Files.createDirectories(destino.getParent());
-            Files.copy(
-                    new java.io.ByteArrayInputStream(contenido),
-                    destino,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-        } catch (IOException ex) {
-            throw new ReglaNegocioException("No fue posible almacenar el documento");
-        }
+        almacenamiento.guardar(rutaRelativa, contenido, mimeType);
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
         try {
@@ -142,12 +126,12 @@ public class DocumentoVentaService {
                 return statement;
             }, keyHolder);
         } catch (RuntimeException ex) {
-            eliminarSilencioso(destino);
+            almacenamiento.eliminarSilencioso(rutaRelativa);
             throw ex;
         }
         Number clave = keyHolder.getKey();
         if (clave == null) {
-            eliminarSilencioso(destino);
+            almacenamiento.eliminarSilencioso(rutaRelativa);
             throw new ReglaNegocioException("No fue posible registrar el documento");
         }
         return new DocumentoVentaResponse(
@@ -192,16 +176,10 @@ public class DocumentoVentaService {
     }
 
     private Descarga abrir(DocumentoAlmacenado documento) {
-        Path ruta = raiz.resolve(documento.ubicacion()).normalize();
-        if (!ruta.startsWith(raiz) || !Files.isRegularFile(ruta)) {
-            throw new RecursoNoEncontradoException(
-                    "El contenido del documento no está disponible"
-            );
-        }
         return new Descarga(
                 documento.nombreOriginal(),
                 documento.mimeType(),
-                new FileSystemResource(ruta)
+                almacenamiento.abrir(documento.ubicacion())
         );
     }
 
@@ -265,14 +243,6 @@ public class DocumentoVentaService {
                     MessageDigest.getInstance("SHA-256").digest(contenido));
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 no está disponible", ex);
-        }
-    }
-
-    private static void eliminarSilencioso(Path ruta) {
-        try {
-            Files.deleteIfExists(ruta);
-        } catch (IOException ignored) {
-            // La limpieza no debe ocultar el error original de persistencia.
         }
     }
 

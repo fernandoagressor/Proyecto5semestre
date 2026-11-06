@@ -43,7 +43,12 @@ docker compose stop frontend api
 docker compose up -d --wait --wait-timeout 300 mysql mongodb redis
 
 registro "MySQL"
-gzip -dc "$dir/mysql.sql.gz" | mysql_root || error "Falló la carga de MySQL"
+if mysql_en_rds; then
+  # En RDS el usuario maestro no puede crear objetos a nombre de otro usuario (DEFINER).
+  gzip -dc "$dir/mysql.sql.gz" | sed -E 's/DEFINER=`[^`]+`@`[^`]+`//g' | mysql_root || error "Falló la carga de MySQL en RDS"
+else
+  gzip -dc "$dir/mysql.sql.gz" | mysql_root || error "Falló la carga de MySQL"
+fi
 
 registro "MongoDB"
 docker compose exec -T mongodb sh -c 'exec mongorestore --quiet \

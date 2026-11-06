@@ -40,7 +40,7 @@ trap 'rm -rf "$parcial"' EXIT
 registro "Respaldo $nombre"
 
 registro "MySQL"
-docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot \
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_ADMIN_USER:-root}" \
     --single-transaction --quick --routines --triggers --events --set-gtid-purged=OFF \
     --no-tablespaces --add-drop-database --databases "$MYSQL_DATABASE"' \
   | gzip -6 > "$parcial/mysql.sql.gz"

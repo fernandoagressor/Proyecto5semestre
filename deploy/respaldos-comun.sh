@@ -36,9 +36,16 @@ publicar_metricas() {
 }
 
 # Comandos dentro de los contenedores, con las credenciales que ya tienen en su entorno
-# (las contraseñas no pasan por la línea de comandos del servidor).
+# (las contraseñas no pasan por la línea de comandos del servidor). Con compose.rds.yaml el
+# contenedor "mysql" es solo un cliente: MYSQL_HOST apunta a RDS y MYSQL_ADMIN_USER es el
+# usuario maestro de RDS.
 mysql_root() {
-  docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$@"' mysql "$@"
+  docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_ADMIN_USER:-root}" "$@"' mysql "$@"
+}
+
+# La base está en RDS (compose.rds.yaml) y no en el contenedor local.
+mysql_en_rds() {
+  [[ -n "$(docker compose exec -T mysql printenv MYSQL_HOST 2>/dev/null | tr -d '\r')" ]]
 }
 mongo_root() {
   docker compose exec -T mongodb sh -c \
