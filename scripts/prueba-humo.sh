@@ -68,7 +68,7 @@ esperar() { # esperar SEGUNDOS comando... → reintenta cada segundo hasta que e
 
 mysql_q() {
   docker compose exec -T mysql sh -c \
-    'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -N -s -e "$0"' "$1" 2>/dev/null
+    'MYSQL_PWD="${MYSQL_PASSWORD:-$MYSQL_ROOT_PASSWORD}" mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_USER:-$MYSQL_ADMIN_USER}" "$MYSQL_DATABASE" -N -s -e "$0"' "$1" 2>/dev/null
 }
 
 mongo_q() {

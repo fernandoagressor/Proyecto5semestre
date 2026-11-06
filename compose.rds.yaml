@@ -1,0 +1,43 @@
+# Producción en 3 capas (docs/PRODUCCION_AWS_3_CAPAS.md): MySQL en Amazon RDS y los archivos
+# subidos en S3. Se usa encima de compose.prod.yaml y compose.monitoring.yaml:
+#
+#   COMPOSE_FILE=compose.prod.yaml:compose.monitoring.yaml:compose.rds.yaml   (en el .env)
+#
+# El servicio "mysql" deja de ser el servidor de base de datos: queda como un cliente liviano de
+# MySQL conectado a RDS. Así la API sigue esperando a que la base responda, y los respaldos
+# (deploy/respaldar.sh, restaurar.sh) y el monitoreo funcionan igual, pero contra RDS.
+
+services:
+  mysql:
+    entrypoint: ["sleep", "infinity"]
+    command: !reset []
+    environment: !override
+      MYSQL_HOST: ${RDS_HOST:?Defina RDS_HOST (endpoint de la base en RDS)}
+      MYSQL_ADMIN_USER: ${RDS_ADMIN_USER:-nexora_admin}
+      MYSQL_ROOT_PASSWORD: ${RDS_ADMIN_PASSWORD:?Defina RDS_ADMIN_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-inmobiliaria_db}
+      TZ: America/Bogota
+    volumes: !reset []
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$${MYSQL_ROOT_PASSWORD}\" mysqladmin ping -h \"$${MYSQL_HOST}\" -u \"$${MYSQL_ADMIN_USER}\" --ssl-mode=REQUIRED --silent"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 96m
+
+  api:
+    environment:
+      DB_URL: jdbc:mysql://${RDS_HOST}:3306/${DB_NAME:-inmobiliaria_db}?sslMode=REQUIRED&serverTimezone=America/Bogota
+      APP_STORAGE_TIPO: s3
+      APP_STORAGE_S3_BUCKET: ${ARCHIVOS_S3_BUCKET:?Defina ARCHIVOS_S3_BUCKET (bucket de archivos)}
+      APP_STORAGE_S3_REGION: ${AWS_REGION:-us-east-2}
+
+  mysqld-exporter:
+    command: !override
+      - --mysqld.address=${RDS_HOST}:3306
+      - --mysqld.username=exporter
+      - --tls.insecure-skip-verify

@@ -107,7 +107,13 @@ app:
     transactional-store: mysql
     ephemeral-store: redis
   storage:
+    # disco (por defecto: carpeta del servidor) o s3 (producción: bucket privado, rol de la EC2).
+    tipo: ${APP_STORAGE_TIPO:disco}
     path: ${APP_STORAGE_PATH:./storage}
+    s3:
+      bucket: ${APP_STORAGE_S3_BUCKET:}
+      region: ${APP_STORAGE_S3_REGION:us-east-2}
+      prefijo: ${APP_STORAGE_S3_PREFIJO:archivos/}
   mongo:
     indices:
       # Crea al arrancar los índices de todas las colecciones (únicos, TTL y de consulta).

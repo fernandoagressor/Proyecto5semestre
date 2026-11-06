@@ -6,6 +6,21 @@ y [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Agregado
+- **Producción en 3 capas en una cuenta de AWS aparte (~USD 48 al mes)**: EC2 t3a.medium con
+  Caddy, frontend, API, MongoDB y Redis; MySQL en **Amazon RDS** (db.t4g.micro, sin acceso público,
+  respaldos de 7 días) y los archivos subidos en **S3**. Guía paso a paso para quien empieza con AWS
+  en `docs/PRODUCCION_AWS_3_CAPAS.md`.
+  - Los documentos se guardan a través de `AlmacenamientoArchivos`: en disco (como hasta ahora,
+    `APP_STORAGE_TIPO=disco`) o en S3 (`APP_STORAGE_TIPO=s3`, cifrado SSE-S3, credenciales del rol
+    de la EC2, sin claves en el servidor).
+  - `compose.rds.yaml`: se agrega a `COMPOSE_FILE`; el servicio `mysql` queda como cliente de RDS
+    (la API espera a que RDS responda y los respaldos y el monitoreo apuntan a RDS, con TLS).
+  - `deploy/rds-preparar.sh` crea en RDS la base, el usuario de la aplicación y el del monitoreo, y
+    revisa `log_bin_trust_function_creators`.
+  - `respaldar.sh` y `restaurar.sh` funcionan contra RDS (la restauración quita los `DEFINER`, que
+    el usuario maestro de RDS no puede asignar).
+  - CI: nuevo trabajo "Humo E2E (3 capas, MySQL externo como RDS)" con un MySQL aparte con los
+    permisos de un usuario maestro de RDS: prueba de humo, respaldo y restauración.
 - **Firma del contrato desde la casa del cliente**:
   - Al **enviar a firma**, el contrato le llega al cliente en su portal, con una notificación:
     lo descarga, lo firma y lo sube (PDF o foto) con `POST /portal/contratos/{id}/firma`.

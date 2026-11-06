@@ -317,3 +317,112 @@ jobs:
       - name: Bajar el stack
         if: always()
         run: docker compose down -v
+
+  humo-tres-capas:
+    name: Humo E2E (3 capas, MySQL externo como RDS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Igual que producción en 3 capas (compose.rds.yaml), con un MySQL aparte que hace de RDS.
+      # Los archivos van a disco en el CI (no hay S3); el código de S3 lo cubren pruebas unitarias.
+      COMPOSE_FILE: compose.prod.yaml:compose.monitoring.yaml:compose.rds.yaml:compose.ci-disco.yaml
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Variables de prueba (no son las del servidor)
+        run: |
+          cat > .env <<'VARS'
+          DOMINIO=localhost
+          ACME_EMAIL=ci@ejemplo.com
+          DB_PASSWORD=HumoMysql2026x
+          DB_ROOT_PASSWORD=NoSeUsaConRds2026x
+          MYSQL_MIGRATOR_PASSWORD=NoSeUsaConRds2026x
+          MONGO_ROOT_PASSWORD=HumoMongoRoot2026x
+          MONGO_APP_PASSWORD=HumoMongoApp2026x
+          MONGO_MIGRATOR_PASSWORD=HumoMongoMigrator2026x
+          REDIS_PASSWORD=HumoRedis2026x
+          JWT_SECRET=humo-jwt-secret-de-prueba-con-mas-de-32-caracteres
+          BOOTSTRAP_ADMIN_ENABLED=true
+          BOOTSTRAP_EMPRESA_CODIGO=EYC-ALTAMAR
+          BOOTSTRAP_EMPRESA_NOMBRE=E&C Altamar Constructora
+          BOOTSTRAP_EMPRESA_NIT=900000002
+          BOOTSTRAP_ADMIN_DOCUMENTO=1000000002
+          BOOTSTRAP_ADMIN_NOMBRES=Administrador
+          BOOTSTRAP_ADMIN_APELLIDOS=NEXORA
+          BOOTSTRAP_ADMIN_USERNAME=SUPERADMIN
+          BOOTSTRAP_ADMIN_EMAIL=admin@ejemplo.com
+          BOOTSTRAP_ADMIN_PASSWORD=HumoAdmin2026!
+          MYSQL_EXPORTER_PASSWORD=HumoExporter2026x
+          GRAFANA_ADMIN_PASSWORD=HumoGrafana2026x
+          RDS_HOST=rds-simulado
+          RDS_ADMIN_USER=nexora_admin
+          RDS_ADMIN_PASSWORD=HumoRdsAdmin2026x
+          ARCHIVOS_S3_BUCKET=sin-s3-en-el-ci
+          VARS
+          cat deploy/capacidad-4gb.env >> .env
+          printf 'services:\n  api:\n    environment:\n      APP_STORAGE_TIPO: disco\n' > compose.ci-disco.yaml
+
+      - name: Construir y crear el stack (sin arrancar)
+        run: docker compose up --no-start --build
+
+      - name: MySQL aparte que hace de RDS (TLS obligatorio y sin privilegios de DEFINER)
+        run: |
+          set -euo pipefail
+          docker run -d --name rds-simulado --network nexora_default -e MYSQL_ROOT_PASSWORD=HumoRdsRoot2026x \
+            mysql:8.4.11 --log-bin-trust-function-creators=1 --require-secure-transport=ON
+          for i in $(seq 60); do
+            docker exec rds-simulado mysqladmin ping -uroot -pHumoRdsRoot2026x --silent 2>/dev/null && break; sleep 2
+          done
+          sleep 5
+          docker exec -i rds-simulado mysql -uroot -pHumoRdsRoot2026x <<'SQL'
+          CREATE USER 'nexora_admin'@'%' IDENTIFIED BY 'HumoRdsAdmin2026x';
+          GRANT ALL PRIVILEGES ON *.* TO 'nexora_admin'@'%' WITH GRANT OPTION;
+          REVOKE SUPER, SYSTEM_USER, SET_ANY_DEFINER ON *.* FROM 'nexora_admin'@'%';
+          SQL
+
+      - name: Preparar la base como en RDS (deploy/rds-preparar.sh)
+        run: bash deploy/rds-preparar.sh
+
+      - name: Respaldos instalados como en el servidor (carpetas y cron, sin S3)
+        run: bash deploy/instalar-respaldos.sh
+
+      - name: Levantar el stack
+        run: docker compose up -d --wait --wait-timeout 900
+
+      - name: Prueba de humo por HTTPS
+        env:
+          BASE_URL: https://localhost
+          CURL_INSECURE: "1"
+          ADMIN_USUARIO: SUPERADMIN
+          ADMIN_PASSWORD: HumoAdmin2026!
+          ADMIN_PASSWORD_NUEVA: HumoAdminNueva2026!
+          COMPOSE: "1"
+        run: bash scripts/prueba-humo.sh
+
+      - name: La base está en el MySQL externo, no en un contenedor del stack
+        run: |
+          set -euo pipefail
+          n="$(docker exec rds-simulado mysql -unexora_admin -pHumoRdsAdmin2026x -N -s -e 'SELECT COUNT(*) FROM inmobiliaria_db.usuarios' 2>/dev/null)"
+          [ "$n" -ge 1 ] || { echo "::error::No hay usuarios en la base externa"; exit 1; }
+          echo "Usuarios en la base externa: $n"
+          docker compose exec -T mysql sh -c 'test ! -d /var/lib/mysql/inmobiliaria_db' || { echo "::error::El contenedor mysql tiene datos locales"; exit 1; }
+
+      - name: Respaldo, prueba de restauración y restauración contra la base externa
+        run: |
+          set -euo pipefail
+          bash deploy/respaldar.sh
+          r="$(find /var/lib/nexora/respaldos -mindepth 1 -maxdepth 1 -type d -name 'nexora-*' | sort | tail -1)"
+          cat "$r/MANIFIESTO.txt"
+          grep -qE '^flyway=[0-9]+$' "$r/MANIFIESTO.txt" || { echo "::error::El respaldo no tiene la versión de Flyway"; exit 1; }
+          bash deploy/probar-restauracion.sh
+          bash deploy/restaurar.sh "$r" --confirmar --sin-respaldo-previo
+          code="$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/)"
+          [ "$code" = 200 ] || { echo "::error::Después de restaurar la página respondió $code"; exit 1; }
+          echo "Restaurado en la base externa y la aplicación responde"
+
+      - name: Ningún contenedor se reinició
+        if: always()
+        run: |
+          docker compose ps -a
+          reinicios="$(docker compose ps -aq | xargs docker inspect -f '{{.Name}} {{.RestartCount}}' | awk '$2 > 0')"
+          if [ -n "$reinicios" ]; then echo "::error::Contenedores reiniciados: $reinicios"; docker compose logs --tail 80 api; exit 1; fi
